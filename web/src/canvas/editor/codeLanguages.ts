@@ -1,0 +1,17 @@
+export const CODE_LANGUAGES = [
+  'typescript',
+  'javascript',
+  'tsx',
+  'jsx',
+  'python',
+  'json',
+  'sql',
+  'yaml',
+  'go',
+  'rust',
+  'cpp',
+  'css',
+  'html',
+  'markdown',
+  'text',
+] as const

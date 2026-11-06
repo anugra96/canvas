@@ -1,0 +1,63 @@
+{
+  "nodes": [
+    {
+      "id": "text-card",
+      "type": "text",
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 220,
+      "color": "4",
+      "text": "# Imported from Obsidian\n\nThis card keeps its **markdown**, color, and unknown fields.",
+      "styleAttributes": { "textAlign": "center" }
+    },
+    {
+      "id": "file-card",
+      "type": "file",
+      "x": 460,
+      "y": 0,
+      "width": 320,
+      "height": 220,
+      "file": "Notes/Example.md",
+      "subpath": "#Heading",
+      "ratio": 1.25
+    },
+    {
+      "id": "link-card",
+      "type": "link",
+      "x": 0,
+      "y": 270,
+      "width": 320,
+      "height": 160,
+      "url": "https://obsidian.md"
+    },
+    {
+      "id": "group-card",
+      "type": "group",
+      "x": -40,
+      "y": -40,
+      "width": 860,
+      "height": 500,
+      "label": "Imported group",
+      "background": "Assets/background.png",
+      "backgroundStyle": "cover"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-card",
+      "fromNode": "text-card",
+      "fromSide": "right",
+      "toNode": "file-card",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "label": "references",
+      "toFloating": true,
+      "styleAttributes": { "stroke": "dashed" }
+    }
+  ],
+  "metadata": {
+    "version": "1.0-1.0",
+    "frontmatter": { "source": "obsidian" }
+  }
+}

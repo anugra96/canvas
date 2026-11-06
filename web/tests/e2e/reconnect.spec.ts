@@ -1,0 +1,50 @@
+import { expect, test } from '@playwright/test'
+
+test('reconnects an edge endpoint to a different card', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'New canvas' }).click()
+  await page.getByRole('button', { name: 'Add card' }).click()
+
+  const handle = page.locator('.react-flow__handle-right').first()
+  const handleBox = await handle.boundingBox()
+  const flowBox = await page.locator('.canvas-flow').boundingBox()
+  if (!handleBox || !flowBox) throw new Error('Missing canvas geometry')
+  await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(flowBox.x + flowBox.width - 260, flowBox.y + 220, { steps: 10 })
+  await page.mouse.up()
+  await page.locator('.connection-option', { hasText: 'Code' }).click()
+
+  await page.getByRole('button', { name: 'Add card' }).click()
+  const cards = page.locator('.text-node')
+  await expect(cards).toHaveCount(2)
+  const targetCard = cards.nth(1)
+  const targetBox = await targetCard.boundingBox()
+  if (!targetBox) throw new Error('Missing target card')
+  await page.mouse.move(targetBox.x + 40, targetBox.y + 20)
+  await page.mouse.down()
+  await page.mouse.move(targetBox.x + 40, targetBox.y + 380, { steps: 10 })
+  await page.mouse.up()
+
+  const label = await page.locator('.edge-label').boundingBox()
+  if (!label) throw new Error('Missing edge label')
+  await page.mouse.click(label.x + label.width / 2, label.y + label.height / 2)
+  await expect(page.locator('.selection-toolbar')).toContainText('1 selected')
+  await expect(page.locator('.react-flow__edgeupdater')).toHaveCount(2)
+
+  const before = await page.locator('.react-flow__edge').first().getAttribute('aria-label')
+  const updater = page.locator('.react-flow__edgeupdater-target').first()
+  const updaterBox = await updater.boundingBox()
+  const currentTargetBox = await targetCard.boundingBox()
+  if (!updaterBox || !currentTargetBox) throw new Error('Missing reconnect geometry')
+
+  await page.mouse.move(updaterBox.x + updaterBox.width / 2, updaterBox.y + updaterBox.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(currentTargetBox.x + 2, currentTargetBox.y + currentTargetBox.height / 2, { steps: 14 })
+  await page.mouse.up()
+  await page.waitForTimeout(300)
+
+  const after = await page.locator('.react-flow__edge').first().getAttribute('aria-label')
+  expect(after).not.toBe(before)
+  await page.screenshot({ path: 'test-results/reconnected-edge.png', fullPage: true })
+})
