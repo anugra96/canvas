@@ -1,7 +1,7 @@
 import {
   ontologySchema,
   type Ontology,
-} from '@skyward/canvas-contract'
+} from '@canvas/contract'
 
 export async function loadOntology(idToken: string): Promise<Ontology> {
   const baseUrl = (import.meta.env.VITE_CANVAS_API_BASE_URL ?? '').replace(/\/$/, '')

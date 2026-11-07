@@ -1,4 +1,4 @@
-import type { CanvasDocument } from '@skyward/canvas-contract'
+import type { CanvasDocument } from '@canvas/contract'
 
 export class CanvasConflictError extends Error {
   readonly latest: CanvasDocument

@@ -14,7 +14,7 @@ import {
   type CanvasNodeSide,
   type JsonCanvas,
   type Ontology,
-} from '@skyward/canvas-contract'
+} from '@canvas/contract'
 
 export type CanvasNodeData = {
   raw: CanvasNode
@@ -195,9 +195,9 @@ export function fromFlowCanvas(
     else delete raw.label
     const relationType = edge.data?.relationType
     if (typeof relationType === 'string' && relationType) {
-      raw.skyward = { ...(raw.skyward ?? {}), relationType }
-    } else if (raw.skyward) {
-      delete (raw.skyward as Record<string, unknown>).relationType
+      raw.app = { ...(raw.app ?? {}), relationType }
+    } else if (raw.app) {
+      delete (raw.app as Record<string, unknown>).relationType
     }
     return raw
   })

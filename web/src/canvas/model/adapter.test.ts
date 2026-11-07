@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { JsonCanvas } from '@skyward/canvas-contract'
+import type { JsonCanvas } from '@canvas/contract'
 
 import { cardBackgroundFor, fromFlowCanvas, groupBackgroundFor, toFlowCanvas, toFlowNode } from './adapter'
 
@@ -96,10 +96,10 @@ describe('canvas flow adapter', () => {
           y: 0,
           width: 380,
           height: 280,
-          text: '## Repository: Skyward Engine',
-          skyward: {
+          text: '## Repository: Canvas Engine',
+          app: {
             entityType: 'repository',
-            fields: { name: 'Skyward Engine', owner: 'Forge' },
+            fields: { name: 'Canvas Engine', owner: 'Forge' },
           },
         },
       ],
@@ -110,13 +110,13 @@ describe('canvas flow adapter', () => {
     expect(flow.nodes[0]?.type).toBe('entity')
     expect(flow.nodes[0]?.data.entity).toEqual({
       entityType: 'repository',
-      fields: { name: 'Skyward Engine', owner: 'Forge' },
+      fields: { name: 'Canvas Engine', owner: 'Forge' },
     })
 
     const roundTrip = fromFlowCanvas(flow.nodes, flow.edges, entityCanvas)
-    expect(roundTrip.nodes?.[0]?.skyward).toEqual({
+    expect(roundTrip.nodes?.[0]?.app).toEqual({
       entityType: 'repository',
-      fields: { name: 'Skyward Engine', owner: 'Forge' },
+      fields: { name: 'Canvas Engine', owner: 'Forge' },
     })
   })
 
@@ -131,7 +131,7 @@ describe('canvas flow adapter', () => {
           width: 560,
           height: 360,
           text: '## Code: Example',
-          skyward: {
+          app: {
             entityType: 'code',
             fields: { title: 'Example', language: 'typescript', code: 'const value = 1' },
           },

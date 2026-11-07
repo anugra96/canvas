@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { DEFAULT_ONTOLOGY } from '@skyward/canvas-contract'
+import { DEFAULT_ONTOLOGY } from '@canvas/contract'
 
 import { toFlowNode } from './adapter'
 import { convertNodeType } from './cardTypes'
@@ -17,13 +17,13 @@ describe('convertNodeType', () => {
       text: 'Important notes',
     })
 
-    const converted = convertNodeType(text, 'repository', DEFAULT_ONTOLOGY)
+    const converted = convertNodeType(text, 'database', DEFAULT_ONTOLOGY)
     expect(converted.type).toBe('entity')
     expect(converted.data.entity).toMatchObject({
-      entityType: 'repository',
-      fields: { notes: 'Important notes' },
+      entityType: 'database',
+      fields: { purpose: 'Important notes' },
     })
-    expect(converted.data.text).toContain('Repository')
+    expect(converted.data.text).toContain('Database')
   })
 
   it('preserves matching fields when switching entity types', () => {
@@ -35,16 +35,16 @@ describe('convertNodeType', () => {
       width: 380,
       height: 280,
       text: '## Repository',
-      skyward: {
+      app: {
         entityType: 'repository',
-        fields: { name: 'Shared', owner: 'Forge', notes: 'Keep this' },
+        fields: { name: 'Shared', owner: 'Forge' },
       },
     })
 
     const database = convertNodeType(repository, 'database', DEFAULT_ONTOLOGY)
     expect(database.data.entity).toMatchObject({
       entityType: 'database',
-      fields: { name: 'Shared', owner: 'Forge', notes: 'Keep this' },
+      fields: { name: 'Shared', owner: 'Forge' },
     })
   })
 
@@ -57,13 +57,13 @@ describe('convertNodeType', () => {
       width: 380,
       height: 280,
       text: '## Repository: Shared',
-      skyward: { entityType: 'repository', fields: { name: 'Shared' } },
+      app: { entityType: 'repository', fields: { name: 'Shared' } },
     })
 
     const text = convertNodeType(repository, 'text', DEFAULT_ONTOLOGY)
     expect(text.type).toBe('text')
     expect(text.data.entity).toBeUndefined()
-    expect(text.data.raw.skyward).toBeUndefined()
+    expect(text.data.raw.app).toBeUndefined()
     expect(text.data.text).toContain('Repository: Shared')
   })
 

@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { DEFAULT_ONTOLOGY } from '@skyward/canvas-contract'
+import { DEFAULT_ONTOLOGY } from '@canvas/contract'
 
 import { loadOntology, resetOntologyCache } from './ontology'
 
@@ -25,7 +25,7 @@ describe('loadOntology', () => {
   })
 
   it('loads and validates a configured ontology file', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'skyward-canvas-ontology-'))
+    const directory = await mkdtemp(join(tmpdir(), 'app-canvas-ontology-'))
     directories.push(directory)
     const path = join(directory, 'ontology.json')
     await writeFile(path, JSON.stringify({ ...DEFAULT_ONTOLOGY, version: 'runtime-test' }))
@@ -36,7 +36,7 @@ describe('loadOntology', () => {
   })
 
   it('falls back when the configured file is invalid', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'skyward-canvas-ontology-'))
+    const directory = await mkdtemp(join(tmpdir(), 'app-canvas-ontology-'))
     directories.push(directory)
     const path = join(directory, 'ontology.json')
     await writeFile(path, JSON.stringify({ version: 'bad', entityTypes: [], relationTypes: [] }))

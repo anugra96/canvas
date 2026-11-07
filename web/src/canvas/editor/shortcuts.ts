@@ -32,6 +32,17 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
   {
+    title: 'Code editing',
+    items: [
+      { keys: ['Tab'], label: 'Indent code' },
+      { keys: ['Shift', 'Tab'], label: 'Outdent code' },
+      { keys: ['Enter'], label: 'Auto-indent the next line' },
+      { keys: ['⌘/Ctrl', '/'], label: 'Toggle line comment' },
+      { keys: ['('], label: 'Auto-close brackets and quotes' },
+      { keys: ['Backspace'], label: 'Remove an empty pair' },
+    ],
+  },
+  {
     title: 'Markdown editing',
     items: [
       { keys: ['Enter'], label: 'Continue a list or blockquote' },

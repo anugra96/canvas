@@ -11,7 +11,7 @@ import { FileCanvasStore } from './fileCanvasStore'
 const directories: string[] = []
 
 async function createStore(): Promise<FileCanvasStore> {
-  const directory = await mkdtemp(join(tmpdir(), 'skyward-canvas-'))
+  const directory = await mkdtemp(join(tmpdir(), 'app-canvas-'))
   directories.push(directory)
   return new FileCanvasStore(directory)
 }
@@ -22,13 +22,13 @@ afterEach(async () => {
 
 describe('FileCanvasStore', () => {
   it('persists a canvas across store instances', async () => {
-    const directory = await mkdtemp(join(tmpdir(), 'skyward-canvas-'))
+    const directory = await mkdtemp(join(tmpdir(), 'app-canvas-'))
     directories.push(directory)
     const principal = localPrincipal()
     const store = new FileCanvasStore(directory)
-    const created = await store.create('skyward', 'Persisted', principal)
+    const created = await store.create('app', 'Persisted', principal)
     const saved = await store.save(
-      'skyward',
+      'app',
       created.id,
       {
         nodes: [
@@ -41,11 +41,11 @@ describe('FileCanvasStore', () => {
     )
 
     const reopened = new FileCanvasStore(directory)
-    const loaded = await reopened.get('skyward', created.id)
+    const loaded = await reopened.get('app', created.id)
     expect(loaded?.etag).toBe(saved.etag)
     expect(loaded?.canvas.nodes?.[0]).toMatchObject({ text: 'Saved' })
 
-    const listed = await reopened.list('skyward')
+    const listed = await reopened.list('app')
     expect(listed).toHaveLength(1)
     expect(listed[0]).toMatchObject({ id: created.id, nodeCount: 1 })
   })
@@ -53,9 +53,9 @@ describe('FileCanvasStore', () => {
   it('rejects a stale etag', async () => {
     const store = await createStore()
     const principal = localPrincipal()
-    const created = await store.create('skyward', 'Conflict', principal)
+    const created = await store.create('app', 'Conflict', principal)
     const first = await store.save(
-      'skyward',
+      'app',
       created.id,
       { nodes: [], edges: [] },
       created.etag,
@@ -63,7 +63,7 @@ describe('FileCanvasStore', () => {
     )
 
     await expect(
-      store.save('skyward', created.id, { nodes: [], edges: [] }, created.etag, principal),
+      store.save('app', created.id, { nodes: [], edges: [] }, created.etag, principal),
     ).rejects.toBeInstanceOf(CanvasConflictError)
     expect(first.etag).not.toBe(created.etag)
   })

@@ -3,6 +3,7 @@ import {
   BackgroundVariant,
   ConnectionMode,
   Controls,
+  Position,
   ReactFlow,
   ReactFlowProvider,
   ViewportPortal,
@@ -17,12 +18,14 @@ import {
   type NodeChange,
 } from '@xyflow/react'
 import {
+  AlertTriangle,
   ArrowLeft,
   Download,
   Keyboard,
   Plus,
   Redo2,
   Save,
+  ShieldCheck,
   Undo2,
   X,
 } from 'lucide-react'
@@ -45,12 +48,13 @@ import {
   type CanvasDocument,
   type CanvasNode,
   type CanvasNodeSide,
+  type CanvasProfileIssue,
   type EntityFields,
   type JsonCanvas,
   type MergeConflict,
   type Ontology,
   type TextNode,
-} from '@skyward/canvas-contract'
+} from '@canvas/contract'
 
 import type { CanvasClient } from '../../api/client'
 import { CanvasConflictError } from '../../api/errors'
@@ -64,6 +68,7 @@ import {
   type CanvasFlowNode,
 } from '../model/adapter'
 import { findSnap, type AlignmentGuide } from '../model/alignment'
+import { getCanvasEdgePath } from '../model/edgePath'
 import { convertNodeType } from '../model/cardTypes'
 import {
   applyColorToFlowEdge,
@@ -74,13 +79,17 @@ import {
   reverseFlowEdge,
 } from '../model/edgeRelations'
 import { useOntology } from '../../ontology/OntologyContext'
+import { findBestCardSize } from './autoFit'
 import { CanvasEditorActionsContext, type CanvasEditorActions } from './CanvasEditorContext'
 import { ConnectionTemplateMenu } from './ConnectionTemplateMenu'
+import { ProfileValidationTray } from './ProfileValidationTray'
 import { EdgeLabelEditor } from './EdgeLabelEditor'
 import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog'
 import { SelectionToolbar } from './SelectionToolbar'
 import { isEditableTarget } from './shortcuts'
 import { useCanvasHistory } from './useCanvasHistory'
+import { useCanvasProfile } from './useCanvasProfile'
+import { useProfileValidation } from './useProfileValidation'
 import { readViewport, writeViewport } from './viewport'
 import { CanvasEdge as CanvasEdgeComponent } from './edges/CanvasEdge'
 import { CodeNode } from './nodes/CodeNode'
@@ -132,6 +141,10 @@ interface EdgeLabelEditorState {
   y: number
 }
 
+interface CardMenuState {
+  screen: { x: number; y: number }
+}
+
 function statusLabel(status: SaveStatus): string {
   if (status === 'saved') return 'Saved'
   if (status === 'dirty') return 'Unsaved changes'
@@ -172,8 +185,62 @@ function makeEntityNode(
     width: entityType.defaultSize.width,
     height: entityType.defaultSize.height,
     text: renderEntityMarkdown(entityType, fields),
-    skyward: { entityType: entityType.id, fields },
+    app: { entityType: entityType.id, fields },
   } as CanvasNode
+}
+
+const SIDE_POSITION: Record<CanvasNodeSide, Position> = {
+  top: Position.Top,
+  right: Position.Right,
+  bottom: Position.Bottom,
+  left: Position.Left,
+}
+
+const OPPOSITE_POSITION: Record<CanvasNodeSide, Position> = {
+  top: Position.Bottom,
+  right: Position.Left,
+  bottom: Position.Top,
+  left: Position.Right,
+}
+
+function ConnectionPreview({
+  nodes,
+  pending,
+}: {
+  nodes: CanvasFlowNode[]
+  pending: PendingConnection
+}) {
+  const source = nodes.find((node) => node.id === pending.fromNodeId)
+  if (!source) return null
+  const size = nodeDimensions(source)
+  const sourceX = pending.fromSide === 'left'
+    ? source.position.x
+    : pending.fromSide === 'right'
+      ? source.position.x + size.width
+      : source.position.x + size.width / 2
+  const sourceY = pending.fromSide === 'top'
+    ? source.position.y
+    : pending.fromSide === 'bottom'
+      ? source.position.y + size.height
+      : source.position.y + size.height / 2
+  const path = getCanvasEdgePath({
+    id: 'connection-preview',
+    sourceX,
+    sourceY,
+    sourcePosition: SIDE_POSITION[pending.fromSide],
+    targetX: pending.position.x,
+    targetY: pending.position.y,
+    targetPosition: OPPOSITE_POSITION[pending.fromSide],
+  }).path
+
+  return (
+    <ViewportPortal>
+      <svg className="connection-preview" aria-hidden="true">
+        <path d={path} />
+        <circle cx={pending.position.x} cy={pending.position.y} r={5} />
+      </svg>
+    </ViewportPortal>
+  )
 }
 
 function clientPoint(event: { clientX: number; clientY: number } | TouchEvent): { x: number; y: number } {
@@ -188,8 +255,13 @@ function clamp(value: number, min: number, max: number): number {
 
 function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
   const ontology = useOntology()
+  const { profile, isSystems, availableEntityTypes, profileRelationTypes } = useCanvasProfile(ontology, document)
   const initial = useMemo(() => toFlowCanvas(document.canvas, ontology), [document, ontology])
   const savedViewport = useMemo(() => readViewport(document.id), [document.id])
+  const shouldFitInitial = useMemo(
+    () => !savedViewport && (document.canvas.nodes?.length ?? 0) > 0,
+    [document.canvas.nodes?.length, savedViewport],
+  )
   const history = useCanvasHistory(initial)
   const {
     canRedo,
@@ -209,15 +281,28 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
   const [notice, setNotice] = useState('')
   const [conflicts, setConflicts] = useState<MergeConflict[]>([])
   const [pendingLocal, setPendingLocal] = useState<JsonCanvas | null>(null)
-  const [newRelationType, setNewRelationType] = useState('relates_to')
+  const [newRelationType, setNewRelationType] = useState(isSystems ? '' : 'relates_to')
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
+  const [validationOpen, setValidationOpen] = useState(false)
   const [pendingConnection, setPendingConnection] = useState<PendingConnection | null>(null)
+  const [cardMenu, setCardMenu] = useState<CardMenuState | null>(null)
   const [edgeLabelEditor, setEdgeLabelEditor] = useState<EdgeLabelEditorState | null>(null)
   const [alignmentGuides, setAlignmentGuides] = useState<AlignmentGuide[]>([])
   const flowRef = useRef<HTMLDivElement>(null)
   const nodesRef = useRef(nodes)
-  const { screenToFlowPosition, fitView, getZoom } = useReactFlow()
+  const { fitView, getViewport, getZoom } = useReactFlow()
+
+  const clientToFlow = useCallback((clientX: number, clientY: number) => {
+    const bounds = flowRef.current?.getBoundingClientRect()
+    const viewport = getViewport()
+    if (!bounds) return { x: clientX, y: clientY }
+    return {
+      x: (clientX - bounds.left - viewport.x) / viewport.zoom,
+      y: (clientY - bounds.top - viewport.y) / viewport.zoom,
+    }
+  }, [getViewport])
+
 
   useEffect(() => {
     nodesRef.current = nodes
@@ -259,7 +344,7 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
           ...node.data,
           entity,
           text,
-          raw: { ...node.data.raw, skyward: entity, text },
+          raw: { ...node.data.raw, app: entity, text },
         },
       }
     }))
@@ -276,6 +361,17 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
       : node))
     markDirty()
   }, [markDirty])
+
+  const autoFitNode = useCallback((id: string) => {
+    const flowNode = nodes.find((node) => node.id === id)
+    if (!flowNode || flowNode.type === 'group') return
+    const wrapper = flowRef.current?.querySelector<HTMLElement>(`.react-flow__node[data-id="${id}"]`)
+    const card = wrapper?.querySelector<HTMLElement>('.canvas-node')
+    if (!card) return
+    const size = nodeDimensions(flowNode)
+    const next = findBestCardSize(card, size.width, size.height)
+    resizeNode(id, next.width, next.height)
+  }, [nodes, resizeNode])
 
   const groupSelected = useCallback(() => {
     const selected = nodes.filter((node) => node.selected && node.type !== 'group')
@@ -301,7 +397,7 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
       width: Math.round(right - left),
       height: Math.round(bottom - top),
       label: 'Group',
-      skyward: { groupMembers: selected.map((node) => node.id) },
+      app: { groupMembers: selected.map((node) => node.id) },
     } as CanvasNode
     setNodes((current) => [
       { ...toFlowNode(groupRaw), selected: true },
@@ -388,8 +484,8 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
       if (raw.type === 'group') {
         const members = getGroupMembers(raw)
         if (members) {
-          raw.skyward = {
-            ...(raw.skyward ?? {}),
+          raw.app = {
+            ...(raw.app ?? {}),
             groupMembers: members
               .map((memberId) => idMap.get(memberId))
               .filter((memberId): memberId is string => Boolean(memberId)),
@@ -547,6 +643,8 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
           setHelpOpen(false)
         } else if (pendingConnection) {
           setPendingConnection(null)
+        } else if (cardMenu) {
+          setCardMenu(null)
         } else if (edgeLabelEditor) {
           setEdgeLabelEditor(null)
         } else {
@@ -568,6 +666,7 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [
+    cardMenu,
     clearSelection,
     duplicateSelection,
     edgeLabelEditor,
@@ -766,9 +865,10 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
 
   const onConnect = useCallback((connection: Connection) => {
     const raw = edgeFromConnection(connection, newRelationType, ontology)
+    if (isSystems && !newRelationType) raw.label = 'Define relation'
     setEdges((current) => addEdge(toFlowEdge(raw, ontology), current))
     markDirty()
-  }, [markDirty, newRelationType, ontology])
+  }, [isSystems, markDirty, newRelationType, ontology])
 
   const onConnectEnd = useCallback((
     event: { clientX: number; clientY: number } | TouchEvent,
@@ -778,17 +878,18 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
     const bounds = flowRef.current?.getBoundingClientRect()
     if (!bounds) return
     const point = clientPoint(event)
+    const flowPoint = clientToFlow(point.x, point.y)
     setPendingConnection({
       fromNodeId: state.fromNode.id,
       fromSide: state.fromPosition as CanvasNodeSide,
-      position: { x: state.to.x, y: state.to.y },
+      position: flowPoint,
       screen: {
-        x: clamp(point.x - bounds.left, 8, bounds.width - 250),
-        y: clamp(point.y - bounds.top, 8, bounds.height - 350),
+        x: point.x - bounds.left,
+        y: point.y - bounds.top,
       },
     })
     setEdgeLabelEditor(null)
-  }, [])
+  }, [clientToFlow])
 
   const insertConnectedNode = useCallback((templateId: string) => {
     const pending = pendingConnection
@@ -800,16 +901,10 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
     const height = templateId === 'text' ? 200 : entityType?.defaultSize.height
     if (!width || !height) return
 
-    const bounds = flowRef.current?.getBoundingClientRect()
-    let left = pending.position.x - width / 2
-    let top = pending.position.y - height / 2
-    if (bounds) {
-      const visibleTopLeft = screenToFlowPosition({ x: bounds.left, y: bounds.top })
-      const visibleBottomRight = screenToFlowPosition({ x: bounds.right, y: bounds.bottom })
-      left = clamp(left, visibleTopLeft.x + 16, visibleBottomRight.x - width - 16)
-      top = clamp(top, visibleTopLeft.y + 16, visibleBottomRight.y - height - 16)
+    const topLeft = {
+      x: pending.position.x - width / 2,
+      y: pending.position.y - height / 2,
     }
-    const topLeft = { x: left, y: top }
     const raw = templateId === 'text'
       ? makeTextNode(topLeft, width, height)
       : makeEntityNode(templateId, topLeft, ontology)
@@ -821,6 +916,7 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
       sourceHandle: pending.fromSide,
       targetHandle: OPPOSITE_SIDE[pending.fromSide],
     }, newRelationType, ontology)
+    if (isSystems && !newRelationType) edge.label = 'Define relation'
 
     setPendingConnection(null)
     setNodes((current) => [
@@ -830,7 +926,7 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
     setEdges((current) => [...current, toFlowEdge(edge, ontology)])
     setSelectedEdgeId(null)
     markDirty()
-  }, [markDirty, newRelationType, ontology, pendingConnection, screenToFlowPosition])
+  }, [isSystems, markDirty, newRelationType, ontology, pendingConnection])
 
   const selectEdge = useCallback((id: string) => {
     setNodes((current) => current.map((node) => ({ ...node, selected: false })))
@@ -857,10 +953,11 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
       updateLabel,
       updateEntityField,
       resizeNode,
+      autoFitNode,
       editEdgeLabel: openEdgeLabelEditor,
       selectEdge,
     }),
-    [openEdgeLabelEditor, resizeNode, selectEdge, updateEntityField, updateLabel, updateText],
+    [autoFitNode, openEdgeLabelEditor, resizeNode, selectEdge, updateEntityField, updateLabel, updateText],
   )
 
   const onReconnect = useCallback((oldEdge: CanvasFlowEdge, connection: Connection) => {
@@ -920,7 +1017,7 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
       if (node.id !== membershipGroup.id) return node
       const raw = {
         ...node.data.raw,
-        skyward: { ...(node.data.raw.skyward ?? {}), groupMembers: nextMembers },
+        app: { ...(node.data.raw.app ?? {}), groupMembers: nextMembers },
       } as CanvasNode
       return { ...node, data: { ...node.data, raw } }
     }))
@@ -930,27 +1027,132 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
   function handleDoubleClick(event: MouseEvent<HTMLDivElement>) {
     const target = event.target as HTMLElement
     if (!target.classList.contains('react-flow__pane')) return
-    const position = screenToFlowPosition({ x: event.clientX, y: event.clientY })
-    addCard(position)
+    const bounds = flowRef.current?.getBoundingClientRect()
+    if (!bounds) return
+    setPendingConnection(null)
+    setEdgeLabelEditor(null)
+    setCardMenu({
+      screen: { x: event.clientX - bounds.left, y: event.clientY - bounds.top },
+    })
+  }
+
+  function insertCardFromMenu(templateId: string) {
+    const menu = cardMenu
+    if (!menu) return
+    if (isSystems && templateId === 'text') return
+    const entityType = templateId === 'text' ? undefined : findEntityType(ontology, templateId)
+    const width = templateId === 'text' ? 360 : entityType?.defaultSize.width
+    const height = templateId === 'text' ? 200 : entityType?.defaultSize.height
+    if (!width || !height) return
+    const bounds = flowRef.current?.getBoundingClientRect()
+    if (!bounds) return
+    const position = clientToFlow(menu.screen.x + bounds.left, menu.screen.y + bounds.top)
+    const topLeft = {
+      x: position.x - width / 2,
+      y: position.y - height / 2,
+    }
+    const raw = templateId === 'text'
+      ? makeTextNode(topLeft, width, height)
+      : makeEntityNode(templateId, topLeft, ontology)
+    if (!raw) return
+    setCardMenu(null)
+    setNodes((current) => [
+      ...current.map((node) => ({ ...node, selected: false })),
+      { ...toFlowNode(raw), selected: true },
+    ])
+    markDirty()
   }
 
   function centerPosition(width = 360, height = 200): { x: number; y: number } {
     const bounds = flowRef.current?.getBoundingClientRect()
-    const position = screenToFlowPosition({
-      x: (bounds?.left ?? 0) + (bounds?.width ?? window.innerWidth) / 2,
-      y: (bounds?.top ?? 0) + (bounds?.height ?? window.innerHeight) / 2,
-    })
+    const position = clientToFlow(
+      (bounds?.left ?? 0) + (bounds?.width ?? window.innerWidth) / 2,
+      (bounds?.top ?? 0) + (bounds?.height ?? window.innerHeight) / 2,
+    )
     return { x: position.x - width / 2, y: position.y - height / 2 }
   }
 
+  function placementPosition(width: number, height: number): {
+    x: number
+    y: number
+    visible: boolean
+  } {
+    const base = centerPosition(width, height)
+    const gap = 24
+    const stepX = width + gap
+    const stepY = height + gap
+    const occupied = nodes.filter((node) => node.type !== 'group')
+    const bounds = flowRef.current?.getBoundingClientRect()
+    const visibleTopLeft = bounds
+      ? clientToFlow(bounds.left, bounds.top)
+      : undefined
+    const visibleBottomRight = bounds
+      ? clientToFlow(bounds.right, bounds.bottom)
+      : undefined
+    const isFree = (x: number, y: number) => occupied.every((node) => {
+      const size = nodeDimensions(node)
+      return x + width + gap <= node.position.x
+        || x >= node.position.x + size.width + gap
+        || y + height + gap <= node.position.y
+        || y >= node.position.y + size.height + gap
+    })
+    const isVisible = (x: number, y: number) => (
+      !visibleTopLeft || !visibleBottomRight
+      || (
+        x >= visibleTopLeft.x + 16
+        && y >= visibleTopLeft.y + 16
+        && x + width <= visibleBottomRight.x - 16
+        && y + height <= visibleBottomRight.y - 16
+      )
+    )
+
+    let offscreen: { x: number; y: number } | undefined
+    for (let radius = 0; radius <= 4; radius += 1) {
+      for (let row = -radius; row <= radius; row += 1) {
+        for (let column = -radius; column <= radius; column += 1) {
+          if (Math.max(Math.abs(row), Math.abs(column)) !== radius) continue
+          const x = base.x + column * stepX
+          const y = base.y + row * stepY
+          if (!isFree(x, y)) continue
+          if (isVisible(x, y)) return { x, y, visible: true }
+          offscreen ??= { x, y }
+        }
+      }
+    }
+    if (offscreen) return { ...offscreen, visible: false }
+    const offset = (nodes.length % 6) * 52
+    return { x: base.x + offset, y: base.y + offset, visible: false }
+  }
+
   function addAtCenter() {
-    addCard(centerPosition())
+    addCard(centerPosition(360, 200))
+  }
+
+  function revealPlacement(visible: boolean) {
+    if (visible) return
+    window.setTimeout(() => {
+      void fitView({ padding: 0.25, maxZoom: 1 })
+    }, 60)
+  }
+
+  function addNoteAtCenter() {
+    const noteType = findEntityType(ontology, 'note')
+    if (!noteType) return
+    const placement = placementPosition(noteType.defaultSize.width, noteType.defaultSize.height)
+    addEntity('note', placement)
+    revealPlacement(placement.visible)
   }
 
   function addEntityAtCenter(entityTypeId: string) {
     const entityType = findEntityType(ontology, entityTypeId)
     if (!entityType) return
-    addEntity(entityTypeId, centerPosition(entityType.defaultSize.width, entityType.defaultSize.height))
+    if (!isSystems) {
+      addEntity(entityTypeId, centerPosition(entityType.defaultSize.width, entityType.defaultSize.height))
+      return
+    }
+    const placement = placementPosition(entityType.defaultSize.width, entityType.defaultSize.height)
+    addEntity(entityTypeId, placement)
+    revealPlacement(placement.visible)
   }
 
   async function reloadLatest() {
@@ -986,8 +1188,19 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
       setNewRelationType(relationTypeId)
       return
     }
-    setEdges((current) => current.map((edge) =>
-      edge.id === selectedEdgeId ? applyRelationToFlowEdge(edge, relationTypeId, ontology) : edge))
+    setEdges((current) => current.map((edge) => {
+      if (edge.id !== selectedEdgeId) return edge
+      const next = applyRelationToFlowEdge(edge, relationTypeId, ontology)
+      if (isSystems && !relationTypeId && next.data) {
+        next.label = 'Define relation'
+        next.data = {
+          ...next.data,
+          label: 'Define relation',
+          raw: { ...next.data.raw, label: 'Define relation' },
+        }
+      }
+      return next
+    }))
     markDirty()
   }
 
@@ -995,8 +1208,39 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
     ? edges.find((edge) => edge.id === selectedEdgeId)
     : undefined
   const relationValue = selectedEdge
-    ? selectedEdge.data?.relationType ?? 'relates_to'
+    ? selectedEdge.data?.relationType ?? ''
     : newRelationType
+  const validationIssues = useProfileValidation({
+    nodes,
+    edges,
+    baseCanvas,
+    profile,
+    ontology,
+    isSystems,
+  })
+
+  function focusValidationIssue(issue: CanvasProfileIssue) {
+    if (issue.nodeId) {
+      setNodes((current) => current.map((node) => ({
+        ...node,
+        selected: node.id === issue.nodeId,
+      })))
+      setEdges((current) => current.map((edge) => ({ ...edge, selected: false })))
+      setSelectedEdgeId(null)
+      void fitView({ nodes: [{ id: issue.nodeId }], duration: 300, maxZoom: 1.5 })
+    } else if (issue.edgeId) {
+      selectEdge(issue.edgeId)
+      const edge = edges.find((candidate) => candidate.id === issue.edgeId)
+      if (edge) {
+        void fitView({
+          nodes: [{ id: edge.source }, { id: edge.target }],
+          duration: 300,
+          maxZoom: 1.5,
+        })
+      }
+    }
+    setValidationOpen(false)
+  }
 
   async function download() {
     setError('')
@@ -1022,6 +1266,7 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
           </button>
           <div className="editor-toolbar-title">
             <h1>{document.title}</h1>
+            <span className={`profile-badge${isSystems ? ' systems' : ''}`}>{profile.label}</span>
             <span className={`save-status ${status}`}>{statusLabel(status)}</span>
           </div>
           <div className="editor-actions">
@@ -1058,15 +1303,36 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
                 value={relationValue}
                 onChange={(event) => changeRelation(event.target.value)}
               >
-                {ontology.relationTypes.map((relationType) => (
+                {isSystems && <option value="">Unspecified</option>}
+                {profileRelationTypes.map((relationType) => (
                   <option key={relationType.id} value={relationType.id}>{relationType.label}</option>
                 ))}
               </select>
             </label>
-            <button className="button" onClick={addAtCenter}>
-              <Plus size={16} />
-              Add card
-            </button>
+            {isSystems && (
+              <button
+                className={`button validation-button${validationIssues.length > 0 ? ' warn' : ''}`}
+                onClick={() => setValidationOpen((open) => !open)}
+                aria-label="Systems validation"
+                title="Systems validation"
+              >
+                {validationIssues.length > 0 ? <AlertTriangle size={15} /> : <ShieldCheck size={15} />}
+                {validationIssues.length > 0
+                  ? `${validationIssues.length} warning${validationIssues.length === 1 ? '' : 's'}`
+                  : 'Valid'}
+              </button>
+            )}
+            {isSystems ? (
+              <button className="button" onClick={addNoteAtCenter}>
+                <Plus size={16} />
+                Add note
+              </button>
+            ) : (
+              <button className="button" onClick={addAtCenter}>
+                <Plus size={16} />
+                Add card
+              </button>
+            )}
             <select
               className="template-select"
               aria-label="Add template"
@@ -1077,8 +1343,8 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
                 event.target.value = ''
               }}
             >
-              <option value="">Add template</option>
-              {ontology.entityTypes.map((entityType) => (
+              <option value="">{isSystems ? 'Add architecture card' : 'Add template'}</option>
+              {availableEntityTypes.map((entityType) => (
                 <option key={entityType.id} value={entityType.id}>{entityType.label}</option>
               ))}
             </select>
@@ -1124,7 +1390,7 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
             }}
             onReconnect={onReconnect}
             edgesReconnectable
-            reconnectRadius={14}
+            reconnectRadius={26}
             onNodeDragStart={() => setAlignmentGuides([])}
             onNodeDragStop={() => setAlignmentGuides([])}
             onMoveStart={() => setAlignmentGuides([])}
@@ -1132,7 +1398,7 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
               setSelectedEdgeId(selectedEdgeList[0]?.id ?? null)
             }}
             connectionMode={ConnectionMode.Loose}
-            fitView={!savedViewport}
+            fitView={shouldFitInitial}
             fitViewOptions={{ padding: 0.25, maxZoom: 1.2 }}
             defaultViewport={savedViewport ?? undefined}
             onMoveEnd={(_, viewport: Viewport) => writeViewport(document.id, viewport)}
@@ -1150,6 +1416,9 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
           >
             <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="rgba(255, 255, 255, 0.09)" />
             <Controls showInteractive={false} />
+            {pendingConnection && (
+              <ConnectionPreview nodes={nodes} pending={pendingConnection} />
+            )}
             <ViewportPortal>
               {alignmentGuides.map((guide, index) => (
                 <div
@@ -1169,12 +1438,14 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
           >
             ? Shortcuts
           </button>
-          {!pendingConnection && !edgeLabelEditor && (
+          {!pendingConnection && !cardMenu && !edgeLabelEditor && (
             <SelectionToolbar
               selectedNodes={selectedNodes.length}
               selectedEdges={selectedEdges.length}
               canGroup={selectedNodes.some((node) => node.type !== 'group')}
               cardTypeValue={cardTypeValue}
+              allowText={!isSystems}
+              entityTypeIds={availableEntityTypes.map((entityType) => entityType.id)}
               onCardTypeChange={changeCardType}
               onGroup={groupSelected}
               onReverse={reverseSelectedEdges}
@@ -1190,8 +1461,19 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
             <ConnectionTemplateMenu
               x={pendingConnection.screen.x}
               y={pendingConnection.screen.y}
+              profile={profile}
               onSelect={insertConnectedNode}
               onClose={() => setPendingConnection(null)}
+            />
+          )}
+          {cardMenu && (
+            <ConnectionTemplateMenu
+              x={cardMenu.screen.x}
+              y={cardMenu.screen.y}
+              profile={profile}
+              mode="card"
+              onSelect={insertCardFromMenu}
+              onClose={() => setCardMenu(null)}
             />
           )}
           {edgeLabelEditor && (
@@ -1204,6 +1486,14 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
             />
           )}
         </div>
+
+        {isSystems && validationOpen && (
+          <ProfileValidationTray
+            issues={validationIssues}
+            onClose={() => setValidationOpen(false)}
+            onFocus={focusValidationIssue}
+          />
+        )}
 
         {conflicts.length > 0 && (
           <div className="conflict-bar" role="alertdialog" aria-label="Merge conflict">

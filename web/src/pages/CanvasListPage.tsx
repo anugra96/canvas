@@ -7,11 +7,13 @@ import {
 } from 'react'
 
 import {
+  DEFAULT_PROFILES,
   MAX_CANVAS_BYTES,
+  findProfile,
   normalizeImportedCanvas,
   validateCanvas,
   type CanvasSummary,
-} from '@skyward/canvas-contract'
+} from '@canvas/contract'
 
 import type { CanvasClient } from '../api/client'
 
@@ -35,6 +37,7 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [importing, setImporting] = useState(false)
+  const [profileId, setProfileId] = useState('raw')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -88,7 +91,7 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
     setBusy(true)
     setError('')
     try {
-      const document = await client.createCanvas()
+      const document = await client.createCanvas(undefined, profileId)
       onOpen(document.id)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not create a canvas.')
@@ -114,6 +117,17 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
             <Upload size={16} />
             {importing ? 'Importing' : 'Import .canvas'}
           </button>
+          <select
+            className="template-select canvas-profile-select"
+            aria-label="Canvas type"
+            value={profileId}
+            onChange={(event) => setProfileId(event.target.value)}
+            disabled={busy || importing}
+          >
+            {DEFAULT_PROFILES.map((profile) => (
+              <option key={profile.id} value={profile.id}>{profile.label}</option>
+            ))}
+          </select>
           <button className="button primary" onClick={createCanvas} disabled={busy || importing}>
             <Plus size={16} />
             {busy ? 'Creating' : 'New canvas'}
@@ -154,7 +168,9 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
           {canvases.map((canvas) => (
             <button className="canvas-card" key={canvas.id} onClick={() => onOpen(canvas.id)}>
               <div className="canvas-card-top">
-                <span className="canvas-card-kicker">Canvas</span>
+                <span className="canvas-card-kicker">
+                  {findProfile(DEFAULT_PROFILES, canvas.profile ?? 'raw')?.label ?? 'Canvas'}
+                </span>
                 <ArrowRight size={16} />
               </div>
               <h2>{canvas.title}</h2>

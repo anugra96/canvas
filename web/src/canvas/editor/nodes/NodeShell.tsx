@@ -42,11 +42,29 @@ export function NodeShell({ node, selected, className, children }: NodeShellProp
           type="source"
           position={side.position}
           className="canvas-handle"
+          onDoubleClick={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            actions.autoFitNode(node.id)
+          }}
         />
       ))}
       <div
         className={`canvas-node ${className}${selected ? ' selected' : ''}`}
         style={accent || background ? { borderColor: accent, background } : undefined}
+        onDoubleClickCapture={(event) => {
+          if (node.data.raw.type === 'group') return
+          const rect = event.currentTarget.getBoundingClientRect()
+          const edge = 8
+          const nearEdge = event.clientX <= rect.left + edge
+            || event.clientX >= rect.right - edge
+            || event.clientY <= rect.top + edge
+            || event.clientY >= rect.bottom - edge
+          if (!nearEdge) return
+          event.preventDefault()
+          event.stopPropagation()
+          actions.autoFitNode(node.id)
+        }}
       >
         {children}
       </div>

@@ -16,10 +16,10 @@ export default function App() {
     <div className="app-shell">
       <header className="topbar">
         <button className="brand" onClick={() => setSelectedCanvasId(null)}>
-          <span className="brand-mark">SC</span>
+          <span className="brand-mark">C</span>
           <span>
-            <strong>Skyward Canvas</strong>
-            <small>Operational boards</small>
+            <strong>Canvas</strong>
+            <small>Workspace</small>
           </span>
         </button>
         <div className="topbar-actions">

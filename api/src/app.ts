@@ -4,12 +4,16 @@ import { HTTPException } from 'hono/http-exception'
 import { z } from 'zod'
 
 import {
+  DEFAULT_PROFILES,
+  EMPTY_CANVAS,
   MAX_CANVAS_BYTES,
   canvasByteSize,
+  findProfile,
   normalizeImportedCanvas,
+  profileMetadata,
   validateCanvas,
   type CanvasDocument,
-} from '@skyward/canvas-contract'
+} from '@canvas/contract'
 
 import {
   requireCanvasPrincipal,
@@ -24,6 +28,7 @@ import {
 
 const createCanvasSchema = z.object({
   title: z.string().trim().min(1).max(160).optional(),
+  profile: z.string().trim().min(1).max(64).optional(),
 })
 
 const saveCanvasSchema = z.object({
@@ -90,10 +95,18 @@ export function createApp(store: CanvasStore, options: CanvasAppOptions): Hono {
     if (!parsed.success) {
       return c.json({ detail: 'Invalid canvas request.', errors: parsed.error.issues }, 400)
     }
+    const profile = findProfile(DEFAULT_PROFILES, parsed.data.profile ?? 'raw')
+    if (!profile) {
+      return c.json({ detail: `Unknown canvas profile "${parsed.data.profile}".` }, 400)
+    }
+    const canvas = profile.id === 'raw'
+      ? structuredClone(EMPTY_CANVAS)
+      : { nodes: [], edges: [], app: profileMetadata(profile) }
     const document = await store.create(
       principal.tenantId,
       parsed.data.title ?? 'Untitled canvas',
       principal,
+      canvas,
     )
     return withEtag(c, document, 201)
   })

@@ -2,7 +2,7 @@ import type {
   CanvasDocument,
   CanvasSummary,
   JsonCanvas,
-} from '@skyward/canvas-contract'
+} from '@canvas/contract'
 
 import type { CanvasPrincipal } from '../auth'
 
@@ -50,5 +50,6 @@ export function summarize(document: CanvasDocument): CanvasSummary {
     updatedBy: document.updatedBy,
     nodeCount: document.canvas.nodes?.length ?? 0,
     edgeCount: document.canvas.edges?.length ?? 0,
+    profile: document.canvas.app?.profile ?? 'raw',
   }
 }

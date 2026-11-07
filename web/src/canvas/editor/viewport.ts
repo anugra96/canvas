@@ -1,6 +1,6 @@
 import type { Viewport } from '@xyflow/react'
 
-const KEY_PREFIX = 'skyward-canvas:viewport:v2:'
+const KEY_PREFIX = 'canvas:viewport:v2:'
 
 function key(canvasId: string): string {
   return `${KEY_PREFIX}${canvasId}`
@@ -36,13 +36,5 @@ export function writeViewport(canvasId: string, viewport: Viewport): void {
     storage()?.setItem(key(canvasId), JSON.stringify(viewport))
   } catch {
     // Viewport persistence is best-effort.
-  }
-}
-
-export function clearViewport(canvasId: string): void {
-  try {
-    storage()?.removeItem(key(canvasId))
-  } catch {
-    // Ignore storage cleanup failures.
   }
 }

@@ -29,20 +29,20 @@ describe('default ontology', () => {
     if (!repository) return
 
     const fields = emptyEntityFields(repository)
-    fields.name = 'Skyward Engine'
+    fields.name = 'Canvas Engine'
     fields.owner = 'Forge'
-    fields.url = 'https://github.com/Skyward-Wildfire/skyward-engine'
+    fields.url = 'https://github.com/Canvas-Wildfire/app-engine'
 
-    expect(entityTitle(repository, fields)).toBe('Skyward Engine')
+    expect(entityTitle(repository, fields)).toBe('Canvas Engine')
     const markdown = renderEntityMarkdown(repository, fields)
-    expect(markdown).toContain('## Repository: Skyward Engine')
+    expect(markdown).toContain('## Repository: Canvas Engine')
     expect(markdown).toContain('- **Owner:** Forge')
-    expect(markdown).toContain('- **URL:** https://github.com/Skyward-Wildfire/skyward-engine')
+    expect(markdown).toContain('- **URL:** https://github.com/Canvas-Wildfire/app-engine')
   })
 
   it('parses entity metadata from a node extension', () => {
     const meta = getEntityMeta({
-      skyward: {
+      app: {
         entityType: 'database',
         fields: { name: 'Postgres', environment: 'production' },
       },

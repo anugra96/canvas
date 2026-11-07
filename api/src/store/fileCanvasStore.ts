@@ -7,7 +7,7 @@ import {
   type CanvasDocument,
   type CanvasSummary,
   type JsonCanvas,
-} from '@skyward/canvas-contract'
+} from '@canvas/contract'
 
 import type { CanvasPrincipal } from '../auth'
 import {

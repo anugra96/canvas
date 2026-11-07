@@ -1,5 +1,5 @@
 {
-  "name": "@skyward/canvas-web",
+  "name": "@canvas/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -12,7 +12,14 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@skyward/canvas-contract": "*",
+    "@canvas/contract": "*",
+    "@tiptap/extension-placeholder": "^3.33.0",
+    "@tiptap/extension-table": "^3.33.0",
+    "@tiptap/extension-task-item": "^3.33.0",
+    "@tiptap/extension-task-list": "^3.33.0",
+    "@tiptap/markdown": "^3.33.0",
+    "@tiptap/react": "^3.33.0",
+    "@tiptap/starter-kit": "^3.33.0",
     "@xyflow/react": "^12.12.1",
     "amazon-cognito-identity-js": "^6.3.20",
     "lucide-react": "^0.555.0",

@@ -5,7 +5,7 @@ import {
   findRelationType,
   type CanvasEdge,
   type Ontology,
-} from '@skyward/canvas-contract'
+} from '@canvas/contract'
 
 import { colorFor, type CanvasFlowEdge } from './adapter'
 
@@ -20,10 +20,10 @@ function side(
 
 export function edgeFromConnection(
   connection: Pick<Connection, 'source' | 'target' | 'sourceHandle' | 'targetHandle'>,
-  relationTypeId: string,
+  relationTypeId: string | undefined,
   ontology: Ontology = DEFAULT_ONTOLOGY,
 ): CanvasEdge {
-  const relation = findRelationType(ontology, relationTypeId)
+  const relation = relationTypeId ? findRelationType(ontology, relationTypeId) : undefined
   return {
     id: createNodeId(),
     fromNode: connection.source,
@@ -33,7 +33,7 @@ export function edgeFromConnection(
     toEnd: 'arrow',
     color: relation?.color,
     label: relation?.label,
-    skyward: { relationType: relation?.id ?? 'relates_to' },
+    ...(relation ? { app: { relationType: relation.id } } : {}),
   }
 }
 
@@ -86,9 +86,12 @@ export function applyRelationToFlowEdge(
   relationTypeId: string,
   ontology: Ontology = DEFAULT_ONTOLOGY,
 ): CanvasFlowEdge {
-  const relation = findRelationType(ontology, relationTypeId)
+  const relation = relationTypeId ? findRelationType(ontology, relationTypeId) : undefined
   const raw = edge.data?.raw
   if (!raw) return edge
+  const app = { ...(raw.app ?? {}) }
+  if (relationTypeId) app.relationType = relationTypeId
+  else delete app.relationType
   return {
     ...edge,
     label: relation?.label,
@@ -99,12 +102,12 @@ export function applyRelationToFlowEdge(
     data: {
       ...edge.data,
       label: relation?.label,
-      relationType: relationTypeId,
+      relationType: relationTypeId || undefined,
       raw: {
         ...raw,
         label: relation?.label,
         color: relation?.color,
-        skyward: { ...(raw.skyward ?? {}), relationType: relationTypeId },
+        ...(Object.keys(app).length > 0 ? { app } : { app: undefined }),
       },
     },
   }

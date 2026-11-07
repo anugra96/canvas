@@ -16,7 +16,7 @@ const app = createApp(store, {
 })
 
 serve({ fetch: app.fetch, port }, (info) => {
-  console.log(`Skyward Canvas API: http://127.0.0.1:${info.port}`)
+  console.log(`Canvas API: http://127.0.0.1:${info.port}`)
   console.log(`Canvas data: ${dataDir}`)
   console.log(`Auth mode: ${authMode}`)
 })

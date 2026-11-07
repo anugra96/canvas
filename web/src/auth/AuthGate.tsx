@@ -25,7 +25,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     try {
       setSession(await signIn(email, password))
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Skyward Canvas could not sign in.')
+      setError(cause instanceof Error ? cause.message : 'Canvas could not sign in.')
     } finally {
       setBusy(false)
     }
@@ -36,10 +36,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
       <main className="login-shell">
         <form className="login-card" onSubmit={submit}>
           <div className="login-brand">
-            <span className="brand-mark">SC</span>
+            <span className="brand-mark">C</span>
             <div>
-              <strong>Skyward Canvas</strong>
-              <p>Sign in with your individual Skyward account.</p>
+              <strong>Canvas</strong>
+              <p>Sign in with your workspace account.</p>
             </div>
           </div>
           <label>

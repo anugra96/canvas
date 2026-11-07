@@ -23,7 +23,7 @@ test('reconnects an edge endpoint to a different card', async ({ page }) => {
   if (!targetBox) throw new Error('Missing target card')
   await page.mouse.move(targetBox.x + 40, targetBox.y + 20)
   await page.mouse.down()
-  await page.mouse.move(targetBox.x + 40, targetBox.y + 380, { steps: 10 })
+  await page.mouse.move(targetBox.x + 40, targetBox.y + 160, { steps: 10 })
   await page.mouse.up()
 
   const label = await page.locator('.edge-label').boundingBox()
@@ -35,12 +35,13 @@ test('reconnects an edge endpoint to a different card', async ({ page }) => {
   const before = await page.locator('.react-flow__edge').first().getAttribute('aria-label')
   const updater = page.locator('.react-flow__edgeupdater-target').first()
   const updaterBox = await updater.boundingBox()
-  const currentTargetBox = await targetCard.boundingBox()
-  if (!updaterBox || !currentTargetBox) throw new Error('Missing reconnect geometry')
+  const targetNode = page.locator('.react-flow__node').filter({ has: page.locator('.text-node') }).nth(1)
+  const targetHandle = await targetNode.locator('.react-flow__handle-left').boundingBox()
+  if (!updaterBox || !targetHandle) throw new Error('Missing reconnect geometry')
 
   await page.mouse.move(updaterBox.x + updaterBox.width / 2, updaterBox.y + updaterBox.height / 2)
   await page.mouse.down()
-  await page.mouse.move(currentTargetBox.x + 2, currentTargetBox.y + currentTargetBox.height / 2, { steps: 14 })
+  await page.mouse.move(targetHandle.x + targetHandle.width / 2, targetHandle.y + targetHandle.height / 2, { steps: 14 })
   await page.mouse.up()
   await page.waitForTimeout(300)
 

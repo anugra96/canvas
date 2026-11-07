@@ -11,7 +11,7 @@ export interface CanvasPrincipal {
   tenantId: string
 }
 
-export const CANVAS_EDITOR_GROUP = 'skyward-canvas-editors'
+export const CANVAS_EDITOR_GROUP = 'canvas-editors'
 
 export const LOCAL_DEV_TOKEN = 'local-dev'
 
@@ -19,9 +19,9 @@ export function localPrincipal(): CanvasPrincipal {
   return {
     subject: 'cognito:local-dev',
     displayName: 'Local Dev',
-    email: 'dev@skywardwildfire.com',
+    email: 'dev@localhost',
     groups: [CANVAS_EDITOR_GROUP],
-    tenantId: 'skyward',
+    tenantId: 'local',
   }
 }
 
@@ -41,7 +41,7 @@ export function principalFromClaims(claims: Record<string, unknown>): CanvasPrin
         : subject,
     email: typeof claims.email === 'string' ? claims.email : '',
     groups,
-    tenantId: 'skyward',
+    tenantId: 'local',
   }
 }
 

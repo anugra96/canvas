@@ -1,7 +1,7 @@
 import { ArrowLeft } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
-import type { CanvasDocument } from '@skyward/canvas-contract'
+import type { CanvasDocument } from '@canvas/contract'
 
 import type { CanvasClient } from '../api/client'
 import { CanvasEditor } from '../canvas/editor/CanvasEditor'

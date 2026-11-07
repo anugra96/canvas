@@ -33,10 +33,20 @@ export const entityTypeSchema = z.object({
   relationTypes: z.array(z.string().min(1)).optional(),
 })
 
+export const relationCategorySchema = z.enum([
+  'structure',
+  'runtime',
+  'data',
+  'access',
+  'fallback',
+  'annotation',
+])
+
 export const relationTypeSchema = z.object({
   id: z.string().min(1),
   label: z.string().min(1),
   color: z.string().min(1).optional(),
+  category: relationCategorySchema.optional(),
   directed: z.boolean().optional(),
 })
 
@@ -50,12 +60,12 @@ export const entityFieldValueSchema = z.union([z.string(), z.number(), z.null()]
 
 export const canvasEntityMetaSchema = z.object({
   entityType: z.string().min(1),
-  fields: z.record(entityFieldValueSchema),
+  fields: z.record(z.string(), entityFieldValueSchema),
 }).passthrough()
 
 export const canvasNodeMetaSchema = z.object({
   entityType: z.string().min(1).optional(),
-  fields: z.record(entityFieldValueSchema).optional(),
+  fields: z.record(z.string(), entityFieldValueSchema).optional(),
   groupMembers: z.array(z.string().min(1)).optional(),
 }).passthrough()
 
@@ -66,6 +76,7 @@ export const canvasEdgeMetaSchema = z.object({
 export type OntologyFieldType = z.infer<typeof ontologyFieldTypeSchema>
 export type OntologyField = z.infer<typeof ontologyFieldSchema>
 export type EntityTypeDefinition = z.infer<typeof entityTypeSchema>
+export type RelationCategory = z.infer<typeof relationCategorySchema>
 export type RelationTypeDefinition = z.infer<typeof relationTypeSchema>
 export type Ontology = z.infer<typeof ontologySchema>
 export type EntityFieldValue = z.infer<typeof entityFieldValueSchema>
@@ -77,99 +88,119 @@ export type EntityFields = Record<string, EntityFieldValue>
 
 export const DEFAULT_ONTOLOGY: Ontology = {
   version: '1.0',
-  entityTypes: [
-    {
+  entityTypes: [    {
       id: 'repository',
       label: 'Repository',
-      description: 'A source repository that a team owns.',
-      icon: 'boxes',
+      description: 'A source-code repository.',
+      icon: 'folder-git',
       color: '5',
-      defaultSize: { width: 380, height: 280 },
-      relationTypes: ['owns', 'depends_on', 'deploys_to'],
+      defaultSize: { width: 360, height: 220 },
+      relationTypes: ['uses', 'produces'],
       fields: [
         { key: 'name', label: 'Name', type: 'text', primary: true, required: true },
-        { key: 'owner', label: 'Owner', type: 'text', placeholder: 'Team or person' },
-        { key: 'url', label: 'URL', type: 'url', placeholder: 'https://github.com/...' },
-        { key: 'language', label: 'Language', type: 'text' },
+        {
+          key: 'provider',
+          label: 'Provider',
+          type: 'select',
+          options: ['github', 'gitlab', 'local', 'other'],
+          defaultValue: 'github',
+          required: true,
+        },
+        { key: 'url', label: 'URL', type: 'url' },
+        { key: 'defaultBranch', label: 'Default branch', type: 'text', placeholder: 'main' },
+        { key: 'owner', label: 'Owner', type: 'text' },
         {
           key: 'status',
           label: 'Status',
           type: 'select',
-          options: ['active', 'maintenance', 'archived'],
+          options: ['planned', 'active', 'deprecated'],
           defaultValue: 'active',
         },
-        { key: 'notes', label: 'Notes', type: 'textarea' },
       ],
     },
     {
       id: 'database',
       label: 'Database',
-      description: 'A durable data store and its environment.',
+      description: 'A durable state boundary.',
       icon: 'database',
       color: '4',
-      defaultSize: { width: 380, height: 280 },
-      relationTypes: ['depends_on', 'reads_from', 'writes_to'],
+      defaultSize: { width: 360, height: 240 },
+      relationTypes: ['stores_in'],
       fields: [
         { key: 'name', label: 'Name', type: 'text', primary: true, required: true },
-        { key: 'engine', label: 'Engine', type: 'text', placeholder: 'Postgres, DynamoDB' },
+        { key: 'purpose', label: 'Purpose', type: 'textarea' },
         {
-          key: 'environment',
-          label: 'Environment',
+          key: 'kind',
+          label: 'Kind',
           type: 'select',
-          options: ['production', 'staging', 'development'],
-          defaultValue: 'production',
+          options: ['relational', 'document', 'object', 'cache', 'search', 'warehouse'],
+          defaultValue: 'relational',
+          required: true,
         },
         { key: 'owner', label: 'Owner', type: 'text' },
-        { key: 'notes', label: 'Notes', type: 'textarea' },
+        { key: 'consoleUrl', label: 'Console URL', type: 'url' },
+        {
+          key: 'status',
+          label: 'Status',
+          type: 'select',
+          options: ['planned', 'active', 'deprecated'],
+          defaultValue: 'active',
+        },
       ],
     },
     {
       id: 'service',
       label: 'Service',
-      description: 'A running backend, worker, or deployed system.',
+      description: 'Legacy runtime service. Use System in Systems mode.',
       icon: 'server',
       color: '5',
       defaultSize: { width: 380, height: 280 },
-      relationTypes: ['owns', 'depends_on', 'calls', 'deploys_to'],
+      relationTypes: ['depends_on', 'calls', 'exposes'],
       fields: [
         { key: 'name', label: 'Name', type: 'text', primary: true, required: true },
+        { key: 'responsibility', label: 'Responsibility', type: 'textarea' },
         { key: 'owner', label: 'Owner', type: 'text' },
-        { key: 'runtime', label: 'Runtime', type: 'text', placeholder: 'ECS, Lambda' },
-        { key: 'repo', label: 'Repository', type: 'text' },
-        { key: 'healthUrl', label: 'Health URL', type: 'url' },
-        {
-          key: 'status',
-          label: 'Status',
-          type: 'select',
-          options: ['healthy', 'degraded', 'down', 'planned'],
-          defaultValue: 'healthy',
-        },
+        { key: 'status', label: 'Status', type: 'select', options: ['planned', 'active', 'deprecated'] },
       ],
     },
     {
       id: 'api',
       label: 'API',
-      description: 'A public or internal interface between systems.',
-      icon: 'plug',
+      description: 'A contract and access surface.',
+      icon: 'cable',
       color: '6',
-      defaultSize: { width: 380, height: 260 },
-      relationTypes: ['owns', 'calls', 'depends_on'],
+      defaultSize: { width: 360, height: 240 },
+      relationTypes: ['exposes', 'calls'],
       fields: [
         { key: 'name', label: 'Name', type: 'text', primary: true, required: true },
+        { key: 'purpose', label: 'Purpose', type: 'textarea' },
+        {
+          key: 'protocol',
+          label: 'Protocol',
+          type: 'select',
+          options: ['http', 'graphql', 'grpc', 'event', 'webhook', 'cli'],
+          defaultValue: 'http',
+          required: true,
+        },
         { key: 'owner', label: 'Owner', type: 'text' },
-        { key: 'baseUrl', label: 'Base URL', type: 'url' },
-        { key: 'auth', label: 'Auth', type: 'text', placeholder: 'Cognito, API key' },
         { key: 'docsUrl', label: 'Docs URL', type: 'url' },
+        {
+          key: 'status',
+          label: 'Status',
+          type: 'select',
+          options: ['planned', 'active', 'deprecated'],
+          defaultValue: 'active',
+        },
       ],
     },
     {
       id: 'decision',
       label: 'Decision',
-      description: 'A recorded choice, status, and rationale.',
-      icon: 'git-branch',
+      description: 'A recorded choice and its rationale.',
+      icon: 'scale',
       color: '3',
-      defaultSize: { width: 400, height: 280 },
-      relationTypes: ['relates_to', 'depends_on'],
+      defaultSize: { width: 380, height: 240 },
+      relationTypes: ['relates_to'],
       fields: [
         { key: 'title', label: 'Title', type: 'text', primary: true, required: true },
         {
@@ -179,19 +210,18 @@ export const DEFAULT_ONTOLOGY: Ontology = {
           options: ['proposed', 'accepted', 'rejected', 'superseded'],
           defaultValue: 'proposed',
         },
-        { key: 'owner', label: 'Owner', type: 'text' },
-        { key: 'date', label: 'Date', type: 'text', placeholder: 'YYYY-MM-DD' },
         { key: 'rationale', label: 'Rationale', type: 'textarea' },
+        { key: 'owner', label: 'Owner', type: 'text' },
       ],
     },
     {
       id: 'risk',
       label: 'Risk',
       description: 'A known operational or delivery risk.',
-      icon: 'alert-triangle',
+      icon: 'triangle-alert',
       color: '1',
-      defaultSize: { width: 380, height: 280 },
-      relationTypes: ['relates_to', 'depends_on'],
+      defaultSize: { width: 380, height: 240 },
+      relationTypes: ['relates_to'],
       fields: [
         { key: 'title', label: 'Title', type: 'text', primary: true, required: true },
         {
@@ -200,16 +230,218 @@ export const DEFAULT_ONTOLOGY: Ontology = {
           type: 'select',
           options: ['low', 'medium', 'high', 'critical'],
           defaultValue: 'medium',
-        },
-        {
-          key: 'likelihood',
-          label: 'Likelihood',
-          type: 'select',
-          options: ['low', 'medium', 'high'],
-          defaultValue: 'medium',
+          required: true,
         },
         { key: 'owner', label: 'Owner', type: 'text' },
         { key: 'mitigation', label: 'Mitigation', type: 'textarea' },
+        {
+          key: 'status',
+          label: 'Status',
+          type: 'select',
+          options: ['open', 'mitigated', 'accepted', 'closed'],
+          defaultValue: 'open',
+        },
+      ],
+    },
+    {
+      id: 'actor',
+      label: 'Actor',
+      description: 'A human, role, or team that performs or owns work.',
+      icon: 'user-round',
+      color: '2',
+      defaultSize: { width: 320, height: 200 },
+      relationTypes: ['runs'],
+      fields: [
+        { key: 'name', label: 'Name', type: 'text', primary: true, required: true },
+        {
+          key: 'kind',
+          label: 'Kind',
+          type: 'select',
+          options: ['person', 'role', 'team'],
+          defaultValue: 'person',
+          required: true,
+        },
+        { key: 'responsibility', label: 'Responsibility', type: 'textarea' },
+      ],
+    },
+    {
+      id: 'system',
+      label: 'System',
+      description: 'Any runtime system: application, service, worker, CLI, queue, platform, or frontend.',
+      icon: 'boxes',
+      color: '5',
+      defaultSize: { width: 380, height: 260 },
+      relationTypes: ['exposes', 'calls', 'stores_in', 'depends_on', 'runs', 'produces', 'uses'],
+      fields: [
+        { key: 'name', label: 'Name', type: 'text', primary: true, required: true },
+        { key: 'purpose', label: 'Purpose', type: 'textarea' },
+        {
+          key: 'kind',
+          label: 'Kind',
+          type: 'select',
+          options: ['application', 'service', 'worker', 'cli', 'queue', 'platform', 'frontend'],
+          defaultValue: 'service',
+          required: true,
+        },
+        { key: 'owner', label: 'Owner', type: 'text' },
+        { key: 'deploymentUrl', label: 'Deployment URL', type: 'url' },
+        {
+          key: 'status',
+          label: 'Status',
+          type: 'select',
+          options: ['planned', 'active', 'deprecated'],
+          defaultValue: 'planned',
+        },
+      ],
+    },
+    {
+      id: 'queue',
+      label: 'Queue / Topic',
+      description: 'Asynchronous transport between services.',
+      icon: 'list',
+      color: '3',
+      defaultSize: { width: 360, height: 240 },
+      relationTypes: ['carries'],
+      fields: [
+        { key: 'name', label: 'Name', type: 'text', primary: true, required: true },
+        {
+          key: 'kind',
+          label: 'Kind',
+          type: 'select',
+          options: ['queue', 'topic', 'stream'],
+          defaultValue: 'queue',
+          required: true,
+        },
+        {
+          key: 'delivery',
+          label: 'Delivery',
+          type: 'select',
+          options: ['at_most_once', 'at_least_once', 'exactly_once'],
+          defaultValue: 'at_least_once',
+        },
+        { key: 'owner', label: 'Owner', type: 'text' },
+        { key: 'notes', label: 'Notes', type: 'textarea' },
+      ],
+    },
+    {
+      id: 'event',
+      label: 'Event',
+      description: 'A named domain event or message contract.',
+      icon: 'zap',
+      color: '2',
+      defaultSize: { width: 360, height: 240 },
+      relationTypes: ['carries', 'consumes', 'emits', 'handles'],
+      fields: [
+        { key: 'name', label: 'Name', type: 'text', primary: true, required: true },
+        { key: 'version', label: 'Version', type: 'text', placeholder: 'v1', required: true },
+        { key: 'schemaUrl', label: 'Schema URL', type: 'url' },
+        { key: 'owner', label: 'Owner', type: 'text' },
+        { key: 'notes', label: 'Notes', type: 'textarea' },
+      ],
+    },
+    {
+      id: 'external_system',
+      label: 'External system',
+      description: 'A vendor, identity provider, or third-party dependency.',
+      icon: 'cloud',
+      color: '2',
+      defaultSize: { width: 380, height: 240 },
+      relationTypes: ['calls', 'depends_on', 'authenticates_via'],
+      fields: [
+        { key: 'name', label: 'Name', type: 'text', primary: true, required: true },
+        { key: 'vendor', label: 'Vendor', type: 'text' },
+        { key: 'purpose', label: 'Purpose', type: 'textarea' },
+        { key: 'contractUrl', label: 'Contract URL', type: 'url' },
+        { key: 'owner', label: 'Owner', type: 'text' },
+        { key: 'notes', label: 'Notes', type: 'textarea' },
+      ],
+    },
+    {
+      id: 'requirement',
+      label: 'Requirement',
+      description: 'A constraint, acceptance criterion, or quality goal.',
+      icon: 'file-check',
+      color: '3',
+      defaultSize: { width: 380, height: 260 },
+      relationTypes: ['relates_to'],
+      fields: [
+        { key: 'title', label: 'Title', type: 'text', primary: true, required: true },
+        {
+          key: 'priority',
+          label: 'Priority',
+          type: 'select',
+          options: ['must', 'should', 'could'],
+          defaultValue: 'should',
+        },
+        { key: 'acceptance', label: 'Acceptance', type: 'textarea' },
+        { key: 'owner', label: 'Owner', type: 'text' },
+        {
+          key: 'status',
+          label: 'Status',
+          type: 'select',
+          options: ['open', 'accepted', 'done'],
+          defaultValue: 'open',
+        },
+      ],
+    },    {
+      id: 'process',
+      label: 'Process',
+      description: 'Manual, automated, or hybrid coordination.',
+      icon: 'workflow',
+      color: '3',
+      defaultSize: { width: 380, height: 260 },
+      relationTypes: ['runs', 'orchestrates', 'uses'],
+      fields: [
+        { key: 'name', label: 'Name', type: 'text', primary: true, required: true },
+        { key: 'purpose', label: 'Purpose', type: 'textarea' },
+        {
+          key: 'mode',
+          label: 'Mode',
+          type: 'select',
+          options: ['manual', 'automated', 'hybrid'],
+          defaultValue: 'manual',
+          required: true,
+        },
+        { key: 'owner', label: 'Owner', type: 'text' },
+        { key: 'runbookUrl', label: 'Runbook URL', type: 'url' },
+        {
+          key: 'status',
+          label: 'Status',
+          type: 'select',
+          options: ['planned', 'active', 'deprecated'],
+          defaultValue: 'planned',
+        },
+      ],
+    },
+    {
+      id: 'artifact',
+      label: 'Artifact',
+      description: 'A versioned deliverable such as a manifest, image, model, schema, or dataset.',
+      icon: 'package',
+      color: '6',
+      defaultSize: { width: 360, height: 260 },
+      relationTypes: ['produces', 'uses'],
+      fields: [
+        { key: 'name', label: 'Name', type: 'text', primary: true, required: true },
+        {
+          key: 'kind',
+          label: 'Kind',
+          type: 'select',
+          options: ['manifest', 'container', 'model', 'config', 'schema', 'dataset', 'document'],
+          defaultValue: 'manifest',
+          required: true,
+        },
+        { key: 'version', label: 'Version', type: 'text' },
+        { key: 'uri', label: 'URI', type: 'url' },
+        { key: 'digest', label: 'Digest', type: 'text' },
+        { key: 'owner', label: 'Owner', type: 'text' },
+        {
+          key: 'status',
+          label: 'Status',
+          type: 'select',
+          options: ['draft', 'published', 'deprecated'],
+          defaultValue: 'draft',
+        },
       ],
     },
     {
@@ -248,30 +480,42 @@ export const DEFAULT_ONTOLOGY: Ontology = {
         { key: 'code', label: 'Code', type: 'textarea', placeholder: 'Paste a code sample' },
         { key: 'notes', label: 'Notes', type: 'textarea' },
       ],
-    },
-    {
+    },    {
       id: 'note',
       label: 'Note',
-      description: 'A general structured note.',
+      description: 'Free Markdown context.',
       icon: 'sticky-note',
       color: '2',
-      defaultSize: { width: 360, height: 220 },
+      defaultSize: { width: 340, height: 220 },
       relationTypes: ['relates_to'],
       fields: [
-        { key: 'title', label: 'Title', type: 'text', primary: true },
-        { key: 'body', label: 'Body', type: 'textarea' },
+        { key: 'name', label: 'Name', type: 'text', primary: true, required: true, defaultValue: 'Note' },
+        { key: 'body', label: 'Note', type: 'textarea' },
       ],
     },
   ],
   relationTypes: [
-    { id: 'relates_to', label: 'relates to', directed: false },
-    { id: 'depends_on', label: 'depends on', color: '2', directed: true },
-    { id: 'owns', label: 'owns', color: '4', directed: true },
-    { id: 'calls', label: 'calls', color: '5', directed: true },
-    { id: 'reads_from', label: 'reads from', color: '5', directed: true },
-    { id: 'writes_to', label: 'writes to', color: '6', directed: true },
-    { id: 'deploys_to', label: 'deploys to', color: '3', directed: true },
-    { id: 'implements', label: 'implements', color: '4', directed: true },
+    { id: 'relates_to', label: 'relates to', category: 'annotation', directed: false },
+    { id: 'depends_on', label: 'depends on', color: '2', category: 'fallback', directed: true },
+    { id: 'owns', label: 'owns', color: '4', category: 'structure', directed: true },
+    { id: 'calls', label: 'calls', color: '5', category: 'runtime', directed: true },
+    { id: 'reads_from', label: 'reads from', color: '5', category: 'data', directed: true },
+    { id: 'writes_to', label: 'writes to', color: '6', category: 'data', directed: true },
+    { id: 'deploys_to', label: 'deploys to', color: '3', category: 'structure', directed: true },
+    { id: 'implements', label: 'implements', color: '4', category: 'structure', directed: true },
+    { id: 'contains', label: 'contains', color: '6', category: 'structure', directed: true },
+    { id: 'exposes', label: 'exposes', color: '6', category: 'structure', directed: true },
+    { id: 'publishes', label: 'publishes', color: '3', category: 'runtime', directed: true },
+    { id: 'consumes', label: 'consumes', color: '3', category: 'runtime', directed: true },
+    { id: 'carries', label: 'carries', color: '2', category: 'data', directed: true },
+    { id: 'emits', label: 'emits', color: '2', category: 'data', directed: true },
+    { id: 'handles', label: 'handles', color: '2', category: 'data', directed: true },
+    { id: 'authenticates_via', label: 'authenticates via', color: '4', category: 'access', directed: true },
+    { id: 'stores_in', label: 'stores in', color: '6', category: 'data', directed: true },
+    { id: 'runs', label: 'runs', color: '3', category: 'runtime', directed: true },
+    { id: 'orchestrates', label: 'orchestrates', color: '3', category: 'runtime', directed: true },
+    { id: 'produces', label: 'produces', color: '6', category: 'data', directed: true },
+    { id: 'uses', label: 'uses', color: '2', category: 'data', directed: true },
   ],
 }
 
@@ -299,7 +543,8 @@ export function entityTitle(
   entityType: EntityTypeDefinition,
   fields: EntityFields,
 ): string {
-  const primary = entityType.fields.find((field) => field.primary) ?? entityType.fields[0]
+  const titleField = entityType.fields.find((field) => field.key === 'title')
+  const primary = titleField ?? entityType.fields.find((field) => field.primary) ?? entityType.fields[0]
   const value = primary ? fields[primary.key] : ''
   return value == null ? '' : String(value)
 }
@@ -320,17 +565,17 @@ export function renderEntityMarkdown(
   return lines.join('\n')
 }
 
-export function getEntityMeta(node: { skyward?: unknown }): CanvasEntityMeta | undefined {
-  const parsed = canvasEntityMetaSchema.safeParse(node.skyward)
+export function getEntityMeta(node: { app?: unknown }): CanvasEntityMeta | undefined {
+  const parsed = canvasEntityMetaSchema.safeParse(node.app)
   return parsed.success ? parsed.data : undefined
 }
 
-export function getGroupMembers(node: { skyward?: unknown }): string[] | undefined {
-  const parsed = canvasNodeMetaSchema.safeParse(node.skyward)
+export function getGroupMembers(node: { app?: unknown }): string[] | undefined {
+  const parsed = canvasNodeMetaSchema.safeParse(node.app)
   return parsed.success ? parsed.data.groupMembers : undefined
 }
 
-export function getEdgeMeta(edge: { skyward?: unknown }): CanvasEdgeMeta | undefined {
-  const parsed = canvasEdgeMetaSchema.safeParse(edge.skyward)
+export function getEdgeMeta(edge: { app?: unknown }): CanvasEdgeMeta | undefined {
+  const parsed = canvasEdgeMetaSchema.safeParse(edge.app)
   return parsed.success ? parsed.data : undefined
 }

@@ -1,10 +1,13 @@
 import {
+  DEFAULT_PROFILES,
   EMPTY_CANVAS,
   createCanvasId,
+  findProfile,
+  profileMetadata,
   type CanvasDocument,
   type CanvasSummary,
   type JsonCanvas,
-} from '@skyward/canvas-contract'
+} from '@canvas/contract'
 
 import type { CanvasClient } from './client'
 import { CanvasConflictError } from './errors'
@@ -27,6 +30,7 @@ function summary(document: CanvasDocument): CanvasSummary {
     updatedBy: document.updatedBy,
     nodeCount: document.canvas.nodes?.length ?? 0,
     edgeCount: document.canvas.edges?.length ?? 0,
+    profile: document.canvas.app?.profile ?? 'raw',
   }
 }
 
@@ -40,7 +44,11 @@ export function createMockCanvasClient(session: CanvasSession): CanvasClient {
         .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
     },
 
-    async createCanvas(title = 'Untitled canvas') {
+    async createCanvas(title = 'Untitled canvas', profileId = 'raw') {
+      const profile = findProfile(DEFAULT_PROFILES, profileId)
+      const canvas = profile && profile.id !== 'raw'
+        ? { nodes: [], edges: [], app: profileMetadata(profile) }
+        : structuredClone(EMPTY_CANVAS)
       const document: CanvasDocument = {
         id: createCanvasId(),
         title,
@@ -49,7 +57,7 @@ export function createMockCanvasClient(session: CanvasSession): CanvasClient {
         updatedBy: session.displayName,
         nodeCount: 0,
         edgeCount: 0,
-        canvas: structuredClone(EMPTY_CANVAS),
+        canvas,
       }
       documents.set(document.id, document)
       return structuredClone(document)

@@ -15,9 +15,9 @@ export function normalizeImportedCanvas(value: unknown): unknown {
       ...record,
       type: 'text',
       text,
-      skyward: {
-        ...(record.skyward && typeof record.skyward === 'object'
-          ? record.skyward as Record<string, unknown>
+      app: {
+        ...(record.app && typeof record.app === 'object'
+          ? record.app as Record<string, unknown>
           : {}),
         importedFile: { file, subpath },
       },

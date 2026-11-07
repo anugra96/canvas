@@ -4,7 +4,7 @@ import {
   DEFAULT_ONTOLOGY,
   ontologySchema,
   type Ontology,
-} from '@skyward/canvas-contract'
+} from '@canvas/contract'
 
 let cachedOntology: Ontology | null = null
 let cachedMtime = 0

@@ -5,6 +5,7 @@ export interface CanvasEditorActions {
   updateLabel: (id: string, label: string) => void
   updateEntityField: (id: string, fieldKey: string, value: string) => void
   resizeNode: (id: string, width: number, height: number) => void
+  autoFitNode: (id: string) => void
   editEdgeLabel: (id: string, clientX: number, clientY: number) => void
   selectEdge: (id: string) => void
 }

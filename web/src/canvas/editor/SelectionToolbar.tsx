@@ -9,6 +9,8 @@ export function SelectionToolbar({
   canGroup,
   canManageMembership,
   cardTypeValue,
+  allowText = true,
+  entityTypeIds,
   membershipLabel,
   onCardTypeChange,
   onGroup,
@@ -23,6 +25,8 @@ export function SelectionToolbar({
   canGroup: boolean
   canManageMembership: boolean
   cardTypeValue?: string
+  allowText?: boolean
+  entityTypeIds?: string[]
   membershipLabel: string
   onCardTypeChange?: (typeId: string) => void
   onGroup: () => void
@@ -35,8 +39,11 @@ export function SelectionToolbar({
   const ontology = useOntology()
   const total = selectedNodes + selectedEdges
   if (total === 0) return null
+  const availableEntityTypes = entityTypeIds
+    ? ontology.entityTypes.filter((entityType) => entityTypeIds.includes(entityType.id))
+    : ontology.entityTypes
   const hasCurrentType = cardTypeValue === 'text'
-    || ontology.entityTypes.some((entityType) => entityType.id === cardTypeValue)
+    || availableEntityTypes.some((entityType) => entityType.id === cardTypeValue)
 
   return (
     <div className="selection-toolbar" onMouseDown={(event) => event.stopPropagation()}>
@@ -49,11 +56,11 @@ export function SelectionToolbar({
             value={cardTypeValue}
             onChange={(event) => onCardTypeChange(event.target.value)}
           >
-            <option value="text">Text</option>
+            {(allowText || cardTypeValue === 'text') && <option value="text">Text</option>}
             {!hasCurrentType && cardTypeValue !== 'text' && (
               <option value={cardTypeValue}>{cardTypeValue}</option>
             )}
-            {ontology.entityTypes.map((entityType) => (
+            {availableEntityTypes.map((entityType) => (
               <option key={entityType.id} value={entityType.id}>{entityType.label}</option>
             ))}
           </select>

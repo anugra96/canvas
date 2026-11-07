@@ -1,4 +1,4 @@
-# Skyward Canvas
+# Canvas
 
 A lightweight web editor for Obsidian-compatible `.canvas` files.
 
@@ -12,8 +12,7 @@ npm run dev
 The web app runs at `http://127.0.0.1:5173` and proxies `/v1` to the local API
 at `http://127.0.0.1:8787`.
 
-Local development uses mock Skyward authentication and a file-backed canvas
-store. No AWS credentials are required.
+Local development uses mock authentication and a file-backed canvas store. No AWS credentials are required.
 
 ## Commands
 
@@ -42,35 +41,62 @@ To customize templates without a frontend deploy:
 The configuration controls entity types, fields, colors, icons, default sizes,
 and relation types.
 
+## Canvas profiles
+
+New canvases can be created as **Raw** or **Systems** canvases. Raw canvases
+allow freeform text cards and imports. Systems canvases store profile metadata in
+the canvas `app` extension and use a minimal vocabulary:
+
+- System: runtime application, service, worker, CLI, queue, platform, or frontend
+- Repository: source-code repository and provider
+- API: contract and access surface
+- Database: durable state
+- Actor: person, role, or team
+- Process: manual, automated, or hybrid coordination
+- Artifact: versioned manifest, image, model, schema, or dataset
+
+Decision, Risk, and Note are annotations. Relations cover exposure, calls,
+storage, dependency, execution, orchestration, production, use, and annotation
+links.
+
+Systems mode allows arbitrary connections. Unspecified or incompatible relations
+are reported in the validation tray and never block editing. The standard
+`.canvas` format is preserved. See
+[`docs/systems-profile.md`](docs/systems-profile.md) for the full contract.
+
 ## Importing Obsidian canvases
 
-Use **Import .canvas** on the canvas list. Skyward Canvas parses and validates
+Use **Import .canvas** on the canvas list. Canvas parses and validates
 the JSON Canvas file, keeps the filename as the title, and preserves nodes,
 edges, colors, groups, metadata, and unknown extension fields. Obsidian preset
 colors are mapped to their matching palette values.
 
 File nodes are converted to text cards with the file path in bold and the
-subpath below. The original path is kept in `skyward.importedFile`, so no data is
+subpath below. The original path is kept in `app.importedFile`, so no data is
 lost. Referenced images, PDFs, and notes are not uploaded or embedded. Link nodes
 remain clickable.
 
 ## Design language
 
-The shell follows the Skyward FCC/Vista family: dark teal chrome, cyan accents,
-Segoe UI, dense uppercase labels, and square panels. Shared tokens live at the
-top of `web/src/styles.css`.
+The shell uses a restrained neutral palette: dark graphite chrome, cool-grey
+accents, Segoe UI, dense uppercase labels, and square panels. Shared tokens live
+at the top of `web/src/styles.css`.
 
 ## Ontology
 
 Entity templates live in `packages/canvas-contract/src/ontology.ts`. Each
-entity card stores structured fields in the node's `skyward` extension and a
+entity card stores structured fields in the node's `app` extension and a
 Markdown summary in `text`. The summary keeps the card readable in Obsidian if
 another tool ignores the extension.
 
-Current templates: repository, database, service, API, decision, risk, code,
-and note. Text cards render Markdown, including fenced code blocks. Code cards
+Systems templates: system, API, database, actor, process, artifact, note,
+decision, and risk. Raw templates also include repository, service, code, note,
+queue, event, external system, and requirement. Text cards render Markdown,
+including fenced code blocks. Code cards
 use a standard VS Code dark syntax theme and store their language, code, and notes
-as structured fields.
+as structured fields. The code editor supports Tab/Shift+Tab indentation, smart
+Enter indentation, auto-closing brackets and quotes, smart backspace, and
+Cmd/Ctrl+/ line-comment toggling.
 
 ## Keyboard shortcuts
 
@@ -94,8 +120,11 @@ diagonal, top/bottom, and same-side connections curve based on those handle side
 Select an edge to reverse its direction or change its color. Drag an edge endpoint
 to reconnect it to another side or card.
 Edge labels do not block card dragging. Clicking outside a card finishes editing
-and lets autosave persist the change. Text cards support
-Markdown list continuation, ordered-list incrementing, tab indentation, and
+and lets autosave persist the change. Text cards and card note fields open in a rich Markdown editor
+with headings, inline formatting, links, lists, task lists, quotes, code blocks,
+and tables. A table toolbar adds rows or columns and removes rows, columns, or
+the table. Switch to **Markdown** source mode for raw editing with list
+continuation, ordered-list incrementing, tab indentation, and
 bold/italic/inline-code shortcuts.
 
 Groups use explicit membership. Creating a group captures the selected cards.
@@ -110,4 +139,5 @@ web/                        React editor
 api/                        Hono canvas API
 packages/canvas-contract/   JSON Canvas types, validation, merge
 mcp/                        MCP server scaffold
+docs/                       Product and contract notes
 ```

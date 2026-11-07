@@ -25,7 +25,7 @@ describe('edge relation helpers', () => {
       toNode: 'db-a',
       toSide: 'left',
       label: 'depends on',
-      skyward: { relationType: 'depends_on' },
+      app: { relationType: 'depends_on' },
     })
   })
 
@@ -35,14 +35,14 @@ describe('edge relation helpers', () => {
       fromNode: 'repo-a',
       toNode: 'db-a',
       label: 'writes to',
-      skyward: { relationType: 'writes_to' },
+      app: { relationType: 'writes_to' },
     })
 
     const labeled = applyLabelToFlowEdge(edge, 'nightly snapshot')
     expect(labeled.label).toBe('nightly snapshot')
     expect(labeled.data?.raw).toMatchObject({
       label: 'nightly snapshot',
-      skyward: { relationType: 'writes_to' },
+      app: { relationType: 'writes_to' },
     })
 
     const cleared = applyLabelToFlowEdge(labeled, '')
@@ -70,7 +70,7 @@ describe('edge relation helpers', () => {
       fromNode: 'repo-a',
       toNode: 'db-a',
       label: 'relates to',
-      skyward: { relationType: 'relates_to' },
+      app: { relationType: 'relates_to' },
     })
 
     const next = applyRelationToFlowEdge(edge, 'deploys_to')
@@ -78,7 +78,7 @@ describe('edge relation helpers', () => {
     expect(next.data).toMatchObject({
       label: 'deploys to',
       relationType: 'deploys_to',
-      raw: { skyward: { relationType: 'deploys_to' } },
+      raw: { app: { relationType: 'deploys_to' } },
     })
   })
 })
@@ -94,7 +94,7 @@ describe('reverseFlowEdge', () => {
       toSide: 'left',
       toEnd: 'arrow',
       label: 'writes to',
-      skyward: { relationType: 'writes_to' },
+      app: { relationType: 'writes_to' },
     })
 
     const reversed = reverseFlowEdge(edge)
@@ -108,7 +108,7 @@ describe('reverseFlowEdge', () => {
       fromSide: 'left',
       toSide: 'right',
       fromEnd: 'arrow',
-      skyward: { relationType: 'writes_to' },
+      app: { relationType: 'writes_to' },
     })
     expect(reversed.markerStart).toBeTruthy()
     expect(reversed.markerEnd).toBeUndefined()
@@ -125,7 +125,7 @@ describe('reconnectFlowEdge', () => {
       toNode: 'db-a',
       toSide: 'left',
       label: 'writes to',
-      skyward: { relationType: 'writes_to' },
+      app: { relationType: 'writes_to' },
     })
 
     const reconnected = reconnectFlowEdge(edge, {
@@ -144,7 +144,7 @@ describe('reconnectFlowEdge', () => {
       fromSide: 'bottom',
       toSide: 'top',
       label: 'writes to',
-      skyward: { relationType: 'writes_to' },
+      app: { relationType: 'writes_to' },
     })
   })
 })

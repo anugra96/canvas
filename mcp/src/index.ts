@@ -1,1 +1,1 @@
-export const MCP_SERVER_NAME = 'skyward-canvas-mcp'
+export const MCP_SERVER_NAME = 'canvas-mcp'

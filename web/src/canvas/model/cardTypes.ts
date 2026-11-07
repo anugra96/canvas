@@ -4,7 +4,7 @@ import {
   renderEntityMarkdown,
   type CanvasNode,
   type Ontology,
-} from '@skyward/canvas-contract'
+} from '@canvas/contract'
 
 import type { CanvasFlowNode } from './adapter'
 
@@ -28,7 +28,7 @@ export function convertNodeType(
     const text = fallbackText(node)
     raw.type = 'text'
     raw.text = text
-    delete raw.skyward
+    delete raw.app
     delete raw.file
     delete raw.subpath
     delete raw.ratio
@@ -73,7 +73,7 @@ export function convertNodeType(
   const entity = { entityType: entityType.id, fields }
   raw.type = 'text'
   raw.text = text
-  raw.skyward = { ...(node.data.raw.skyward ?? {}), ...entity }
+  raw.app = { ...(node.data.raw.app ?? {}), ...entity }
   delete raw.file
   delete raw.subpath
   delete raw.ratio

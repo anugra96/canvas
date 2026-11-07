@@ -4,7 +4,7 @@ import { join } from 'node:path'
 
 import { defineConfig, devices } from '@playwright/test'
 
-const canvasDataDir = mkdtempSync(join(tmpdir(), 'skyward-canvas-e2e-'))
+const canvasDataDir = mkdtempSync(join(tmpdir(), 'canvas-e2e-'))
 
 export default defineConfig({
   testDir: './tests/e2e',

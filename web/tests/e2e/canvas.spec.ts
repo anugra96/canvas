@@ -12,7 +12,7 @@ test('creates a canvas, edits a card, saves, and reopens it', async ({ page }) =
   await page.getByRole('button', { name: 'Add card' }).click()
   await expect(page.locator('.text-node')).toHaveCount(1)
   await page.locator('.node-text').dblclick()
-  await page.locator('.node-textarea').fill('E2E card')
+  await page.locator('.rich-editor-content').fill('E2E card')
   await page.keyboard.press('Escape')
   await expect(page.locator('.text-node')).toContainText('E2E card')
 
@@ -27,6 +27,25 @@ test('creates a canvas, edits a card, saves, and reopens it', async ({ page }) =
   await expect(page.locator('.text-node')).toContainText('E2E card')
 })
 
+test('opens a card menu on empty-canvas double click', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'New canvas' }).click()
+  const flowBox = await page.locator('.canvas-flow').boundingBox()
+  if (!flowBox) throw new Error('Missing canvas')
+  const point = { x: flowBox.x + 520, y: flowBox.y + 300 }
+  await page.mouse.dblclick(point.x, point.y)
+
+  await expect(page.locator('.connection-menu')).toBeVisible()
+  await expect(page.locator('.connection-menu header')).toContainText('Create card')
+  await expect(page.locator('.connection-option').filter({ hasText: 'Text card' })).toBeVisible()
+  await page.locator('.connection-option', { hasText: 'Code' }).click()
+  await expect(page.locator('.code-node')).toHaveCount(1)
+  const card = await page.locator('.code-node').boundingBox()
+  if (!card) throw new Error('Missing created card')
+  expect(Math.abs(card.x + card.width / 2 - point.x)).toBeLessThan(5)
+  expect(Math.abs(card.y + card.height / 2 - point.y)).toBeLessThan(5)
+})
+
 test('adds a repository template and edits its fields', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'New canvas' }).click()
@@ -34,14 +53,148 @@ test('adds a repository template and edits its fields', async ({ page }) => {
   await expect(page.locator('.entity-node')).toHaveCount(1)
 
   await page.locator('.entity-node').dblclick()
-  await page.locator('.entity-field input').first().fill('Skyward Engine')
-  await expect(page.locator('.entity-head strong')).toContainText('Skyward Engine')
+  await page.locator('.entity-field input').first().fill('Canvas Engine')
+  await expect(page.locator('.entity-head strong')).toContainText('Canvas Engine')
+  await page.getByRole('button', { name: 'Done' }).click()
 
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('Saved', { exact: true })).toBeVisible()
   await page.screenshot({ path: 'test-results/entity-card.png', fullPage: true })
 })
 
+
+test('creates a Systems canvas with typed cards and profile persistence', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Canvas type').selectOption('systems')
+  await page.getByRole('button', { name: 'New canvas' }).click()
+
+  await expect(page.locator('.profile-badge')).toHaveText('Systems')
+  await expect(page.getByRole('button', { name: 'Add card' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Add note' })).toBeVisible()
+
+  await page.getByLabel('Add template').selectOption('actor')
+  await page.getByLabel('Add template').selectOption('system')
+  await page.getByLabel('Add template').selectOption('database')
+  await page.getByRole('button', { name: 'Add note' }).click()
+  await expect(page.locator('.entity-node')).toHaveCount(4)
+  await expect(page.locator('.entity-type')).toContainText(['Actor', 'System', 'Database', 'Note'])
+  await expect(page.getByRole('button', { name: 'Systems validation' })).toContainText('3 warnings')
+  await page.getByRole('button', { name: 'Systems validation' }).click()
+  await expect(page.locator('.validation-tray')).toContainText('missing required field "Name"')
+  await page.getByRole('button', { name: 'Close validation' }).click()
+
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText('Saved', { exact: true })).toBeVisible()
+  await page.screenshot({ path: 'test-results/systems-canvas.png', fullPage: true })
+
+  await page.getByRole('button', { name: 'All canvases' }).click()
+  await expect(page.locator('.canvas-card').first()).toContainText('Systems')
+  await page.locator('.canvas-card').first().click()
+  await expect(page.locator('.profile-badge')).toHaveText('Systems')
+  await expect(page.locator('.entity-node')).toHaveCount(4)
+})
+
+test('filters Systems edge relations by source and target', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Canvas type').selectOption('systems')
+  await page.getByRole('button', { name: 'New canvas' }).click()
+  await page.getByLabel('Add template').selectOption('system')
+  await page.getByLabel('Add template').selectOption('api')
+  await page.getByLabel('Add template').selectOption('system')
+  await page.getByLabel('Add template').selectOption('database')
+  await expect(page.locator('.entity-node')).toHaveCount(4)
+  await page.waitForTimeout(300)
+
+  const nodes = page.locator('.react-flow__node')
+  async function connect(fromIndex: number, fromSide: string, toIndex: number, toSide: string) {
+    const from = await nodes.nth(fromIndex).locator(`.react-flow__handle-${fromSide}`).boundingBox()
+    const to = await nodes.nth(toIndex).locator(`.react-flow__handle-${toSide}`).boundingBox()
+    if (!from || !to) throw new Error('Missing connection handles')
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 })
+    await page.mouse.up()
+  }
+
+  await connect(0, 'right', 1, 'left')
+  await expect(page.locator('.react-flow__edge')).toHaveCount(1)
+  const firstLabel = await page.locator('.edge-label').first().boundingBox()
+  if (!firstLabel) throw new Error('Missing first edge label')
+  await page.mouse.click(firstLabel.x + firstLabel.width / 2, firstLabel.y + firstLabel.height / 2)
+  const relation = page.locator('.editor-toolbar .toolbar-field select')
+  await expect(relation).toHaveValue('')
+  const relationOptions = await relation.locator('option').allInnerTexts()
+  expect(relationOptions).toEqual(expect.arrayContaining(['Unspecified', 'exposes', 'calls', 'stores in']))
+  await relation.selectOption('calls')
+  await expect(relation).toHaveValue('calls')
+
+  await connect(2, 'right', 3, 'left')
+  await expect(page.locator('.react-flow__edge')).toHaveCount(2)
+  const secondLabel = await page.locator('.edge-label').nth(1).boundingBox()
+  if (!secondLabel) throw new Error('Missing second edge label')
+  await page.mouse.click(secondLabel.x + secondLabel.width / 2, secondLabel.y + secondLabel.height / 2)
+  await expect(relation).toHaveValue('')
+  await relation.selectOption('stores_in')
+  await expect(relation).toHaveValue('stores_in')
+})
+
+test('allows an untyped connection between arbitrary cards', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Canvas type').selectOption('systems')
+  await page.getByRole('button', { name: 'New canvas' }).click()
+  await page.getByLabel('Add template').selectOption('repository')
+  await page.getByLabel('Add template').selectOption('system')
+  await expect(page.locator('.entity-node')).toHaveCount(2)
+  await page.waitForTimeout(300)
+
+  const nodes = page.locator('.react-flow__node')
+  const from = await nodes.nth(0).locator('.react-flow__handle-right').boundingBox()
+  const to = await nodes.nth(1).locator('.react-flow__handle-left').boundingBox()
+  if (!from || !to) throw new Error('Missing connection handles')
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 })
+  await page.mouse.up()
+
+  await expect(page.locator('.react-flow__edge')).toHaveCount(1)
+  await expect(page.locator('.edge-label')).toContainText('Define relation')
+  const label = await page.locator('.edge-label').boundingBox()
+  if (!label) throw new Error('Missing edge label')
+  await page.mouse.click(label.x + label.width / 2, label.y + label.height / 2)
+  await expect(page.locator('.editor-toolbar .toolbar-field select')).toHaveValue('')
+  await expect(page.getByRole('button', { name: 'Systems validation' })).toContainText('warnings')
+})
+
+test('adds Process and Artifact cards in Systems mode', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Canvas type').selectOption('systems')
+  await page.getByRole('button', { name: 'New canvas' }).click()
+  await page.getByLabel('Add template').selectOption('process')
+  await page.getByLabel('Add template').selectOption('artifact')
+  await expect(page.locator('.entity-type')).toContainText(['Process', 'Artifact'])
+  await expect(page.getByLabel('Add template').locator('option')).toContainText([
+    'System',
+    'Repository',
+    'API',
+    'Database',
+    'Actor',
+    'Process',
+    'Artifact',
+  ])
+})
+
+test('uses the note name in the card header', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Canvas type').selectOption('systems')
+  await page.getByRole('button', { name: 'New canvas' }).click()
+  await page.getByRole('button', { name: 'Add note' }).click()
+  await page.locator('.entity-node').dblclick()
+  await page.locator('[data-field-key="name"]').fill('Review note')
+  await page.locator('.entity-content-field .rich-editor-content').fill('This is the note body.')
+  await page.getByRole('button', { name: 'Done' }).click()
+  await expect(page.locator('.entity-head strong')).toHaveText('Review note')
+  await expect(page.locator('.entity-content-preview')).toContainText('This is the note body.')
+})
 
 test('adds a highlighted code card', async ({ page }) => {
   await page.goto('/')
@@ -50,6 +203,8 @@ test('adds a highlighted code card', async ({ page }) => {
   await expect(page.locator('.code-node')).toHaveCount(1)
 
   await page.locator('.code-node').dblclick()
+  await expect(page.locator('.property-drawer-body')).toHaveCount(0)
+  await expect(page.locator('.code-input')).toBeFocused()
   await page.locator('.code-input').fill('const answer: number = 42')
   await page.getByRole('button', { name: 'Done' }).click()
   await expect(page.locator('.code-node')).toContainText('const answer: number = 42')
@@ -95,15 +250,26 @@ test('creates a card by dragging an edge to empty space and labels the edge', as
   const flowBox = await page.locator('.canvas-flow').boundingBox()
   if (!handleBox || !flowBox) throw new Error('Missing canvas geometry')
 
+  const releaseX = flowBox.x + flowBox.width - 240
+  const releaseY = flowBox.y + 220
   await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2)
   await page.mouse.down()
-  await page.mouse.move(flowBox.x + flowBox.width - 240, flowBox.y + 220, { steps: 12 })
+  await page.mouse.move(releaseX, releaseY, { steps: 12 })
   await page.mouse.up()
 
   await expect(page.locator('.connection-menu')).toBeVisible()
+  await expect(page.locator('.connection-preview')).toBeVisible()
+  const menuBox = await page.locator('.connection-menu').boundingBox()
+  if (!menuBox) throw new Error('Missing connection menu geometry')
+  expect(Math.abs(menuBox.x - releaseX)).toBeLessThan(5)
+  expect(Math.abs(menuBox.y - releaseY)).toBeLessThan(5)
   await page.screenshot({ path: 'test-results/connection-menu.png', fullPage: true })
   await page.locator('.connection-option', { hasText: 'Code' }).click()
   await expect(page.locator('.code-node')).toHaveCount(1)
+  const codeBox = await page.locator('.code-node').boundingBox()
+  if (!codeBox) throw new Error('Missing created card geometry')
+  expect(Math.abs(codeBox.x + codeBox.width / 2 - releaseX)).toBeLessThan(5)
+  expect(Math.abs(codeBox.y + codeBox.height / 2 - releaseY)).toBeLessThan(5)
   await expect(page.locator('.react-flow__edge')).toHaveCount(1)
 
   const firstLabel = await page.locator('.edge-label').boundingBox()
@@ -244,6 +410,7 @@ test('continues markdown lists while editing a card', async ({ page }) => {
   await page.getByRole('button', { name: 'New canvas' }).click()
   await page.getByRole('button', { name: 'Add card' }).click()
   await page.locator('.node-text').dblclick()
+  await page.getByRole('button', { name: 'Markdown', exact: true }).click()
   const editor = page.locator('.node-textarea')
   await editor.fill('- first')
   await editor.press('Enter')
@@ -252,6 +419,44 @@ test('continues markdown lists while editing a card', async ({ page }) => {
   await expect(editor).toHaveValue('- first\n- second')
   await editor.press('Escape')
   await expect(page.locator('.node-markdown li')).toHaveCount(2)
+})
+
+test('edits text cards as rich markdown', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'New canvas' }).click()
+  await page.getByRole('button', { name: 'Add card' }).click()
+  await page.locator('.node-text').dblclick()
+  const editor = page.locator('.rich-editor-content')
+  await expect(editor).toBeVisible()
+  await page.locator('.rich-toolbar').getByRole('button', { name: 'Bold' }).click()
+  await page.keyboard.type('Bold text')
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.node-markdown strong')).toContainText('Bold text')
+})
+
+test('inserts and edits a table in a text card', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'New canvas' }).click()
+  await page.getByRole('button', { name: 'Add card' }).click()
+  await page.locator('.node-text').dblclick()
+  await page.locator('.rich-toolbar').getByRole('button', { name: 'Table' }).click()
+
+  const table = page.locator('.rich-editor-content table')
+  await expect(table).toBeVisible()
+  await page.locator('.rich-editor-content th').first().click()
+  await page.keyboard.type('Name')
+  await page.keyboard.press('Tab')
+  await page.keyboard.type('Value')
+  await expect(page.locator('.rich-table-bar')).toBeVisible()
+  await page.getByRole('button', { name: 'Add row' }).click()
+  await expect(page.locator('.rich-editor-content tr')).toHaveCount(4)
+  await page.getByRole('button', { name: 'Add column' }).click()
+  await expect(page.locator('.rich-editor-content tr').first().locator('th, td')).toHaveCount(4)
+  await page.screenshot({ path: 'test-results/rich-table.png', fullPage: true })
+  await page.keyboard.press('Escape')
+
+  await expect(page.locator('.node-markdown table')).toBeVisible()
+  await expect(page.locator('.node-markdown th').first()).toContainText('Name')
 })
 
 test('does not capture a card that merely overlaps a group', async ({ page }) => {
@@ -363,14 +568,119 @@ test('does not move a card when dragging inside the text editor', async ({ page 
   const card = page.locator('.text-node')
   await page.locator('.node-text').dblclick()
   const before = await card.boundingBox()
-  if (!before) throw new Error('Missing card')
-  await page.mouse.move(before.x + 50, before.y + 60)
+  const editor = page.locator('.rich-editor-content')
+  const editorBox = await editor.boundingBox()
+  if (!before || !editorBox) throw new Error('Missing geometry')
+  await page.mouse.move(editorBox.x + 30, editorBox.y + 30)
   await page.mouse.down()
-  await page.mouse.move(before.x + 150, before.y + 160, { steps: 10 })
+  await page.mouse.move(editorBox.x + 130, editorBox.y + 130, { steps: 10 })
   await page.mouse.up()
   const after = await card.boundingBox()
   if (!after) throw new Error('Missing card after edit drag')
   expect(after.x).toBe(before.x)
   expect(after.y).toBe(before.y)
-  await expect(page.locator('.node-textarea')).toHaveCount(1)
+  await expect(editor).toHaveCount(1)
+})
+
+test('supports code indentation, auto-closing, and comment toggling', async ({ page }) => {
+  const modifier = process.platform === 'darwin' ? 'Meta' : 'Control'
+  await page.goto('/')
+  await page.getByRole('button', { name: 'New canvas' }).click()
+  await page.getByLabel('Add template').selectOption('code')
+  await page.locator('.code-node').dblclick()
+  const input = page.locator('.code-input')
+
+  await input.type('if (true) {')
+  await expect(input).toHaveValue('if (true) {}')
+  await input.press('Enter')
+  await expect(input).toHaveValue('if (true) {\n  \n}')
+  await input.type('return 1')
+  await expect(input).toHaveValue('if (true) {\n  return 1\n}')
+  await input.press(`${modifier}+/`)
+  await expect(input).toHaveValue('if (true) {\n  // return 1\n}')
+  await page.screenshot({ path: 'test-results/code-editor.png', fullPage: true })
+})
+
+
+test('resizes a card from its resize handle', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'New canvas' }).click()
+  await page.getByRole('button', { name: 'Add card' }).click()
+  const card = page.locator('.text-node')
+  const before = await card.boundingBox()
+  const handle = page.locator('.canvas-resize-handle.bottom.right')
+  const handleBox = await handle.boundingBox()
+  if (!before || !handleBox) throw new Error('Missing resize geometry')
+  await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(handleBox.x + 120, handleBox.y + 90, { steps: 10 })
+  await page.mouse.up()
+  const after = await card.boundingBox()
+  if (!after) throw new Error('Missing resized card')
+  expect(after.width).toBeGreaterThan(before.width + 60)
+  expect(after.height).toBeGreaterThan(before.height + 40)
+})
+
+test('fits a card to its content from the card edge', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'New canvas' }).click()
+  await page.getByLabel('Add template').selectOption('system')
+  const card = page.locator('.entity-node')
+  await card.dblclick()
+  await page.locator('.entity-field input').first().fill('Auto fit system')
+  await page.locator('.entity-content-field .rich-editor-content').fill(
+    Array.from({ length: 8 }, (_, index) => (
+      `Paragraph ${index + 1}: this repository carries a deliberately long note so the card must grow to fit all of its content. `
+      + 'The note continues with enough detail to wrap across several lines and exercise the fit calculation.'
+    )).join('\n\n'),
+  )
+  await page.keyboard.press('Escape')
+
+  const order = await card.evaluate((node) => {
+    const body = node.querySelector('.entity-body')
+    const row = body?.querySelector('.entity-row')
+    const preview = body?.querySelector('.entity-content-preview')
+    return Boolean(row && preview && (row.compareDocumentPosition(preview) & Node.DOCUMENT_POSITION_FOLLOWING))
+  })
+  expect(order).toBe(true)
+
+  const before = await card.boundingBox()
+  if (!before) throw new Error('Missing card before fit')
+  const overflowBefore = await card.evaluate((node) => {
+    const body = node.querySelector('.entity-body')
+    return body ? { scrollHeight: body.scrollHeight, clientHeight: body.clientHeight } : null
+  })
+  if (!overflowBefore) throw new Error('Missing card body before fit')
+  expect(overflowBefore.scrollHeight).toBeGreaterThan(overflowBefore.clientHeight)
+
+  await page.mouse.dblclick(before.x + 24, before.y + 3)
+  await page.waitForTimeout(250)
+  const after = await card.boundingBox()
+  if (!after) throw new Error('Missing card geometry')
+  expect(after.width !== before.width || after.height !== before.height).toBe(true)
+
+  const fit = await card.evaluate((node) => {
+    const body = node.querySelector('.entity-body')
+    return body ? { scrollHeight: body.scrollHeight, clientHeight: body.clientHeight } : null
+  })
+  if (!fit) throw new Error('Missing card body')
+  expect(fit.scrollHeight).toBeLessThanOrEqual(fit.clientHeight + 1)
+  await page.screenshot({ path: 'test-results/card-autofit.png', fullPage: true })
+})
+
+test('opens entity editing with properties expanded and ready', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'New canvas' }).click()
+  await page.getByLabel('Add template').selectOption('system')
+  const entity = page.locator('.entity-node')
+  const before = await entity.boundingBox()
+  await page.locator('.entity-node').dblclick()
+
+  await expect(page.locator('.property-drawer-body')).toBeVisible()
+  await expect(page.locator('.entity-content-field .rich-editor-content')).toBeVisible()
+  await expect(page.locator('.entity-field input').first()).toBeFocused()
+  await page.screenshot({ path: 'test-results/entity-properties-expanded.png', fullPage: true })
+  await page.keyboard.press('Escape')
+  const after = await entity.boundingBox()
+  expect(after).toEqual(before)
 })

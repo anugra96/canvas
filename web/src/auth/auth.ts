@@ -1,4 +1,4 @@
-const SESSION_KEY = 'skyward-canvas-auth-session'
+const SESSION_KEY = 'canvas-auth-session'
 
 export interface CanvasSession {
   idToken: string
@@ -11,7 +11,7 @@ export const mockSession: CanvasSession = {
   idToken: 'local-dev',
   subject: 'cognito:local-dev',
   displayName: 'Local Dev',
-  email: 'dev@skywardwildfire.com',
+  email: 'dev@localhost',
 }
 
 export function mockAuthEnabled(): boolean {
@@ -22,7 +22,7 @@ export async function signIn(email: string, password: string): Promise<CanvasSes
   const userPoolId = import.meta.env.VITE_COGNITO_USER_POOL_ID
   const clientId = import.meta.env.VITE_COGNITO_APP_CLIENT_ID
   if (!userPoolId || !clientId) {
-    throw new Error('Skyward Cognito is not configured.')
+    throw new Error('Cognito is not configured.')
   }
 
   const {

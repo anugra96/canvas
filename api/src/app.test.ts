@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { CanvasDocument, JsonCanvas } from '@skyward/canvas-contract'
+import type { CanvasDocument, JsonCanvas } from '@canvas/contract'
 
 import { createApp } from './app'
 import { LOCAL_DEV_TOKEN } from './auth'
@@ -90,6 +90,39 @@ describe('canvas API', () => {
     const body = await list.json() as { canvases: Array<{ id: string; nodeCount: number }> }
     expect(body.canvases).toHaveLength(1)
     expect(body.canvases[0]).toMatchObject({ id: created.id, nodeCount: 1 })
+  })
+
+  it('creates a Systems canvas with profile metadata', async () => {
+    const app = createApp(new MemoryCanvasStore(), { authMode: 'local' })
+    const response = await app.request('/v1/canvases', {
+      method: 'POST',
+      headers: { ...authHeaders, 'content-type': 'application/json' },
+      body: JSON.stringify({ title: 'Systems canvas', profile: 'systems' }),
+    })
+    expect(response.status).toBe(201)
+    const document = await response.json() as CanvasDocument
+    expect(document.canvas).toEqual({
+      nodes: [],
+      edges: [],
+      app: { profile: 'systems', profileVersion: 2, scope: 'container' },
+    })
+
+    const list = await app.request('/v1/canvases', { headers: authHeaders })
+    const body = await list.json() as { canvases: Array<{ id: string; profile: string }> }
+    expect(body.canvases).toContainEqual(expect.objectContaining({
+      id: document.id,
+      profile: 'systems',
+    }))
+  })
+
+  it('rejects an unknown canvas profile', async () => {
+    const app = createApp(new MemoryCanvasStore(), { authMode: 'local' })
+    const response = await app.request('/v1/canvases', {
+      method: 'POST',
+      headers: { ...authHeaders, 'content-type': 'application/json' },
+      body: JSON.stringify({ title: 'Unknown', profile: 'not-a-profile' }),
+    })
+    expect(response.status).toBe(400)
   })
 
   it('imports a complete canvas as a new native canvas', async () => {

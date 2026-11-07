@@ -29,7 +29,7 @@ describe('normalizeImportedCanvas', () => {
       type: 'text',
       text: '**Notes/Example.md**\n\n#Heading',
       color: '4',
-      skyward: { importedFile: { file: 'Notes/Example.md', subpath: '#Heading' } },
+      app: { importedFile: { file: 'Notes/Example.md', subpath: '#Heading' } },
     })
     expect(normalized.nodes[0]).not.toHaveProperty('file')
     expect(normalized.nodes[0]).not.toHaveProperty('subpath')

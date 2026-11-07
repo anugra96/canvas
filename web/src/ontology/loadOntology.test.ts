@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { DEFAULT_ONTOLOGY } from '@skyward/canvas-contract'
+import { DEFAULT_ONTOLOGY } from '@canvas/contract'
 
 import { loadOntology } from './loadOntology'
 

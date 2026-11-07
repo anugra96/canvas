@@ -2,7 +2,7 @@ import type {
   CanvasDocument,
   CanvasSummary,
   JsonCanvas,
-} from '@skyward/canvas-contract'
+} from '@canvas/contract'
 
 import type { CanvasSession } from '../auth/auth'
 import { CanvasConflictError } from './errors'
@@ -12,7 +12,7 @@ export { CanvasConflictError } from './errors'
 
 export interface CanvasClient {
   listCanvases(): Promise<CanvasSummary[]>
-  createCanvas(title?: string): Promise<CanvasDocument>
+  createCanvas(title?: string, profile?: string): Promise<CanvasDocument>
   importCanvas(title: string, canvas: JsonCanvas): Promise<CanvasDocument>
   getCanvas(id: string): Promise<CanvasDocument>
   saveCanvas(id: string, etag: string, canvas: JsonCanvas): Promise<CanvasDocument>
@@ -50,11 +50,11 @@ function createApiClient(session: CanvasSession): CanvasClient {
       return body.canvases
     },
 
-    async createCanvas(title) {
+    async createCanvas(title, profile) {
       const response = await request('/v1/canvases', {
         method: 'POST',
         headers: headers({ 'content-type': 'application/json' }),
-        body: JSON.stringify({ title }),
+        body: JSON.stringify({ title, profile }),
       })
       if (!response.ok) throw await errorFrom(response)
       return response.json() as Promise<CanvasDocument>

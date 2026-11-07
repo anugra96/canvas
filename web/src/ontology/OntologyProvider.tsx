@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useState } from 'react'
 
-import { DEFAULT_ONTOLOGY, type Ontology } from '@skyward/canvas-contract'
+import { DEFAULT_ONTOLOGY, type Ontology } from '@canvas/contract'
 
 import { useAuth } from '../auth/AuthContext'
 import { OntologyContext } from './OntologyContext'

@@ -1,8 +1,8 @@
 import { z } from 'zod'
 
 import { canvasEdgeMetaSchema, canvasNodeMetaSchema } from './ontology'
+import { canvasProfileMetadataSchema, type CanvasProfileMetadata } from './profile'
 
-export const CANVAS_NODE_TYPES = ['text', 'file', 'link', 'group'] as const
 export const CANVAS_NODE_SIDES = ['top', 'right', 'bottom', 'left'] as const
 export const CANVAS_EDGE_ENDS = ['none', 'arrow'] as const
 
@@ -16,7 +16,7 @@ const nodeBaseSchema = z
     width: finiteNumber.positive(),
     height: finiteNumber.positive(),
     color: z.string().min(1).optional(),
-    skyward: canvasNodeMetaSchema.optional(),
+    app: canvasNodeMetaSchema.optional(),
   })
   .passthrough()
 
@@ -61,7 +61,7 @@ export const canvasEdgeSchema = z
     toEnd: z.enum(CANVAS_EDGE_ENDS).optional(),
     color: z.string().min(1).optional(),
     label: z.string().optional(),
-    skyward: canvasEdgeMetaSchema.optional(),
+    app: canvasEdgeMetaSchema.optional(),
   })
   .passthrough()
 
@@ -69,12 +69,11 @@ export const jsonCanvasSchema = z
   .object({
     nodes: z.array(canvasNodeSchema).optional(),
     edges: z.array(canvasEdgeSchema).optional(),
+    app: canvasProfileMetadataSchema.optional(),
   })
   .passthrough()
 
-export type CanvasNodeType = (typeof CANVAS_NODE_TYPES)[number]
 export type CanvasNodeSide = (typeof CANVAS_NODE_SIDES)[number]
-export type CanvasEdgeEnd = (typeof CANVAS_EDGE_ENDS)[number]
 
 export type TextNode = z.infer<typeof textNodeSchema> & Record<string, unknown>
 export type FileNode = z.infer<typeof fileNodeSchema> & Record<string, unknown>
@@ -86,6 +85,7 @@ export type CanvasEdge = z.infer<typeof canvasEdgeSchema> & Record<string, unkno
 export type JsonCanvas = {
   nodes?: CanvasNode[]
   edges?: CanvasEdge[]
+  app?: CanvasProfileMetadata
 } & Record<string, unknown>
 
 export interface CanvasSummary {
@@ -96,28 +96,10 @@ export interface CanvasSummary {
   updatedBy: string
   nodeCount: number
   edgeCount: number
+  profile?: string
 }
 
 export interface CanvasDocument extends CanvasSummary {
-  canvas: JsonCanvas
-}
-
-export interface CanvasConflictResponse {
-  detail: {
-    code: 'canvas_conflict'
-    latest: CanvasDocument
-  }
-}
-
-export interface ListCanvasesResponse {
-  canvases: CanvasSummary[]
-}
-
-export interface CreateCanvasRequest {
-  title?: string
-}
-
-export interface SaveCanvasRequest {
   canvas: JsonCanvas
 }
 
