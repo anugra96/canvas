@@ -38,6 +38,20 @@ make stack-logs   # follow API and web logs
 make stack-down   # stop the stack and keep the MinIO volume
 ```
 
+Host ports bind to `127.0.0.1` and MinIO images are pinned by digest. To run a
+second, independent stack from another checkout, set its name and ports in a
+`.env` file next to `docker-compose.yml`:
+
+```bash
+CANVAS_STACK_NAME=canvas-next
+CANVAS_WEB_PORT=8190
+CANVAS_API_HOST_PORT=8889
+CANVAS_MINIO_PORT=9100
+CANVAS_MINIO_CONSOLE_PORT=9101
+```
+
+Each stack name gets its own containers and MinIO volume.
+
 ## Commands
 
 ```bash
