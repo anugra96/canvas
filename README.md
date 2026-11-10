@@ -60,6 +60,14 @@ npm run test       # all workspace tests
 npm run lint       # all workspace lint checks
 npm run typecheck  # all workspace type checks
 npm run build      # build web and type-check API packages
+make verify        # typecheck, lint, unit tests, build, and E2E
+make e2e           # Playwright only
+```
+
+Install the Playwright browser once per machine before running E2E checks:
+
+```bash
+cd web && npx playwright install chromium
 ```
 
 ## Runtime ontology
