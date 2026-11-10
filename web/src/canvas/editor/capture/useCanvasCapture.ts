@@ -208,3 +208,5 @@ export function useCanvasCapture({
     onAreaPointerUp,
   }
 }
+
+export type CanvasCaptureState = ReturnType<typeof useCanvasCapture>

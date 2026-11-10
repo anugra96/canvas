@@ -919,3 +919,5 @@ export function useCanvasGraph({
     allSelectedCardsAreMembers,
   }
 }
+
+export type CanvasGraphState = ReturnType<typeof useCanvasGraph>

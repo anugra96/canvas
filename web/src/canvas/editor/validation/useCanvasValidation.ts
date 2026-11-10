@@ -329,3 +329,5 @@ export function useCanvasValidation({
     openValidationIssue,
   }
 }
+
+export type CanvasValidationEditor = ReturnType<typeof useCanvasValidation>

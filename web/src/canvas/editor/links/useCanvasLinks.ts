@@ -235,3 +235,5 @@ export function useCanvasLinks({
     addProcessWithCanvas,
   }
 }
+
+export type CanvasLinksState = ReturnType<typeof useCanvasLinks>

@@ -1,0 +1,280 @@
+import {
+  Background,
+  BackgroundVariant,
+  ConnectionMode,
+  Controls,
+  ReactFlow,
+  ViewportPortal,
+  type Viewport,
+} from '@xyflow/react'
+
+import type { CanvasProfile, Ontology } from '@canvas/contract'
+
+import { CanvasBackdrop } from '../backdrop/CanvasBackdrop'
+import type { CanvasFlowEdge, CanvasFlowNode } from '../model/adapter'
+import { writeViewport } from './viewport'
+import { ConnectionPreview } from './graph/ConnectionPreview'
+import type { CanvasGraphState } from './graph/useCanvasGraph'
+import type { CanvasCaptureState } from './capture/useCanvasCapture'
+import type { CanvasValidationEditor } from './validation/useCanvasValidation'
+import { ConnectionTemplateMenu } from './ConnectionTemplateMenu'
+import { EdgeLabelEditor } from './EdgeLabelEditor'
+import { ReviewPanel } from './ReviewPanel'
+import { SelectionToolbar } from './SelectionToolbar'
+import { CanvasEdge as CanvasEdgeComponent } from './edges/CanvasEdge'
+import { CodeNode } from './nodes/CodeNode'
+import { SchemaNode } from './nodes/SchemaNode'
+import { EntityNode } from './nodes/EntityNode'
+import { FileNode } from './nodes/FileNode'
+import { GroupNode } from './nodes/GroupNode'
+import { LinkNode } from './nodes/LinkNode'
+import { TextNode as TextNodeComponent } from './nodes/TextNode'
+
+const nodeTypes = {
+  text: TextNodeComponent,
+  entity: EntityNode,
+  schema: SchemaNode,
+  code: CodeNode,
+  group: GroupNode,
+  file: FileNode,
+  link: LinkNode,
+}
+
+const edgeTypes = {
+  canvas: CanvasEdgeComponent,
+}
+
+interface CanvasWorkspaceProps {
+  documentId: string
+  nodes: CanvasFlowNode[]
+  edges: CanvasFlowEdge[]
+  isMobile: boolean
+  coarsePointer: boolean
+  isSystems: boolean
+  profile: CanvasProfile
+  ontology: Ontology
+  availableEntityTypes: Array<{ id: string; label: string }>
+  profileRelationTypes: Array<{ id: string; label: string }>
+  shouldFitInitial: boolean
+  savedViewport: Viewport | null
+  viewportLayout: 'mobile' | 'desktop'
+  flowRef: React.RefObject<HTMLDivElement | null>
+  graph: CanvasGraphState
+  capture: CanvasCaptureState
+  validation: CanvasValidationEditor
+  setNotice: (message: string) => void
+  onOpenHelp: () => void
+}
+
+export function CanvasWorkspace({
+  documentId,
+  nodes,
+  edges,
+  isMobile,
+  coarsePointer,
+  isSystems,
+  profile,
+  ontology,
+  availableEntityTypes,
+  profileRelationTypes,
+  shouldFitInitial,
+  savedViewport,
+  viewportLayout,
+  flowRef,
+  graph,
+  capture,
+  validation,
+  setNotice,
+  onOpenHelp,
+}: CanvasWorkspaceProps) {
+  return (
+    <div
+      className={`canvas-flow${graph.connectNodeId ? ' connect-mode' : ''}`}
+      ref={flowRef}
+      onDoubleClick={graph.handleDoubleClick}
+    >
+      <CanvasBackdrop />
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        onNodesChange={graph.onNodesChange}
+        onEdgesChange={graph.onEdgesChange}
+        onConnect={graph.onConnect}
+        onConnectStart={() => {
+          graph.setPendingConnection(null)
+          graph.setEdgeLabelEditor(null)
+          graph.setAlignmentGuides([])
+        }}
+        onConnectEnd={graph.onConnectEnd}
+        onEdgeDoubleClick={(event, edge) => {
+          graph.openEdgeLabelEditor(edge.id, event.clientX, event.clientY)
+        }}
+        onReconnect={graph.onReconnect}
+        edgesReconnectable
+        reconnectRadius={26}
+        onNodeDragStart={() => graph.setAlignmentGuides([])}
+        onNodeDragStop={() => graph.setAlignmentGuides([])}
+        onMoveStart={() => graph.setAlignmentGuides([])}
+        onNodeClick={(_, node) => {
+          if (!graph.connectNodeId || node.id === graph.connectNodeId) return
+          if (node.type === 'group') {
+            setNotice('Groups cannot be connection endpoints.')
+            return
+          }
+          graph.connectNodes(graph.connectNodeId, node.id)
+        }}
+        onPaneClick={() => {
+          if (graph.connectNodeId) graph.setConnectNodeId(null)
+        }}
+        connectionMode={ConnectionMode.Loose}
+        fitView={shouldFitInitial}
+        fitViewOptions={{ padding: 0.25, maxZoom: 1.2 }}
+        defaultViewport={savedViewport ?? undefined}
+        onMoveEnd={(_, viewport: Viewport) => writeViewport(documentId, viewport, viewportLayout)}
+        minZoom={isMobile ? 0.08 : 0.2}
+        maxZoom={2.5}
+        zoomOnDoubleClick={false}
+        panOnScroll
+        panActivationKeyCode="Space"
+        zoomActivationKeyCode={['Meta', 'Control']}
+        multiSelectionKeyCode="Shift"
+        panOnDrag={isMobile ? true : [1, 2]}
+        selectionOnDrag={!isMobile}
+        deleteKeyCode={['Backspace', 'Delete']}
+        proOptions={{ hideAttribution: true }}
+      >
+        <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="var(--ui-pattern)" />
+        <Controls showInteractive={false} />
+        {graph.pendingConnection && (
+          <ConnectionPreview nodes={nodes} pending={graph.pendingConnection} />
+        )}
+        <ViewportPortal>
+          {graph.alignmentGuides.map((guide, index) => (
+            <div
+              key={`${guide.axis}-${guide.position}-${index}`}
+              className={`alignment-guide ${guide.axis}`}
+              style={guide.axis === 'x'
+                ? { left: guide.position, top: guide.start, height: guide.end - guide.start }
+                : { top: guide.position, left: guide.start, width: guide.end - guide.start }}
+            />
+          ))}
+        </ViewportPortal>
+      </ReactFlow>
+      {capture.areaMode && (
+        <div
+          className="screenshot-selection-layer"
+          onPointerDown={capture.onAreaPointerDown}
+          onPointerMove={capture.onAreaPointerMove}
+          onPointerUp={(event) => { void capture.onAreaPointerUp(event) }}
+          onPointerCancel={capture.cancelAreaSelection}
+        >
+          <div
+            className="screenshot-selection-hint"
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <span>Drag to select an area</span>
+            <button className="button" onClick={capture.cancelAreaSelection}>Cancel</button>
+          </div>
+          {capture.dragBox && (
+            <div
+              className="screenshot-selection-box"
+              style={{
+                left: capture.dragBox.x,
+                top: capture.dragBox.y,
+                width: capture.dragBox.width,
+                height: capture.dragBox.height,
+              }}
+            />
+          )}
+        </div>
+      )}
+      <button
+        className="canvas-help-hint"
+        onClick={onOpenHelp}
+        aria-label="Show shortcuts help"
+      >
+        ? Shortcuts
+      </button>
+      {!graph.pendingConnection && !graph.cardMenu && !graph.edgeLabelEditor && (
+        <SelectionToolbar
+          selectedNodes={graph.selectedNodes.length}
+          selectedEdges={graph.selectedEdges.length}
+          canGroup={graph.selectedNodes.some((node) => node.type !== 'group')}
+          canConnect={coarsePointer && Boolean(graph.singleSelectedNode) && graph.singleSelectedNode?.type !== 'group'}
+          connectMode={graph.connectNodeId !== null}
+          onConnect={() => graph.setConnectNodeId((current) => current ? null : graph.singleSelectedNode?.id ?? null)}
+          canResize={Boolean(graph.singleSelectedNode)}
+          onResize={() => graph.setSizeDialogOpen(true)}
+          cardTypeValue={graph.cardTypeValue}
+          allowText={!isSystems}
+          entityTypeIds={availableEntityTypes.map((entityType) => entityType.id)}
+          onCardTypeChange={graph.changeCardType}
+          onGroup={graph.groupSelected}
+          onReverse={graph.reverseSelectedEdges}
+          relationValue={graph.selectedRelationValue}
+          relationTypes={profileRelationTypes.map((relation) => ({ id: relation.id, label: relation.label }))}
+          allowUnspecified={isSystems}
+          onRelationChange={graph.changeRelation}
+          canManageMembership={graph.canManageMembership}
+          membershipLabel={graph.allSelectedCardsAreMembers ? 'Remove from group' : 'Add to group'}
+          onToggleMembership={graph.toggleGroupMembership}
+          onDuplicate={graph.duplicateSelection}
+          onDelete={graph.deleteSelected}
+          onClear={graph.clearSelection}
+          onColor={graph.applyColor}
+        />
+      )}
+      {graph.pendingConnection && (
+        <ConnectionTemplateMenu
+          x={graph.pendingConnection.screen.x}
+          y={graph.pendingConnection.screen.y}
+          profile={profile}
+          onSelect={graph.insertConnectedNode}
+          onClose={() => graph.setPendingConnection(null)}
+        />
+      )}
+      {graph.cardMenu && (
+        <ConnectionTemplateMenu
+          x={graph.cardMenu.screen.x}
+          y={graph.cardMenu.screen.y}
+          profile={profile}
+          mode="card"
+          onSelect={graph.insertCardFromMenu}
+          onClose={() => graph.setCardMenu(null)}
+        />
+      )}
+      {graph.edgeLabelEditor && (
+        <EdgeLabelEditor
+          x={graph.edgeLabelEditor.x}
+          y={graph.edgeLabelEditor.y}
+          initialValue={graph.edgeLabelEditor.label}
+          onSave={graph.saveEdgeLabel}
+          onCancel={() => graph.setEdgeLabelEditor(null)}
+        />
+      )}
+      {isSystems && validation.reviewOpen && (
+        <ReviewPanel
+          tab={validation.reviewTab}
+          onTabChange={validation.setReviewTab}
+          issues={validation.prioritizedIssues}
+          ignoredIssues={validation.ignoredPrioritizedIssues}
+          suggestions={validation.suggestions}
+          nodes={nodes}
+          edges={edges}
+          profile={profile}
+          ontology={ontology}
+          ignoredReasons={validation.ignoredReasons}
+          focusRequest={validation.validationFocusRequest}
+          onClose={validation.closeReview}
+          onFocus={validation.focusValidationIssue}
+          onIgnore={validation.ignoreValidationIssue}
+          onRestore={validation.restoreValidationIssue}
+          onPreviewSuggestion={validation.focusSuggestion}
+          onApplySuggestion={validation.applySuggestion}
+        />
+      )}
+    </div>
+  )
+}

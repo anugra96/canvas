@@ -1,0 +1,63 @@
+import { X } from 'lucide-react'
+
+import { CanvasToolbar, type SaveStatus } from './CanvasToolbar'
+import type { CanvasCommand } from './commands'
+
+interface EditorChromeProps {
+  trail: Array<{ id: string; label: string }>
+  onOpenTrail: (index: number) => void
+  title: string
+  profileLabel: string
+  isSystems: boolean
+  status: SaveStatus
+  commands: CanvasCommand[]
+  notice: string
+  onDismissNotice: () => void
+  error: string
+}
+
+export function EditorChrome({
+  trail,
+  onOpenTrail,
+  title,
+  profileLabel,
+  isSystems,
+  status,
+  commands,
+  notice,
+  onDismissNotice,
+  error,
+}: EditorChromeProps) {
+  return (
+    <>
+      {trail.length > 1 && (
+        <nav className="editor-trail" aria-label="Canvas trail">
+          <button onClick={() => onOpenTrail(-1)}>Canvases</button>
+          {trail.map((entry, index) => (
+            index === trail.length - 1
+              ? <span key={entry.id}>{entry.label}</span>
+              : <button key={entry.id} onClick={() => onOpenTrail(index)}>{entry.label}</button>
+          ))}
+        </nav>
+      )}
+      <CanvasToolbar
+        title={title}
+        profileLabel={profileLabel}
+        isSystems={isSystems}
+        status={status}
+        commands={commands}
+      />
+
+      {notice && (
+        <div className="editor-notice" role="status">
+          <span>{notice}</span>
+          <button className="icon-button" onClick={onDismissNotice} aria-label="Dismiss">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {error && <div className="alert editor-alert" role="alert">{error}</div>}
+    </>
+  )
+}
