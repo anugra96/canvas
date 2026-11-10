@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 
 import {
   AMBIENCES,
+  currentAmbience,
   isAmbienceId,
   readVolume,
   setAmbienceVolume,
@@ -12,7 +13,7 @@ import {
 } from './atmosphere/ambience'
 
 export function AmbiencePicker() {
-  const [active, setActive] = useState<AmbienceId | ''>('')
+  const [active, setActive] = useState<AmbienceId | ''>(currentAmbience)
   const [volume, setVolume] = useState(readVolume)
 
   useEffect(() => stopAmbience, [])

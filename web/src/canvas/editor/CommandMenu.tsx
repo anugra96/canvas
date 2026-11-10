@@ -1,5 +1,5 @@
 import { ChevronDown, X, type LucideIcon } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import type { CanvasCommand } from './commands'
 
@@ -115,12 +115,14 @@ export function CommandSheet({
   commands,
   onClose,
   returnFocusTo,
+  children,
 }: {
   open: boolean
   title: string
   commands: CanvasCommand[]
   onClose: () => void
   returnFocusTo: React.RefObject<HTMLButtonElement | null>
+  children?: ReactNode
 }) {
   const sheetRef = useRef<HTMLElement>(null)
 
@@ -192,6 +194,7 @@ export function CommandSheet({
             )
           })}
         </div>
+        {children && <div className="command-sheet-extra">{children}</div>}
       </section>
     </div>
   )

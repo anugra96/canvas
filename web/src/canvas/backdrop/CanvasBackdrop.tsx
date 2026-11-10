@@ -1,37 +1,20 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useReactFlow } from '@xyflow/react'
 
+import { useBackdropEnabled } from '../../atmosphere/backdropPreference'
 import { sceneForTheme } from '../../atmosphere/registry'
 import { useTheme } from '../../themes'
 import { loadScene, mulberry } from '../../atmosphere/scenes'
 
-const PREF_KEY = 'canvas-backdrop'
 const PIXEL = 3
 const OVERSCAN = 48
-
-function readPref(): boolean {
-  try {
-    if (localStorage.getItem(PREF_KEY) === 'off') return false
-  } catch {
-    // Storage unavailable; fall through to the default.
-  }
-  return true
-}
 
 export function CanvasBackdrop() {
   const theme = useTheme()
   const { getViewport } = useReactFlow()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const [enabled] = useState(readPref)
+  const enabled = useBackdropEnabled()
   const sceneId = enabled ? sceneForTheme(theme) : null
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(PREF_KEY, enabled ? 'on' : 'off')
-    } catch {
-      // Storage unavailable; the in-memory preference still applies.
-    }
-  }, [enabled])
 
   useEffect(() => {
     const canvas = canvasRef.current

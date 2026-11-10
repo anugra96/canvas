@@ -29,6 +29,7 @@ export function ProfileValidationTray({
   ignoredReasons,
   focusRequest,
   onClose,
+  embedded = false,
   onFocus,
   onIgnore,
   onRestore,
@@ -41,7 +42,8 @@ export function ProfileValidationTray({
   ontology: Ontology
   ignoredReasons: Map<string, string>
   focusRequest: { key: string; requestId: number } | null
-  onClose: () => void
+  onClose?: () => void
+  embedded?: boolean
   onFocus: (issue: CanvasProfileIssue) => void
   onIgnore: (issue: CanvasProfileIssue, reason: IgnoreReason) => void
   onRestore: (issue: CanvasProfileIssue) => void
@@ -82,8 +84,7 @@ export function ProfileValidationTray({
     onFocus(view.issue)
   }
 
-  return (
-    <aside className="validation-tray validation-panel" aria-label="Warnings">
+  const header = (
       <header className="validation-panel-head">
         <div>
           <span className="validation-panel-kicker">Architecture</span>
@@ -93,7 +94,10 @@ export function ProfileValidationTray({
           <X size={16} />
         </button>
       </header>
+  )
 
+  const content = (
+    <>
       <div className="validation-minimal-bar">
         <span>{activeGroups.reduce((sum, group) => sum + group.issues.length, 0)} open</span>
         {ignoredIssues.length > 0 && (
@@ -237,6 +241,15 @@ export function ProfileValidationTray({
           </section>
         ))}
       </div>
+    </>
+  )
+
+  if (embedded) return <div className="review-embedded">{content}</div>
+
+  return (
+    <aside className="validation-tray validation-panel" aria-label="Warnings">
+      {header}
+      {content}
     </aside>
   )
 }

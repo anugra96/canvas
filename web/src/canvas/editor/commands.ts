@@ -19,7 +19,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
-export type CommandSurface = 'bar' | 'add' | 'overflow' | 'shortcut'
+type CommandSurface = 'bar' | 'add' | 'overflow' | 'shortcut'
 
 export interface CanvasCommand {
   id: string

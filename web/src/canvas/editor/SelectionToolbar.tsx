@@ -20,6 +20,10 @@ export function SelectionToolbar({
   onCardTypeChange,
   onGroup,
   onReverse,
+  relationValue,
+  relationTypes = [],
+  allowUnspecified = false,
+  onRelationChange,
   onToggleMembership,
   onDuplicate,
   onDelete,
@@ -42,6 +46,10 @@ export function SelectionToolbar({
   onCardTypeChange?: (typeId: string) => void
   onGroup: () => void
   onReverse: () => void
+  relationValue?: string
+  relationTypes?: Array<{ id: string; label: string }>
+  allowUnspecified?: boolean
+  onRelationChange?: (value: string) => void
   onToggleMembership: () => void
   onDuplicate: () => void
   onDelete: () => void
@@ -106,6 +114,23 @@ export function SelectionToolbar({
           <ArrowLeftRight size={14} />
           Reverse
         </button>
+      )}
+      {selectedEdges > 0 && onRelationChange && (
+        <label className="toolbar-field selection-relation">
+          <span>Relation</span>
+          <select
+            className="template-select"
+            aria-label="Edge relation"
+            value={relationValue ?? ''}
+            onChange={(event) => onRelationChange(event.target.value)}
+          >
+            {relationValue === 'mixed' && <option value="mixed" disabled>Mixed</option>}
+            {allowUnspecified && <option value="">Unspecified</option>}
+            {relationTypes.map((relationType) => (
+              <option key={relationType.id} value={relationType.id}>{relationType.label}</option>
+            ))}
+          </select>
+        </label>
       )}
       {canManageMembership && (
         <button className="button" onClick={onToggleMembership}>

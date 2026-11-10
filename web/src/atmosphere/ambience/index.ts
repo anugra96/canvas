@@ -182,19 +182,27 @@ class Playback {
 
 let generation = 0
 let current: Playback | null = null
+let activeTheme: AmbienceId | '' = ''
+
+export function currentAmbience(): AmbienceId | '' {
+  return activeTheme
+}
 
 export async function startAmbience(theme: AmbienceId): Promise<void> {
   const token = ++generation
   current?.stop()
   current = null
+  activeTheme = ''
   const spec = await loadSpec(theme)
   const buffer = await getBuffer(theme, spec)
   if (token !== generation) return
   current = new Playback(buffer, spec.env)
+  activeTheme = theme
 }
 
 export function stopAmbience(): void {
   generation += 1
   current?.stop()
   current = null
+  activeTheme = ''
 }

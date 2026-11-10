@@ -32,7 +32,7 @@ test('designs and validates a JSON Schema contract', async ({ page }) => {
   await page.locator('.canvas-warning-badge').first().click()
   await expect(page.locator('.validation-panel')).toBeVisible()
   await expect(page.locator('.validation-item.active')).toContainText('Untitled Schema')
-  await page.getByRole('button', { name: 'Close warnings' }).click()
+  await page.getByRole('button', { name: 'Close review' }).click()
   await card.dblclick()
   await source.fill(validSchema)
   await expect(page.locator('.schema-diagnostics')).toContainText('No schema issues')

@@ -2,6 +2,9 @@ import { ArrowLeft, MoreHorizontal, PenLine, Plus } from 'lucide-react'
 import { useRef, useState } from 'react'
 
 import { useIsMobile } from '../../useMediaQuery'
+import { AppearanceMenu } from '../../AppearanceMenu'
+import { AppearanceControls } from '../../AppearanceControls'
+import { AvatarMenu, AvatarPanel } from '../../AvatarMenu'
 import { CommandMenu, CommandSheet } from './CommandMenu'
 import type { CanvasCommand } from './commands'
 
@@ -125,6 +128,8 @@ function DesktopToolbar({ title, profileLabel, isSystems, status, commands }: Ca
             triggerLabel="More canvas actions"
           />
         )}
+        <AppearanceMenu />
+        <AvatarMenu />
       </div>
     </div>
   )
@@ -187,7 +192,10 @@ function PhoneToolbar({ title, profileLabel, isSystems, status, commands }: Canv
         commands={sheetCommands}
         onClose={() => setSheetOpen(false)}
         returnFocusTo={moreRef}
-      />
+      >
+        <AppearanceControls />
+        <AvatarPanel />
+      </CommandSheet>
     </div>
   )
 }

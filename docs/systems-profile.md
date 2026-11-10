@@ -79,31 +79,27 @@ Any two content cards can be connected. A relation type is optional.
 - New Systems edges default to **Unspecified** and display **Define relation**.
 - The relation picker lists every Systems relation, not only compatible ones.
 - Choosing a relation that is invalid for the source and target is allowed.
-- The UI flags an unspecified or invalid relation through the validation tray.
+- The UI flags an unspecified or invalid relation through the Review panel.
 - Invalid connections are never blocked.
 - Checking groups remain invalid because groups are not graph endpoints.
 
 ## Validation
 
-Warnings do not block saving. **Canvas intelligence** and **Warnings** are
-separate panels. Canvas intelligence shows suggested fixes without warning
-codes or detailed messages. Each suggestion has a short context line, optional
-**Show** to zoom to the affected area, and **Fix** to apply the change as one
-undoable edit. Fix works before or after Show. The Warnings panel is a minimal
-grouped list with ambiguous relation controls and ignored items.
+Warnings do not block saving. One **Review** panel has **Issues** and **Fixes**
+tabs. Issues is a minimal grouped, read-only diagnostic list with ignored items.
+Fixes shows suggested repairs with a short context, optional **Show** to zoom to
+the area, and **Fix** to apply the change as one undoable edit. The panel
+remembers the last tab while the editor session remains open. A warning badge
+opens Issues at that warning.
 
-- Relation warnings offer only relations allowed for the card-type pair. If the
-  forward direction has no legal relation, the panel can reverse the edge and
-  set a legal relation in one action.
-- Safe bulk fixes apply only when a missing relation has one legal choice or the
-  edge label exactly matches a legal relation. The panel previews every change
-  and applies the batch as one undoable edit.
+- Edge relations are changed from the selection toolbar. It applies one relation
+  to every selected edge as a single undoable edit.
 - Ignored warnings require a reason. They are stored in the canvas metadata and
   can be restored from the Ignored filter.
 - The MVP semantic checks are limited to two rules. An Artifact needs a producer
   from a System, Process, Repository, or API. A Process needs a runner from an
   Actor or System.
-- Canvas intelligence only suggests the two MVP semantic repairs: add a producer
+- Fixes only suggests the two MVP semantic repairs: add a producer
   card for an Artifact or add a runner card for a Process. Every other warning
   remains manual.
 - Untyped text cards are warnings.

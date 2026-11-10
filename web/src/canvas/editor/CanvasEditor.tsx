@@ -71,6 +71,7 @@ import { convertNodeType } from '../model/cardTypes'
 import {
   applyColorToFlowEdge,
   applyLabelToFlowEdge,
+  applyRelationToFlowEdge,
   edgeFromConnection,
   reconnectFlowEdge,
   reverseFlowEdge,
@@ -84,8 +85,7 @@ import { CanvasValidationContext } from './CanvasValidationContext'
 import { CanvasToolbar, type SaveStatus } from './CanvasToolbar'
 import { useCanvasCommands } from './commands'
 import { ConnectionTemplateMenu } from './ConnectionTemplateMenu'
-import { ProfileValidationTray } from './ProfileValidationTray'
-import { CanvasIntelligencePanel } from './CanvasIntelligencePanel'
+import { ReviewPanel, type ReviewTab } from './ReviewPanel'
 import { EdgeLabelEditor } from './EdgeLabelEditor'
 import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog'
 import { CanvasNameDialog } from '../../CanvasNameDialog'
@@ -273,7 +273,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const ontology = useOntology()
   const isMobile = useIsMobile()
   const coarsePointer = useCoarsePointer()
-  const { profile, isSystems, availableEntityTypes } = useCanvasProfile(ontology, document)
+  const { profile, isSystems, availableEntityTypes, profileRelationTypes } = useCanvasProfile(ontology, document)
   const initial = useMemo(() => toFlowCanvas(document.canvas, ontology), [document, ontology])
   const viewportLayout = isMobile ? 'mobile' as const : 'desktop' as const
   const savedViewport = useMemo(() => readViewport(document.id, viewportLayout), [document.id, viewportLayout])
@@ -308,10 +308,10 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const [notice, setNotice] = useState('')
   const [conflicts, setConflicts] = useState<MergeConflict[]>([])
   const [pendingLocal, setPendingLocal] = useState<JsonCanvas | null>(null)
-  const [, setSelectedEdgeId] = useState<string | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
   const [viewsOpen, setViewsOpen] = useState(false)
-  const [validationPanel, setValidationPanel] = useState<'warnings' | 'intelligence' | null>(null)
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const [reviewTab, setReviewTab] = useState<ReviewTab>('issues')
   const [validationFocusRequest, setValidationFocusRequest] = useState<{ key: string; requestId: number } | null>(null)
   const validationRequestId = useRef(0)
   const [suppressions, setSuppressions] = useState<ValidationSuppression[]>(() => (
@@ -447,7 +447,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       'start',
     ))
     setEdges((current) => current.map((edge) => ({ ...edge, selected: false })))
-    setSelectedEdgeId(null)
     markDirty()
   }, [markDirty, nodes])
 
@@ -460,7 +459,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       !selectedEdgeIds.has(edge.id)
       && !selectedNodeIds.has(edge.source)
       && !selectedNodeIds.has(edge.target)))
-    setSelectedEdgeId(null)
     markDirty()
   }, [edges, markDirty, nodes])
 
@@ -514,7 +512,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const clearSelection = useCallback(() => {
     setNodes((current) => current.map((node) => ({ ...node, selected: false })))
     setEdges((current) => current.map((edge) => ({ ...edge, selected: false })))
-    setSelectedEdgeId(null)
     setConnectNodeId(null)
     setSizeDialogOpen(false)
   }, [])
@@ -581,7 +578,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       : '#ffffff'
 
     clearSelection()
-    setSelectedEdgeId(null)
     await new Promise<void>((resolve) => {
       requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
     })
@@ -636,7 +632,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     setEdgeLabelEditor(null)
     setAlignmentGuides([])
     clearSelection()
-    setSelectedEdgeId(null)
     setConnectNodeId(null)
   }, [clearSelection])
 
@@ -873,7 +868,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
         return
       }
       if (event.key === 'Escape') {
-        if (window.document.querySelector('.command-menu-popup, .command-sheet')) return
+        if (window.document.querySelector('.command-menu-popup, .command-sheet, .appearance-popup, .avatar-popup')) return
         event.preventDefault()
         event.stopPropagation()
         if (helpOpen) {
@@ -1201,14 +1196,12 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     setPendingConnection(null)
     setNodes((current) => insertNodes(current, [{ ...toFlowNode(raw), selected: true }]))
     setEdges((current) => [...current, toFlowEdge(edge, ontology)])
-    setSelectedEdgeId(null)
     markDirty()
   }, [isSystems, markDirty, ontology, pendingConnection])
 
   const selectEdge = useCallback((id: string) => {
     setNodes((current) => current.map((node) => ({ ...node, selected: false })))
     setEdges((current) => current.map((edge) => ({ ...edge, selected: edge.id === id })))
-    setSelectedEdgeId(id)
   }, [])
 
   const openEdgeLabelEditor = useCallback((id: string, clientX: number, clientY: number) => {
@@ -1331,6 +1324,24 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     markDirty()
   }, [edges, markDirty])
 
+  function changeRelation(relationTypeId: string) {
+    if (relationTypeId === 'mixed') return
+    setEdges((current) => current.map((edge) => {
+      if (!edge.selected) return edge
+      const next = applyRelationToFlowEdge(edge, relationTypeId, ontology)
+      if (isSystems && !relationTypeId && next.data) {
+        next.label = 'Define relation'
+        next.data = {
+          ...next.data,
+          label: 'Define relation',
+          raw: { ...next.data.raw, label: 'Define relation' },
+        }
+      }
+      return next
+    }))
+    markDirty()
+  }
+
   function saveEdgeLabel(value: string) {
     const editor = edgeLabelEditor
     if (!editor) return
@@ -1342,6 +1353,12 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
 
   const selectedNodes = nodes.filter((node) => node.selected)
   const selectedEdges = edges.filter((edge) => edge.selected)
+  const selectedRelationTypes = new Set(selectedEdges.map((edge) => edge.data?.relationType ?? ''))
+  const selectedRelationValue = selectedRelationTypes.size === 0
+    ? ''
+    : selectedRelationTypes.size === 1
+      ? [...selectedRelationTypes][0]
+      : 'mixed'
   const singleSelectedNode = selectedNodes.length === 1 ? selectedNodes[0] : undefined
   const cardTypeValue = singleSelectedNode && singleSelectedNode.type !== 'group'
     ? singleSelectedNode.data.entity?.entityType ?? 'text'
@@ -1764,9 +1781,8 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     nextNodes = nextNodes.map((node) => ({ ...node, selected: node.id === selectedId }))
     setNodes(nextNodes)
     setEdges(nextEdges)
-    setSelectedEdgeId(null)
     setNotice(`Applied suggested fix: ${suggestion.title.toLowerCase()}.`)
-    setValidationPanel(null)
+    setReviewOpen(false)
     setValidationFocusRequest(null)
     markDirty()
     window.setTimeout(() => {
@@ -1787,8 +1803,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
         selected: node.id === issue.nodeId,
       })))
       setEdges((current) => current.map((edge) => ({ ...edge, selected: false })))
-      setSelectedEdgeId(null)
-      void fitView({ nodes: [{ id: issue.nodeId }], duration: 300, maxZoom: 1.5 })
+        void fitView({ nodes: [{ id: issue.nodeId }], duration: 300, maxZoom: 1.5 })
     } else if (issue.edgeId) {
       selectEdge(issue.edgeId)
       const edge = edges.find((candidate) => candidate.id === issue.edgeId)
@@ -1823,7 +1838,8 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       key: validationIssueKey(issue),
       requestId: validationRequestId.current,
     })
-    setValidationPanel('warnings')
+    setReviewTab('issues')
+    setReviewOpen(true)
   }
 
   const validation = {
@@ -1899,7 +1915,10 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     onAddEntity: addEntityAtCenter,
     onAddProcessCanvas: () => void addProcessWithCanvas(),
     onViews: () => setViewsOpen(true),
-    onReview: () => setValidationPanel((current) => current === 'warnings' ? null : 'warnings'),
+    onReview: () => {
+      setValidationFocusRequest(null)
+      setReviewOpen(true)
+    },
     onUndo: undo,
     onRedo: redo,
     onSave: () => { void save() },
@@ -1971,9 +1990,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
               setAlignmentGuides([])
             }}
             onMoveStart={() => setAlignmentGuides([])}
-            onSelectionChange={({ edges: selectedEdgeList }) => {
-              setSelectedEdgeId(selectedEdgeList[0]?.id ?? null)
-            }}
             onNodeClick={(_, node) => {
               if (!connectNodeId || node.id === connectNodeId) return
               if (node.type === 'group') {
@@ -2070,6 +2086,10 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
               onCardTypeChange={changeCardType}
               onGroup={groupSelected}
               onReverse={reverseSelectedEdges}
+              relationValue={selectedRelationValue}
+              relationTypes={profileRelationTypes.map((relation) => ({ id: relation.id, label: relation.label }))}
+              allowUnspecified={isSystems}
+              onRelationChange={changeRelation}
               canManageMembership={canManageMembership}
               membershipLabel={allSelectedCardsAreMembers ? 'Remove from group' : 'Add to group'}
               onToggleMembership={toggleGroupMembership}
@@ -2107,11 +2127,13 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
               onCancel={() => setEdgeLabelEditor(null)}
             />
           )}
-          {isSystems && validationPanel === 'warnings' && (
-            <ProfileValidationTray
-              key={validationFocusRequest?.requestId ?? 'validation'}
+          {isSystems && reviewOpen && (
+            <ReviewPanel
+              tab={reviewTab}
+              onTabChange={setReviewTab}
               issues={prioritizedIssues}
               ignoredIssues={ignoredPrioritizedIssues}
+              suggestions={suggestions}
               nodes={nodes}
               edges={edges}
               profile={profile}
@@ -2119,21 +2141,12 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
               ignoredReasons={ignoredReasons}
               focusRequest={validationFocusRequest}
               onClose={() => {
-                setValidationPanel(null)
+                setReviewOpen(false)
                 setValidationFocusRequest(null)
               }}
               onFocus={focusValidationIssue}
               onIgnore={ignoreValidationIssue}
               onRestore={restoreValidationIssue}
-            />
-          )}
-          {isSystems && validationPanel === 'intelligence' && (
-            <CanvasIntelligencePanel
-              suggestions={suggestions}
-              onClose={() => {
-                setValidationPanel(null)
-                setValidationFocusRequest(null)
-              }}
               onPreviewSuggestion={focusSuggestion}
               onApplySuggestion={applySuggestion}
             />

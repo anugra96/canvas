@@ -110,32 +110,25 @@ meta-validates JSON Schema, shows structure and review status, and warns when
 an active API or database System lacks a contract. Importable examples live in
 `examples/`.
 
-**Auto layout** arranges cards with Dagre in a left-to-right hierarchy and fits
-the result. It is available from the desktop **Layout** selector and the mobile
-More menu.
+**Tidy layout** arranges cards with Dagre in a left-to-right hierarchy.
+**Fit cards to content** is beside it in the **More** menu.
 
 Edge paths stay intentionally simple. Choose **Bezier**, **Straight**, **Step**,
-or **Smooth step** from the toolbar; the choice persists locally. Edges keep the
-handle sides chosen when the connection is created. There is no obstacle router,
-implicit side recalculation, or collision solver.
+or **Smooth step** from the **Appearance** popover; the choice persists locally.
+Edges keep the handle sides chosen when the connection is created. There is no
+obstacle router, implicit side recalculation, or collision solver.
 
 Cards and edges with active validation findings show compact warning/error
-badges on the canvas. Clicking a badge opens the separate **Warnings** panel at
-that exact warning. The toolbar has two panels: **Canvas intelligence** for
-suggested fixes and **Warnings** for a minimal diagnostic list.
+badges on the canvas. The **Review** button shows the active count and opens one
+panel with **Issues** and **Fixes** tabs. Clicking a warning badge opens Issues at
+that exact warning.
 
-Canvas intelligence shows a short title and context line per suggestion group.
+Issues is a read-only diagnostic list with collapsed groups, simple rows, and
+ignored items. Fixes shows a short title and context per suggestion group.
 Expand a group to see every affected item. Each item has **Show** for zooming to
 that location and **Fix** for applying the change immediately as one undoable
 edit. Show is optional, so Fix works before or after inspecting the location.
-The Warnings panel is a read-only diagnostic list with collapsed groups, simple
-rows, and ignored items. All fixes happen through Canvas intelligence.
-
-**Data flow** layout keeps schemas out of the runtime flow and places them in a
-dedicated contract rail on the right, aligned with the API or database they
-describe. Notes, decisions, and risks move to a reference area below the active
-architecture. It is available from the **Layout** selector and the mobile More
-menu.
+The panel remembers the last tab while the editor session remains open.
 
 ## Derived views
 
@@ -175,7 +168,7 @@ document-shape changes add an entry to `canvasDocumentMigrations` in
 
 ## Screenshots
 
-The camera button exports the canvas as a PNG. **Full canvas** fits every card
+Use **More → Screenshot** to export the canvas as a PNG. **Full canvas** fits every card
 and edge into the image. **Select area** enters a crop mode where you drag a box
 around the region to export. Resolution options are 2x, 3x, and 4x; the output
 uses the current theme background and includes the rendered cards, edges, and
@@ -183,7 +176,8 @@ labels. Screenshot tooling is local-only and does not upload canvas content.
 
 ## Importing Obsidian canvases
 
-Use **Import .canvas** on the canvas list. Canvas parses and validates
+Use **Import .canvas** on the canvas list. The list page keeps the brand on the
+left, with **Appearance** and the account menu on the right. Canvas parses and validates
 the JSON Canvas file, keeps the filename as the title, and preserves nodes,
 edges, colors, groups, metadata, and unknown extension fields. Obsidian preset
 colors are mapped to their matching palette values.
@@ -196,19 +190,17 @@ remain clickable.
 ## Design language
 
 The shell uses a restrained neutral system: Segoe UI, dense uppercase labels,
-square panels, and compact controls. Five color themes are available from the
-topbar: **Graphite** (default dark), **Paper** (light), **Dune** (warm sand),
-**Abyss** (dark teal), and **Ember** (warm charcoal). Theme choice persists in
-`localStorage` under `canvas-theme`.
+square panels, and compact controls. Color themes, backdrop visibility, ambience,
+volume, and edge path style live in the **Appearance** popover. Theme choice
+persists in `localStorage` under `canvas-theme`.
 
 Theme tokens live in `web/src/themes.css`; layout and component styles live in
 `web/src/styles.css`. Add a theme by extending `web/src/themes.ts` and adding a
 matching `:root[data-theme="..."]` token block.
 
 Optional background ambience is generated in the browser with the Web Audio
-API. No external audio files are used. Multiple procedural ambience loops and a
-volume control are available from the topbar and can be switched off at any
-time.
+API. No external audio files are used. Procedural ambience loops and volume live
+in **Appearance** and can be switched off at any time.
 
 New canvases open with a name dialog. A canvas can also be renamed from its list
 card or from the editor title. Renames use the same optimistic `ETag` protection
@@ -220,10 +212,11 @@ are stored as card metadata; canvas content is never inlined. Opening a link use
 a canvas trail with back navigation and cycle protection. **Process with canvas**
 creates a Process card and a linked documentation canvas with starter notes.
 
-At 720px and below, the editor switches to a compact toolbar with a touch-sized
-action menu, full-bleed canvas, one-finger panning, separate mobile viewport
-state, and safe-area spacing. Small-phone and mobile flows are covered by
-Playwright tests.
+At 720px and below, the editor uses one compact row: back, title, **Add**, and
+**More**. The More sheet contains the remaining commands plus Appearance and
+account controls. The canvas is full-bleed with one-finger panning, separate
+mobile viewport state, and safe-area spacing. Small-phone and mobile flows are
+covered by Playwright tests.
 
 On touch devices, card handles stay hidden until you select a card and choose
 **Connect**. Then tap another card to create the edge. This avoids invisible
@@ -251,9 +244,10 @@ Cmd/Ctrl+/ line-comment toggling.
 
 ## Keyboard shortcuts
 
-Press `?` or use the keyboard button in the editor toolbar. Shortcuts cover
-undo/redo, duplicate, select all, group selection, fit view, zoom to selection,
-arrow-key nudging, space-drag panning, and command/control-scroll zooming.
+Press `?` or use **More → Keyboard shortcuts**. The shortcut list is generated
+from the command registry for Save now, Undo/Redo, Zoom to fit, and Help, and
+also covers duplicate, select all, group selection, zoom to selection, arrow-key
+nudging, space-drag panning, and command/control-scroll zooming.
 
 Drag a connection to empty canvas space to open the template picker. The new card
 is created and connected in one step. Double-click an edge or its label to edit
@@ -268,8 +262,8 @@ alignment guides. Hold Alt while dragging to disable snapping.
 Edges render above cards and groups. Every edge leaves and enters perpendicular
 to the side of the card it connects to. Opposite aligned sides stay straight;
 diagonal, top/bottom, and same-side connections curve based on those handle sides.
-Select an edge to reverse its direction or change its color. Drag an edge endpoint
-to reconnect it to another side or card.
+Select an edge to reverse its direction, choose its relation, or change its
+color. Drag an edge endpoint to reconnect it to another side or card.
 Edge labels do not block card dragging. Clicking outside a card finishes editing
 and lets autosave persist the change. Text cards and card note fields open in a
 plain Markdown editor with **Raw** and **Preview** modes. Preview is a rendered

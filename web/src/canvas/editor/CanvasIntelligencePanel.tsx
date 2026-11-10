@@ -6,18 +6,19 @@ import type { CanvasSuggestion } from '../suggestions/suggestionEngine'
 export function CanvasIntelligencePanel({
   suggestions,
   onClose,
+  embedded = false,
   onPreviewSuggestion,
   onApplySuggestion,
 }: {
   suggestions: CanvasSuggestion[]
-  onClose: () => void
+  onClose?: () => void
+  embedded?: boolean
   onPreviewSuggestion: (suggestion: CanvasSuggestion) => void
   onApplySuggestion: (suggestion: CanvasSuggestion) => void
 }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
-  return (
-    <aside className="validation-tray validation-panel intelligence-panel" aria-label="Canvas intelligence">
+  const header = (
       <header className="validation-panel-head">
         <div>
           <span className="validation-panel-kicker">Canvas intelligence</span>
@@ -27,7 +28,10 @@ export function CanvasIntelligencePanel({
           <X size={16} />
         </button>
       </header>
+  )
 
+  const content = (
+    <>
       <div className="validation-panel-body validation-suggestions-body">
         {suggestions.length === 0 ? (
           <div className="validation-empty">
@@ -91,6 +95,15 @@ export function CanvasIntelligencePanel({
           )
         })}
       </div>
+    </>
+  )
+
+  if (embedded) return <div className="review-embedded">{content}</div>
+
+  return (
+    <aside className="validation-tray validation-panel intelligence-panel" aria-label="Canvas intelligence">
+      {header}
+      {content}
     </aside>
   )
 }

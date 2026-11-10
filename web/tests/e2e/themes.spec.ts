@@ -1,4 +1,4 @@
-import { expect, test, type Locator } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 
 import { THEMES } from '../../src/atmosphere/registry'
 import { createCanvas } from './helpers'
@@ -13,6 +13,13 @@ function backgroundRgb(hex: string): string {
   const green = Number.parseInt(value.slice(2, 4), 16)
   const blue = Number.parseInt(value.slice(4, 6), 16)
   return `rgb(${red}, ${green}, ${blue})`
+}
+
+async function openAppearance(page: Page) {
+  await page.getByRole('button', { name: 'Appearance' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Appearance' })
+  await expect(dialog).toBeVisible()
+  return dialog
 }
 
 async function canvasStats(canvas: Locator) {
@@ -50,16 +57,55 @@ async function canvasStats(canvas: Locator) {
 
 test('applies and persists color themes', async ({ page }) => {
   await page.goto('/')
+  let appearance = await openAppearance(page)
+  const picker = appearance.getByLabel('Color theme')
   for (const theme of THEMES) {
-    await page.evaluate((id) => localStorage.setItem('canvas-theme', id), theme.id)
-    await page.reload()
+    await picker.selectOption(theme.id)
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme.id)
     await expect(page.locator('body')).toHaveCSS('background-color', backgroundRgb(theme.themeColor))
   }
 
-  await page.evaluate(() => localStorage.setItem('canvas-theme', 'dune'))
+  await picker.selectOption('dune')
+  await appearance.getByRole('button', { name: 'Close appearance' }).click()
   await page.reload()
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dune')
+  appearance = await openAppearance(page)
+  await expect(appearance.getByLabel('Color theme')).toHaveValue('dune')
+})
+
+test('offers optional background ambience themes', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('/')
+  const appearance = await openAppearance(page)
+  const picker = appearance.getByLabel('Background ambience')
+  await expect(picker.locator('option')).toContainText([
+    'Ambience off',
+    'Space sci-fi',
+    'Cyberpunk',
+    'Dune',
+    'Medieval sci-fi',
+    'Moss Circuit',
+    'Tide Signal',
+    'Paper Lanterns',
+    'Aurora Terminal',
+    'Copper Rain',
+    'Night Bus',
+    'Glass Meadow',
+    'Vapor Line',
+  ])
+
+  for (const ambience of ['space', 'cyberpunk', 'dune', 'medieval-scifi', 'moss', 'tide', 'lantern', 'aurora', 'rain', 'nightbus', 'meadow', 'vapor']) {
+    await picker.selectOption(ambience)
+    await expect(picker).toHaveValue(ambience)
+  }
+  const volume = appearance.getByLabel('Ambience volume')
+  await expect(volume).toBeVisible()
+  await volume.fill('50')
+  await expect(volume).toHaveValue('50')
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem('canvas-ambience-volume'))).toBe('0.5')
+  await picker.selectOption('')
+  await expect(picker).toHaveValue('')
+  expect(errors).toEqual([])
 })
 
 test('shows a living pixel backdrop on scenic themes', async ({ page }) => {
@@ -70,11 +116,11 @@ test('shows a living pixel backdrop on scenic themes', async ({ page }) => {
 
   const backdrop = page.locator('.canvas-backdrop')
   const canvas = backdrop.locator('canvas')
+  const appearance = await openAppearance(page)
+  const picker = appearance.getByLabel('Color theme')
   for (const theme of scenicThemes) {
     await test.step(`${theme.id} renders ${theme.scene}`, async () => {
-      await page.evaluate((id) => localStorage.setItem('canvas-theme', id), theme.id)
-      await page.reload()
-      await expect(page.locator('.canvas-flow')).toBeVisible()
+      await picker.selectOption(theme.id)
       await expect(backdrop).toBeVisible()
       await expect(backdrop).toHaveAttribute('data-scene', theme.scene)
       await expect(canvas).toBeVisible()
@@ -88,9 +134,31 @@ test('shows a living pixel backdrop on scenic themes', async ({ page }) => {
     })
   }
 
-  await page.evaluate(() => localStorage.setItem('canvas-theme', 'graphite'))
-  await page.reload()
-  await expect(page.locator('.canvas-flow')).toBeVisible()
+  const toggle = appearance.getByLabel('Backdrop')
+  await expect(toggle).toBeChecked()
+  await toggle.uncheck()
+  await expect(backdrop).toBeHidden()
+  await toggle.check()
+  await expect(backdrop).toBeVisible()
+
+  await picker.selectOption('graphite')
   await expect(backdrop).toBeHidden()
   expect(errors).toEqual([])
+})
+
+test('offers four simple edge path styles', async ({ page }) => {
+  await page.goto('/')
+  await createCanvas(page)
+  const appearance = await openAppearance(page)
+  const picker = appearance.getByLabel('Edge path style')
+  await expect(picker.locator('option')).toContainText([
+    'Bezier',
+    'Straight',
+    'Step',
+    'Smooth step',
+  ])
+  for (const style of ['bezier', 'straight', 'step', 'smoothstep']) {
+    await picker.selectOption(style)
+    await expect(picker).toHaveValue(style)
+  }
 })

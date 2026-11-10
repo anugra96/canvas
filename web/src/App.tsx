@@ -3,6 +3,8 @@ import { lazy, Suspense, useMemo } from 'react'
 import { createCanvasClient } from './api/client'
 import { useAuth } from './auth/AuthContext'
 import { CanvasListPage } from './pages/CanvasListPage'
+import { AppearanceMenu } from './AppearanceMenu'
+import { AvatarMenu } from './AvatarMenu'
 import { useCanvasTrail } from './navigation'
 
 const CanvasEditorPage = lazy(() => import('./pages/CanvasEditorPage').then((module) => ({
@@ -25,7 +27,10 @@ export default function App() {
             <small>Workspace</small>
           </span>
         </button>
-        <div className="topbar-actions" />
+        <div className="topbar-actions">
+          <AppearanceMenu />
+          <AvatarMenu />
+        </div>
       </header>
 
       {selectedCanvasId ? (
