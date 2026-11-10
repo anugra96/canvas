@@ -104,7 +104,7 @@ describe('canvas API', () => {
     expect(document.canvas).toEqual({
       nodes: [],
       edges: [],
-      app: { profile: 'systems', profileVersion: 2, scope: 'container' },
+      app: { profile: 'systems', profileVersion: 4, scope: 'container' },
     })
 
     const list = await app.request('/v1/canvases', { headers: authHeaders })
@@ -238,4 +238,35 @@ describe('canvas API', () => {
     expect(download.headers.get('content-disposition')).toContain('Fresh canvas.canvas')
     expect(JSON.parse(await download.text())).toEqual(canvasWithCard())
   })
+
+  it('renames a canvas with if-match protection', async () => {
+    const app = createApp(new MemoryCanvasStore(), { authMode: 'local' })
+    const created = await createCanvas(app)
+
+    const renamed = await app.request(`/v1/canvases/${created.id}`, {
+      method: 'PATCH',
+      headers: {
+        ...authHeaders,
+        'content-type': 'application/json',
+        'if-match': `"${created.etag}"`,
+      },
+      body: JSON.stringify({ title: 'Renamed canvas' }),
+    })
+    expect(renamed.status).toBe(200)
+    const document = await renamed.json() as CanvasDocument
+    expect(document.title).toBe('Renamed canvas')
+    expect(document.etag).not.toBe(created.etag)
+
+    const stale = await app.request(`/v1/canvases/${created.id}`, {
+      method: 'PATCH',
+      headers: {
+        ...authHeaders,
+        'content-type': 'application/json',
+        'if-match': `"${created.etag}"`,
+      },
+      body: JSON.stringify({ title: 'Stale rename' }),
+    })
+    expect(stale.status).toBe(412)
+  })
+
 })

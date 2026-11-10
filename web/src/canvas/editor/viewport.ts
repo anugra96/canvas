@@ -2,8 +2,12 @@ import type { Viewport } from '@xyflow/react'
 
 const KEY_PREFIX = 'canvas:viewport:v2:'
 
-function key(canvasId: string): string {
-  return `${KEY_PREFIX}${canvasId}`
+export type ViewportLayout = 'desktop' | 'mobile'
+
+function key(canvasId: string, layout: ViewportLayout): string {
+  return layout === 'mobile'
+    ? `${KEY_PREFIX}mobile:${canvasId}`
+    : `${KEY_PREFIX}${canvasId}`
 }
 
 function storage(): Storage | null {
@@ -14,9 +18,9 @@ function storage(): Storage | null {
   }
 }
 
-export function readViewport(canvasId: string): Viewport | null {
+export function readViewport(canvasId: string, layout: ViewportLayout = 'desktop'): Viewport | null {
   try {
-    const raw = storage()?.getItem(key(canvasId))
+    const raw = storage()?.getItem(key(canvasId, layout))
     if (!raw) return null
     const value = JSON.parse(raw) as Partial<Viewport>
     if (typeof value.x !== 'number' || typeof value.y !== 'number' || typeof value.zoom !== 'number') {
@@ -31,9 +35,9 @@ export function readViewport(canvasId: string): Viewport | null {
   }
 }
 
-export function writeViewport(canvasId: string, viewport: Viewport): void {
+export function writeViewport(canvasId: string, viewport: Viewport, layout: ViewportLayout = 'desktop'): void {
   try {
-    storage()?.setItem(key(canvasId), JSON.stringify(viewport))
+    storage()?.setItem(key(canvasId, layout), JSON.stringify(viewport))
   } catch {
     // Viewport persistence is best-effort.
   }

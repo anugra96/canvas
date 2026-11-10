@@ -2,6 +2,7 @@ import type { NodeProps } from '@xyflow/react'
 import { useState } from 'react'
 
 import type { CanvasFlowNode } from '../../model/adapter'
+import { useIsMobile } from '../../../useMediaQuery'
 import { useCanvasEditorActions } from '../CanvasEditorContext'
 import { FocusEditor } from '../FocusEditor'
 import { MarkdownContent } from '../MarkdownContent'
@@ -10,6 +11,7 @@ import { NodeShell } from './NodeShell'
 
 export function TextNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
   const actions = useCanvasEditorActions()
+  const isMobile = useIsMobile()
   const [editing, setEditing] = useState(false)
 
   function startEditing() {
@@ -43,7 +45,7 @@ export function TextNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
       >
         {data.text
           ? <MarkdownContent text={data.text} />
-          : <span className="node-placeholder">Double-click to write</span>}
+          : <span className="node-placeholder">{isMobile ? 'Double-tap to write' : 'Double-click to write'}</span>}
       </div>
       {editing && (
         <FocusEditor label="Edit text card" title={title} onClose={commit}>

@@ -2,8 +2,10 @@ import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 import {
+  CURRENT_CANVAS_DOCUMENT_SCHEMA_VERSION,
   EMPTY_CANVAS,
   createCanvasId,
+  migrateCanvasDocument,
   type CanvasDocument,
   type CanvasSummary,
   type JsonCanvas,
@@ -33,7 +35,7 @@ function safeSegment(value: string): string {
 }
 
 function parseDocument(value: unknown): CanvasDocument {
-  return value as CanvasDocument
+  return migrateCanvasDocument(value as CanvasDocument)
 }
 
 export class FileCanvasStore implements CanvasStore {
@@ -111,6 +113,7 @@ export class FileCanvasStore implements CanvasStore {
         const document: CanvasDocument = {
           id,
           title,
+          schemaVersion: CURRENT_CANVAS_DOCUMENT_SCHEMA_VERSION,
           etag: nextEtag(),
           updatedAt: now(),
           updatedBy: principal.displayName,
@@ -169,4 +172,27 @@ export class FileCanvasStore implements CanvasStore {
       return next
     })
   }
+  async rename(
+    tenantId: string,
+    id: string,
+    title: string,
+    ifMatch: string,
+    principal: CanvasPrincipal,
+  ): Promise<CanvasDocument> {
+    return this.enqueue(async () => {
+      const current = await this.readDocument(tenantId, id)
+      if (!current) throw new CanvasNotFoundError(id)
+      if (current.etag !== ifMatch) throw new CanvasConflictError(current)
+      const next: CanvasDocument = {
+        ...current,
+        title,
+        etag: nextEtag(),
+        updatedAt: now(),
+        updatedBy: principal.displayName,
+      }
+      await this.writeDocument(tenantId, next)
+      return next
+    })
+  }
+
 }

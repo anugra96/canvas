@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test'
+import { createCanvas } from './helpers'
 
 test('reconnects an edge endpoint to a different card', async ({ page }) => {
   await page.goto('/')
-  await page.getByRole('button', { name: 'New canvas' }).click()
+  await createCanvas(page)
   await page.getByRole('button', { name: 'Add card' }).click()
 
   const handle = page.locator('.react-flow__handle-right').first()

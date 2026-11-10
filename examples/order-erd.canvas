@@ -1,0 +1,195 @@
+{
+  "nodes": [
+    {
+      "id": "db-commerce",
+      "type": "text",
+      "x": 0,
+      "y": 320,
+      "width": 380,
+      "height": 260,
+      "text": "## Database: Commerce DB\n- **Purpose:** Orders, customers, and line items.\n- **Kind:** relational\n- **Owner:** Tower\n- **Console URL:** https://console.example.internal/commerce\n- **Status:** active",
+      "app": {
+        "entityType": "database",
+        "fields": {
+          "name": "Commerce DB",
+          "purpose": "Orders, customers, and line items.",
+          "kind": "relational",
+          "owner": "Tower",
+          "consoleUrl": "https://console.example.internal/commerce",
+          "status": "active"
+        }
+      }
+    },
+    {
+      "id": "api-orders",
+      "type": "text",
+      "x": 0,
+      "y": 700,
+      "width": 380,
+      "height": 260,
+      "text": "## API: Orders API\n- **Purpose:** Read and create orders.\n- **Protocol:** http\n- **Owner:** Tower\n- **Docs URL:** https://orders.example.internal/docs\n- **Status:** active",
+      "app": {
+        "entityType": "api",
+        "fields": {
+          "name": "Orders API",
+          "purpose": "Read and create orders.",
+          "protocol": "http",
+          "owner": "Tower",
+          "docsUrl": "https://orders.example.internal/docs",
+          "status": "active"
+        }
+      }
+    },
+    {
+      "id": "schema-customer",
+      "type": "text",
+      "x": 500,
+      "y": 0,
+      "width": 520,
+      "height": 360,
+      "text": "## Schema: Customer\n- **Contract kind:** database\n- **Version:** 1.0.0\n- **Owner:** Tower\n- **Status:** active\n- **Review status:** approved\n- **Reviewed version:** 1.0.0\n- **Last reviewed:** 2026-10-01\n- **Review interval (days):** 180",
+      "app": {
+        "entityType": "schema",
+        "fields": {
+          "name": "Customer",
+          "kind": "database",
+          "version": "1.0.0",
+          "owner": "Tower",
+          "status": "active",
+          "reviewStatus": "approved",
+          "reviewedVersion": "1.0.0",
+          "lastReviewed": "2026-10-01",
+          "reviewIntervalDays": 180,
+          "source": "{\n  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n  \"$id\": \"https://canvas.local/erd/customer/1.0.0\",\n  \"title\": \"Customer\",\n  \"description\": \"A commerce customer.\",\n  \"type\": \"object\",\n  \"additionalProperties\": false,\n  \"properties\": {\n    \"customer_id\": {\n      \"type\": \"string\"\n    },\n    \"email\": {\n      \"type\": \"string\",\n      \"format\": \"email\"\n    },\n    \"display_name\": {\n      \"type\": \"string\"\n    },\n    \"created_at\": {\n      \"type\": \"string\",\n      \"format\": \"date-time\"\n    }\n  },\n  \"required\": [\n    \"customer_id\",\n    \"email\",\n    \"created_at\"\n  ]\n}"
+        }
+      }
+    },
+    {
+      "id": "schema-order",
+      "type": "text",
+      "x": 500,
+      "y": 420,
+      "width": 520,
+      "height": 400,
+      "text": "## Schema: Order\n- **Contract kind:** database\n- **Version:** 1.0.0\n- **Owner:** Tower\n- **Status:** active\n- **Review status:** approved\n- **Reviewed version:** 1.0.0\n- **Last reviewed:** 2026-10-01\n- **Review interval (days):** 180",
+      "app": {
+        "entityType": "schema",
+        "fields": {
+          "name": "Order",
+          "kind": "database",
+          "version": "1.0.0",
+          "owner": "Tower",
+          "status": "active",
+          "reviewStatus": "approved",
+          "reviewedVersion": "1.0.0",
+          "lastReviewed": "2026-10-01",
+          "reviewIntervalDays": 180,
+          "source": "{\n  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n  \"$id\": \"https://canvas.local/erd/order/1.0.0\",\n  \"title\": \"Order\",\n  \"description\": \"A customer order header.\",\n  \"type\": \"object\",\n  \"additionalProperties\": false,\n  \"properties\": {\n    \"order_id\": {\n      \"type\": \"string\"\n    },\n    \"customer_id\": {\n      \"type\": \"string\"\n    },\n    \"status\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"pending\",\n        \"paid\",\n        \"shipped\",\n        \"cancelled\"\n      ]\n    },\n    \"total_cents\": {\n      \"type\": \"integer\",\n      \"minimum\": 0\n    },\n    \"created_at\": {\n      \"type\": \"string\",\n      \"format\": \"date-time\"\n    }\n  },\n  \"required\": [\n    \"order_id\",\n    \"customer_id\",\n    \"status\",\n    \"total_cents\",\n    \"created_at\"\n  ]\n}"
+        }
+      }
+    },
+    {
+      "id": "schema-order-item",
+      "type": "text",
+      "x": 500,
+      "y": 880,
+      "width": 520,
+      "height": 380,
+      "text": "## Schema: Order Item\n- **Contract kind:** database\n- **Version:** 1.0.0\n- **Owner:** Tower\n- **Status:** active\n- **Review status:** approved\n- **Reviewed version:** 1.0.0\n- **Last reviewed:** 2026-10-01\n- **Review interval (days):** 180",
+      "app": {
+        "entityType": "schema",
+        "fields": {
+          "name": "Order Item",
+          "kind": "database",
+          "version": "1.0.0",
+          "owner": "Tower",
+          "status": "active",
+          "reviewStatus": "approved",
+          "reviewedVersion": "1.0.0",
+          "lastReviewed": "2026-10-01",
+          "reviewIntervalDays": 180,
+          "source": "{\n  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n  \"$id\": \"https://canvas.local/erd/order-item/1.0.0\",\n  \"title\": \"Order Item\",\n  \"description\": \"A line item on an order.\",\n  \"type\": \"object\",\n  \"additionalProperties\": false,\n  \"properties\": {\n    \"order_item_id\": {\n      \"type\": \"string\"\n    },\n    \"order_id\": {\n      \"type\": \"string\"\n    },\n    \"sku\": {\n      \"type\": \"string\"\n    },\n    \"quantity\": {\n      \"type\": \"integer\",\n      \"minimum\": 1\n    },\n    \"unit_price_cents\": {\n      \"type\": \"integer\",\n      \"minimum\": 0\n    }\n  },\n  \"required\": [\n    \"order_item_id\",\n    \"order_id\",\n    \"sku\",\n    \"quantity\",\n    \"unit_price_cents\"\n  ]\n}"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-customer-db",
+      "fromNode": "schema-customer",
+      "fromSide": "right",
+      "toNode": "db-commerce",
+      "toSide": "left",
+      "label": "describes",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "describes"
+      }
+    },
+    {
+      "id": "e-order-db",
+      "fromNode": "schema-order",
+      "fromSide": "right",
+      "toNode": "db-commerce",
+      "toSide": "left",
+      "label": "describes",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "describes"
+      }
+    },
+    {
+      "id": "e-item-db",
+      "fromNode": "schema-order-item",
+      "fromSide": "right",
+      "toNode": "db-commerce",
+      "toSide": "left",
+      "label": "describes",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "describes"
+      }
+    },
+    {
+      "id": "e-order-api",
+      "fromNode": "schema-order",
+      "fromSide": "right",
+      "toNode": "api-orders",
+      "toSide": "left",
+      "label": "describes",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "describes"
+      }
+    },
+    {
+      "id": "e-order-customer",
+      "fromNode": "schema-order",
+      "fromSide": "right",
+      "toNode": "schema-customer",
+      "toSide": "left",
+      "label": "references",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "references"
+      }
+    },
+    {
+      "id": "e-item-order",
+      "fromNode": "schema-order-item",
+      "fromSide": "right",
+      "toNode": "schema-order",
+      "toSide": "left",
+      "label": "references",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "references"
+      }
+    }
+  ],
+  "app": {
+    "profile": "systems",
+    "profileVersion": 3,
+    "scope": "container"
+  }
+}

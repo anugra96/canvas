@@ -91,4 +91,21 @@ describe('convertNodeType', () => {
     expect(convertNodeType(file, 'text', DEFAULT_ONTOLOGY).data.text).toBe('**Notes/Test.md**\n\n#Heading')
     expect(convertNodeType(link, 'text', DEFAULT_ONTOLOGY).data.text).toBe('https://obsidian.md')
   })
+
+  it('converts a text card to a schema card', () => {
+    const text = toFlowNode({
+      id: 'schema',
+      type: 'text',
+      x: 0,
+      y: 0,
+      width: 560,
+      height: 420,
+      text: 'Contract notes',
+    })
+
+    const converted = convertNodeType(text, 'schema', DEFAULT_ONTOLOGY)
+    expect(converted.type).toBe('schema')
+    expect(converted.data.entity?.entityType).toBe('schema')
+    expect(converted.data.entity?.fields.source).toContain('$schema')
+  })
 })

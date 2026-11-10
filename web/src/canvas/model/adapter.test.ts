@@ -120,6 +120,31 @@ describe('canvas flow adapter', () => {
     })
   })
 
+  it('maps a schema entity to the schema flow type', () => {
+    const schemaCanvas: JsonCanvas = {
+      nodes: [
+        {
+          id: 'schema-a',
+          type: 'text',
+          x: 0,
+          y: 0,
+          width: 560,
+          height: 420,
+          text: '## Schema: Order',
+          app: {
+            entityType: 'schema',
+            fields: { name: 'Order', source: '{"type":"object"}' },
+          },
+        },
+      ],
+      edges: [],
+    }
+
+    const flow = toFlowCanvas(schemaCanvas)
+    expect(flow.nodes[0]?.type).toBe('schema')
+    expect(flow.nodes[0]?.data.entity?.entityType).toBe('schema')
+  })
+
   it('maps a code entity to the code flow type', () => {
     const codeCanvas: JsonCanvas = {
       nodes: [
@@ -167,8 +192,8 @@ describe('canvas flow adapter', () => {
 
 describe('card color backgrounds', () => {
   it('uses opaque card fills and translucent group fills', () => {
-    expect(cardBackgroundFor('1')).toBe('#3a1f20')
-    expect(groupBackgroundFor('1')).toBe('#fb464c73')
+    expect(cardBackgroundFor('1')).toBe('color-mix(in srgb, #fb464c 14%, var(--ui-panel-solid))')
+    expect(groupBackgroundFor('1')).toBe('color-mix(in srgb, #fb464c 26%, transparent)')
     expect(groupBackgroundFor(undefined)).toBeUndefined()
   })
 })

@@ -22,6 +22,13 @@ export interface CanvasStore {
     ifMatch: string,
     principal: CanvasPrincipal,
   ): Promise<CanvasDocument>
+  rename(
+    tenantId: string,
+    id: string,
+    title: string,
+    ifMatch: string,
+    principal: CanvasPrincipal,
+  ): Promise<CanvasDocument>
 }
 
 export class CanvasNotFoundError extends Error {

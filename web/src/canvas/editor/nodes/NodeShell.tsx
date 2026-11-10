@@ -1,8 +1,12 @@
 import { Handle, NodeResizer, Position } from '@xyflow/react'
-import type { ReactNode } from 'react'
+import { AlertCircle, AlertTriangle, Link2 } from 'lucide-react'
+import type { CSSProperties, ReactNode } from 'react'
 
-import { cardBackgroundFor, colorFor, groupBackgroundFor, type CanvasFlowNode } from '../../model/adapter'
+import { getCanvasLinks } from '@canvas/contract'
+
+import { colorFor, groupBackgroundFor, type CanvasFlowNode } from '../../model/adapter'
 import { useCanvasEditorActions } from '../CanvasEditorContext'
+import { useCanvasValidation } from '../CanvasValidationContext'
 
 const SIDES = [
   { id: 'top', position: Position.Top },
@@ -20,10 +24,17 @@ interface NodeShellProps {
 
 export function NodeShell({ node, selected, className, children }: NodeShellProps) {
   const actions = useCanvasEditorActions()
+  const validation = useCanvasValidation()
+  const issues = validation.nodeIssues.get(node.id) ?? []
+  const canvasLinks = getCanvasLinks(node.data.raw)
+  const hasError = issues.some((issue) => issue.severity === 'error')
   const accent = colorFor(node.data.raw.color)
-  const background = node.data.raw.type === 'group'
-    ? groupBackgroundFor(node.data.raw.color)
-    : cardBackgroundFor(node.data.raw.color)
+  const isGroup = node.data.raw.type === 'group'
+  const background = isGroup ? groupBackgroundFor(node.data.raw.color) : undefined
+  const style: CSSProperties = {}
+  if (accent) (style as Record<string, string>)['--card-accent'] = accent
+  if (background) style.background = background
+  const hasCardColor = Boolean(accent && !isGroup)
 
   return (
     <>
@@ -49,9 +60,43 @@ export function NodeShell({ node, selected, className, children }: NodeShellProp
           }}
         />
       ))}
+      {!isGroup && (canvasLinks.length > 0 || selected) && (
+        <button
+          type="button"
+          className={`canvas-link-badge nodrag nopan${canvasLinks.length > 0 ? ' has-links' : ''}`}
+          title={canvasLinks.length > 0
+            ? `${canvasLinks.length} linked canvas${canvasLinks.length === 1 ? '' : 's'}`
+            : 'Link a canvas'}
+          aria-label="Manage linked canvases"
+          onMouseDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation()
+            actions.openCanvasLinks(node.id)
+          }}
+        >
+          <Link2 size={11} />
+          {canvasLinks.length > 1 ? <span>{canvasLinks.length}</span> : null}
+        </button>
+      )}
+      {issues.length > 0 && (
+        <button
+          type="button"
+          className={`canvas-warning-badge nodrag nopan${hasError ? ' error' : ''}`}
+          title={issues.map((issue) => issue.message).join('\n')}
+          aria-label={`${issues.length} validation ${issues.length === 1 ? 'issue' : 'issues'}`}
+          onMouseDown={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation()
+            validation.openIssue(issues[0]!)
+          }}
+        >
+          {hasError ? <AlertCircle size={11} /> : <AlertTriangle size={11} />}
+          {issues.length > 1 ? <span>{issues.length}</span> : null}
+        </button>
+      )}
       <div
-        className={`canvas-node ${className}${selected ? ' selected' : ''}`}
-        style={accent || background ? { borderColor: accent, background } : undefined}
+        className={`canvas-node ${className}${selected ? ' selected' : ''}${hasCardColor ? ' has-card-color' : ''}`}
+        style={Object.keys(style).length > 0 ? style : undefined}
         onDoubleClickCapture={(event) => {
           if (node.data.raw.type === 'group') return
           const rect = event.currentTarget.getBoundingClientRect()

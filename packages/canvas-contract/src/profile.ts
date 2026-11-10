@@ -55,10 +55,16 @@ export type ProfileIssueCode =
   | 'relation_not_allowed'
   | 'group_endpoint'
   | 'missing_endpoint'
+  | 'schema_invalid'
+  | 'schema_review'
+  | 'schema_unlinked'
+  | 'schema_contract'
+  | 'artifact_without_producer'
+  | 'process_without_runner'
 
 export interface CanvasProfileIssue {
   code: ProfileIssueCode
-  severity: 'warning'
+  severity: 'warning' | 'error'
   message: string
   nodeId?: string
   edgeId?: string
@@ -83,41 +89,38 @@ export const RAW_PROFILE: CanvasProfile = {
 export const SYSTEMS_PROFILE: CanvasProfile = {
   id: 'systems',
   label: 'Systems',
-  version: 2,
-  description: 'Minimal systems design and architecture review.',
+  version: 4,
+  description: 'Minimal systems design and architecture review with JSON Schema contracts.',
   scope: 'container',
   allowUntypedText: false,
   allowUnlistedEntityTypes: false,
   allowUnlistedRelationTypes: false,
   requireRelationType: true,
-  entityTypes: ['system', 'repository', 'api', 'database', 'actor', 'process', 'artifact'],
+  entityTypes: ['system', 'repository', 'actor', 'process', 'artifact', 'schema'],
   annotationTypes: ['note', 'decision', 'risk'],
   relationTypes: [
-    'exposes',
-    'calls',
-    'stores_in',
-    'depends_on',
     'runs',
-    'orchestrates',
-    'produces',
     'uses',
+    'produces',
+    'defines',
+    'describes',
     'relates_to',
   ],
   relationRules: [
-    { relationType: 'exposes', from: ['system'], to: ['api'] },
-    { relationType: 'calls', from: ['system'], to: ['api'] },
-    { relationType: 'stores_in', from: ['system'], to: ['database'] },
-    { relationType: 'depends_on', from: ['system'], to: ['system'] },
-    { relationType: 'runs', from: ['actor', 'system'], to: ['process'] },
-    { relationType: 'orchestrates', from: ['process'], to: ['system', 'api', 'database'] },
-    { relationType: 'produces', from: ['system', 'repository'], to: ['artifact'] },
-    { relationType: 'uses', from: ['system', 'process'], to: ['artifact'] },
-    { relationType: 'uses', from: ['system'], to: ['repository'] },
-    { relationType: 'uses', from: ['actor'], to: ['system'] },
+    { relationType: 'runs', from: ['actor', 'system', 'repository', 'process'], to: ['process'] },
+    { relationType: 'produces', from: ['system', 'repository', 'process'], to: ['artifact'] },
+    {
+      relationType: 'uses',
+      from: ['actor', 'system', 'process'],
+      to: ['system', 'repository', 'artifact', 'schema'],
+    },
+    { relationType: 'uses', from: ['schema'], to: ['schema'] },
+    { relationType: 'defines', from: ['repository', 'system'], to: ['schema'] },
+    { relationType: 'describes', from: ['schema'], to: ['system'] },
     { relationType: 'relates_to', from: ['note', 'decision', 'risk'], to: ['*'] },
     {
       relationType: 'relates_to',
-      from: ['system', 'repository', 'api', 'database', 'actor', 'process', 'artifact'],
+      from: ['system', 'repository', 'actor', 'process', 'artifact', 'schema'],
       to: ['note', 'decision', 'risk'],
     },
   ],

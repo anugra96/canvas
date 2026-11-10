@@ -1,0 +1,299 @@
+{
+  "nodes": [
+    {
+      "id": "repo-model-delivery",
+      "type": "text",
+      "x": 50,
+      "y": 40,
+      "width": 360,
+      "height": 220,
+      "text": "## Repository: model-delivery\n- **Provider:** github\n- **URL:** https://github.com/example/model-delivery\n- **Default branch:** main\n- **Owner:** Forge\n- **Status:** active",
+      "app": {
+        "entityType": "repository",
+        "fields": {
+          "name": "model-delivery",
+          "provider": "github",
+          "url": "https://github.com/example/model-delivery",
+          "defaultBranch": "main",
+          "owner": "Forge",
+          "status": "active"
+        }
+      }
+    },
+    {
+      "id": "system-registry",
+      "type": "text",
+      "x": 40,
+      "y": 332,
+      "width": 380,
+      "height": 260,
+      "text": "## System: Registry Service\n- **Purpose:** Validates and serves model manifests.\n- **Kind:** service\n- **Owner:** Forge\n- **Deployment URL:** https://registry.example.internal\n- **Status:** active",
+      "app": {
+        "entityType": "system",
+        "fields": {
+          "name": "Registry Service",
+          "purpose": "Validates and serves model manifests.",
+          "kind": "service",
+          "owner": "Forge",
+          "deploymentUrl": "https://registry.example.internal",
+          "status": "active"
+        }
+      }
+    },
+    {
+      "id": "system-candidate",
+      "type": "text",
+      "x": 40,
+      "y": 664,
+      "width": 380,
+      "height": 260,
+      "text": "## System: Candidate Builder\n- **Purpose:** Builds candidate models and registers manifests.\n- **Kind:** worker\n- **Owner:** Forge\n- **Deployment URL:** https://builder.example.internal\n- **Status:** active",
+      "app": {
+        "entityType": "system",
+        "fields": {
+          "name": "Candidate Builder",
+          "purpose": "Builds candidate models and registers manifests.",
+          "kind": "worker",
+          "owner": "Forge",
+          "deploymentUrl": "https://builder.example.internal",
+          "status": "active"
+        }
+      }
+    },
+    {
+      "id": "system-publisher",
+      "type": "text",
+      "x": 40,
+      "y": 996,
+      "width": 380,
+      "height": 260,
+      "text": "## System: Model Publisher\n- **Purpose:** Promotes approved models into runtime environments.\n- **Kind:** service\n- **Owner:** Tower\n- **Deployment URL:** https://publisher.example.internal\n- **Status:** active",
+      "app": {
+        "entityType": "system",
+        "fields": {
+          "name": "Model Publisher",
+          "purpose": "Promotes approved models into runtime environments.",
+          "kind": "service",
+          "owner": "Tower",
+          "deploymentUrl": "https://publisher.example.internal",
+          "status": "active"
+        }
+      }
+    },
+    {
+      "id": "api-registry",
+      "type": "text",
+      "x": 570,
+      "y": 674,
+      "width": 360,
+      "height": 240,
+      "text": "## API: Registry API\n- **Purpose:** Create and query model manifest records.\n- **Protocol:** http\n- **Owner:** Forge\n- **Docs URL:** https://registry.example.internal/docs\n- **Status:** active",
+      "app": {
+        "entityType": "api",
+        "fields": {
+          "name": "Registry API",
+          "purpose": "Create and query model manifest records.",
+          "protocol": "http",
+          "owner": "Forge",
+          "docsUrl": "https://registry.example.internal/docs",
+          "status": "active"
+        }
+      }
+    },
+    {
+      "id": "db-model-store",
+      "type": "text",
+      "x": 570,
+      "y": 1006,
+      "width": 360,
+      "height": 260,
+      "text": "## Database: Model Store\n- **Purpose:** Durable model and deployment records.\n- **Kind:** relational\n- **Owner:** Tower\n- **Console URL:** https://console.example.internal/model-store\n- **Status:** active",
+      "app": {
+        "entityType": "database",
+        "fields": {
+          "name": "Model Store",
+          "purpose": "Durable model and deployment records.",
+          "kind": "relational",
+          "owner": "Tower",
+          "consoleUrl": "https://console.example.internal/model-store",
+          "status": "active"
+        }
+      }
+    },
+    {
+      "id": "schema-model-manifest",
+      "type": "text",
+      "x": 1110,
+      "y": 584,
+      "width": 560,
+      "height": 420,
+      "text": "## Schema: Model Manifest\n- **Contract kind:** api\n- **Version:** 1.2.0\n- **Owner:** Forge\n- **Status:** active\n- **Review status:** approved\n- **Reviewed version:** 1.2.0\n- **Last reviewed:** 2026-10-15\n- **Review interval (days):** 90",
+      "app": {
+        "entityType": "schema",
+        "fields": {
+          "name": "Model Manifest",
+          "kind": "api",
+          "version": "1.2.0",
+          "owner": "Forge",
+          "status": "active",
+          "reviewStatus": "approved",
+          "reviewedVersion": "1.2.0",
+          "lastReviewed": "2026-10-15",
+          "reviewIntervalDays": 90,
+          "source": "{\n  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n  \"$id\": \"https://canvas.local/schemas/model-manifest/1.2.0\",\n  \"title\": \"Model Manifest\",\n  \"description\": \"A publishable model artifact record.\",\n  \"type\": \"object\",\n  \"additionalProperties\": false,\n  \"properties\": {\n    \"model_id\": {\n      \"type\": \"string\",\n      \"minLength\": 1\n    },\n    \"model_family\": {\n      \"type\": \"string\"\n    },\n    \"version\": {\n      \"type\": \"string\",\n      \"pattern\": \"^[0-9]+\\\\.[0-9]+\\\\.[0-9]+$\"\n    },\n    \"artifact_uri\": {\n      \"type\": \"string\",\n      \"format\": \"uri\"\n    },\n    \"image_digest\": {\n      \"type\": \"string\",\n      \"pattern\": \"^sha256:[a-f0-9]{64}$\"\n    },\n    \"owner\": {\n      \"type\": \"string\"\n    },\n    \"created_at\": {\n      \"type\": \"string\",\n      \"format\": \"date-time\"\n    }\n  },\n  \"required\": [\n    \"model_id\",\n    \"version\",\n    \"artifact_uri\",\n    \"image_digest\",\n    \"owner\",\n    \"created_at\"\n  ]\n}"
+        }
+      }
+    },
+    {
+      "id": "schema-deployment-record",
+      "type": "text",
+      "x": 1110,
+      "y": 1060,
+      "width": 560,
+      "height": 420,
+      "text": "## Schema: Deployment Record\n- **Contract kind:** database\n- **Version:** 1.1.0\n- **Owner:** Tower\n- **Status:** active\n- **Review status:** needs_review\n- **Reviewed version:** 1.0.0\n- **Last reviewed:** 2026-04-01\n- **Review interval (days):** 90",
+      "app": {
+        "entityType": "schema",
+        "fields": {
+          "name": "Deployment Record",
+          "kind": "database",
+          "version": "1.1.0",
+          "owner": "Tower",
+          "status": "active",
+          "reviewStatus": "needs_review",
+          "reviewedVersion": "1.0.0",
+          "lastReviewed": "2026-04-01",
+          "reviewIntervalDays": 90,
+          "source": "{\n  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n  \"$id\": \"https://canvas.local/schemas/deployment-record/1.1.0\",\n  \"title\": \"Deployment Record\",\n  \"description\": \"The observed runtime deployment of a model.\",\n  \"type\": \"object\",\n  \"additionalProperties\": false,\n  \"properties\": {\n    \"deployment_id\": {\n      \"type\": \"string\"\n    },\n    \"model_id\": {\n      \"type\": \"string\"\n    },\n    \"environment\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"staging\",\n        \"production\"\n      ]\n    },\n    \"image_digest\": {\n      \"type\": \"string\",\n      \"pattern\": \"^sha256:[a-f0-9]{64}$\"\n    },\n    \"status\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"planned\",\n        \"deploying\",\n        \"active\",\n        \"failed\",\n        \"retired\"\n      ]\n    },\n    \"deployed_at\": {\n      \"type\": \"string\",\n      \"format\": \"date-time\"\n    },\n    \"deployed_by\": {\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\n    \"deployment_id\",\n    \"model_id\",\n    \"environment\",\n    \"image_digest\",\n    \"status\",\n    \"deployed_at\"\n  ]\n}"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-repo-manifest",
+      "fromNode": "repo-model-delivery",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "schema-model-manifest",
+      "label": "defines",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "defines"
+      }
+    },
+    {
+      "id": "e-repo-deployment",
+      "fromNode": "repo-model-delivery",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "schema-deployment-record",
+      "label": "defines",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "defines"
+      }
+    },
+    {
+      "id": "e-registry-api",
+      "fromNode": "system-registry",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "api-registry",
+      "label": "exposes",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "exposes"
+      }
+    },
+    {
+      "id": "e-registry-manifest",
+      "fromNode": "system-registry",
+      "fromSide": "right",
+      "toSide": "top",
+      "toNode": "schema-model-manifest",
+      "label": "uses",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "uses"
+      }
+    },
+    {
+      "id": "e-candidate-api",
+      "fromNode": "system-candidate",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "api-registry",
+      "label": "calls",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "calls"
+      }
+    },
+    {
+      "id": "e-candidate-manifest",
+      "fromNode": "system-candidate",
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "toNode": "schema-model-manifest",
+      "label": "uses",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "uses"
+      }
+    },
+    {
+      "id": "e-publisher-api",
+      "fromNode": "system-publisher",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "api-registry",
+      "label": "calls",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "calls"
+      }
+    },
+    {
+      "id": "e-publisher-store",
+      "fromNode": "system-publisher",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "db-model-store",
+      "label": "stores in",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "stores_in"
+      }
+    },
+    {
+      "id": "e-manifest-api",
+      "fromNode": "schema-model-manifest",
+      "fromSide": "left",
+      "toSide": "right",
+      "toNode": "api-registry",
+      "label": "describes",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "describes"
+      }
+    },
+    {
+      "id": "e-deployment-store",
+      "fromNode": "schema-deployment-record",
+      "fromSide": "left",
+      "toSide": "right",
+      "toNode": "db-model-store",
+      "label": "describes",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "describes"
+      }
+    }
+  ],
+  "app": {
+    "profile": "systems",
+    "profileVersion": 3,
+    "scope": "container"
+  }
+}

@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Copy, Group as GroupIcon, Trash2, X } from 'lucide-react'
+import { ArrowLeftRight, Copy, Group as GroupIcon, Link2, Scaling, Trash2, X } from 'lucide-react'
 
 import { useOntology } from '../../ontology/OntologyContext'
 import { CANVAS_COLOR_PRESETS } from '../model/adapter'
@@ -12,12 +12,18 @@ export function SelectionToolbar({
   allowText = true,
   entityTypeIds,
   membershipLabel,
+  canConnect = false,
+  connectMode = false,
+  onConnect,
+  canResize = false,
+  onResize,
   onCardTypeChange,
   onGroup,
   onReverse,
   onToggleMembership,
   onDuplicate,
   onDelete,
+  onClear,
   onColor,
 }: {
   selectedNodes: number
@@ -28,12 +34,18 @@ export function SelectionToolbar({
   allowText?: boolean
   entityTypeIds?: string[]
   membershipLabel: string
+  canConnect?: boolean
+  connectMode?: boolean
+  onConnect?: () => void
+  canResize?: boolean
+  onResize?: () => void
   onCardTypeChange?: (typeId: string) => void
   onGroup: () => void
   onReverse: () => void
   onToggleMembership: () => void
   onDuplicate: () => void
   onDelete: () => void
+  onClear: () => void
   onColor: (color: string | undefined) => void
 }) {
   const ontology = useOntology()
@@ -47,7 +59,20 @@ export function SelectionToolbar({
 
   return (
     <div className="selection-toolbar" onMouseDown={(event) => event.stopPropagation()}>
+      <button className="icon-button selection-clear" onClick={onClear} aria-label="Clear selection" title="Clear selection">
+        <X size={14} />
+      </button>
       <span className="selection-count">{total} selected</span>
+      {canConnect && onConnect && (
+        <button
+          className={`button${connectMode ? ' primary' : ''}`}
+          onClick={onConnect}
+          aria-pressed={connectMode}
+        >
+          <Link2 size={14} />
+          {connectMode ? 'Tap a card' : 'Connect'}
+        </button>
+      )}
       {cardTypeValue !== undefined && onCardTypeChange && (
         <label className="toolbar-field selection-type">
           <span>Card type</span>
@@ -65,6 +90,12 @@ export function SelectionToolbar({
             ))}
           </select>
         </label>
+      )}
+      {canResize && onResize && (
+        <button className="button" onClick={onResize}>
+          <Scaling size={14} />
+          Size
+        </button>
       )}
       <button className="button" onClick={onGroup} disabled={!canGroup}>
         <GroupIcon size={14} />

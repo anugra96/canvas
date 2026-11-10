@@ -53,7 +53,7 @@ export function convertNodeType(
   const currentFields = node.data.entity?.fields ?? {}
   const fields = { ...emptyEntityFields(entityType), ...currentFields }
 
-  if (!node.data.entity) {
+  if (!node.data.entity && typeId !== 'schema') {
     const oldText = fallbackText(node)
     if (oldText) {
       const textField = entityType.fields.find((field) => field.type === 'textarea')
@@ -81,7 +81,7 @@ export function convertNodeType(
 
   return {
     ...node,
-    type: entityType.id === 'code' ? 'code' : 'entity',
+    type: entityType.id === 'code' ? 'code' : entityType.id === 'schema' ? 'schema' : 'entity',
     data: {
       ...node.data,
       raw: raw as CanvasNode,

@@ -62,7 +62,7 @@ export function ConnectionTemplateMenu({
           >
             <span
               className="template-dot"
-              style={{ background: colorFor(entityType.color) ?? 'var(--sky-cyan)' }}
+              style={{ background: colorFor(entityType.color) ?? 'var(--ui-accent)' }}
             />
             {entityType.label}
           </button>

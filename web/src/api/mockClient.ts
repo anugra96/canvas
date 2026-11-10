@@ -1,4 +1,5 @@
 import {
+  CURRENT_CANVAS_DOCUMENT_SCHEMA_VERSION,
   DEFAULT_PROFILES,
   EMPTY_CANVAS,
   createCanvasId,
@@ -52,6 +53,7 @@ export function createMockCanvasClient(session: CanvasSession): CanvasClient {
       const document: CanvasDocument = {
         id: createCanvasId(),
         title,
+        schemaVersion: CURRENT_CANVAS_DOCUMENT_SCHEMA_VERSION,
         etag: nextEtag(),
         updatedAt: now(),
         updatedBy: session.displayName,
@@ -67,6 +69,7 @@ export function createMockCanvasClient(session: CanvasSession): CanvasClient {
       const document: CanvasDocument = {
         id: createCanvasId(),
         title,
+        schemaVersion: CURRENT_CANVAS_DOCUMENT_SCHEMA_VERSION,
         etag: nextEtag(),
         updatedAt: now(),
         updatedBy: session.displayName,
@@ -98,6 +101,23 @@ export function createMockCanvasClient(session: CanvasSession): CanvasClient {
         nodeCount: canvas.nodes?.length ?? 0,
         edgeCount: canvas.edges?.length ?? 0,
         canvas: structuredClone(canvas),
+      }
+      documents.set(id, next)
+      return structuredClone(next)
+    },
+
+    async renameCanvas(id, title, etag) {
+      const current = documents.get(id)
+      if (!current) throw new Error('Canvas not found.')
+      if (current.etag !== etag) {
+        throw new CanvasConflictError(structuredClone(current))
+      }
+      const next: CanvasDocument = {
+        ...current,
+        title,
+        etag: nextEtag(),
+        updatedAt: now(),
+        updatedBy: session.displayName,
       }
       documents.set(id, next)
       return structuredClone(next)

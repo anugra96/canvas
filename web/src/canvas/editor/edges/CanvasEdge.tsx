@@ -4,8 +4,13 @@ import {
   type EdgeProps,
 } from '@xyflow/react'
 
+import { AlertCircle, AlertTriangle } from 'lucide-react'
+
 import type { CanvasFlowEdge } from '../../model/adapter'
+import { useCanvasEditorActions } from '../CanvasEditorContext'
+import { useCanvasValidation } from '../CanvasValidationContext'
 import { getCanvasEdgePath } from '../../model/edgePath'
+import { useEdgeStyle } from '../../model/edgeStyle'
 
 export function CanvasEdge({
   id,
@@ -20,9 +25,14 @@ export function CanvasEdge({
   style,
   data,
   selected,
-  interactionWidth = 44,
+  interactionWidth = 24,
 }: EdgeProps<CanvasFlowEdge>) {
-  const { path, labelX, labelY } = getCanvasEdgePath({
+  const actions = useCanvasEditorActions()
+  const validation = useCanvasValidation()
+  const edgeStyle = useEdgeStyle()
+  const issues = validation.edgeIssues.get(id) ?? []
+  const hasError = issues.some((issue) => issue.severity === 'error')
+  const pathResult = getCanvasEdgePath({
     id,
     sourceX,
     sourceY,
@@ -30,7 +40,10 @@ export function CanvasEdge({
     targetX,
     targetY,
     targetPosition,
-  })
+  }, edgeStyle)
+  const path = pathResult.path
+  const labelX = pathResult.labelX
+  const labelY = pathResult.labelY
   const label = data?.label
   const untyped = !data?.relationType
 
@@ -41,7 +54,7 @@ export function CanvasEdge({
         className="canvas-edge-halo"
         path={path}
         interactionWidth={0}
-        style={{ stroke: '#0b0d0f', strokeWidth: selected ? 6 : 5, opacity: 0.72 }}
+        style={{ stroke: 'var(--ui-edge-outline)', strokeWidth: selected ? 6 : 5, opacity: 0.72 }}
       />
       <BaseEdge
         id={id}
@@ -55,15 +68,45 @@ export function CanvasEdge({
           strokeWidth: selected ? 3 : 2,
         }}
       />
-      {label && (
+      {(label || issues.length > 0) && (
         <EdgeLabelRenderer>
           <div
-            className={`edge-label nodrag nopan${untyped ? ' untyped' : ''}`}
+            className="edge-label-wrap nodrag nopan"
             style={{
               transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
             }}
           >
-            {label}
+            {label && (
+              <div
+                className={`edge-label${untyped ? ' untyped' : ''}`}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  actions.selectEdge(id)
+                }}
+                onDoubleClick={(event) => {
+                  event.stopPropagation()
+                  actions.editEdgeLabel(id, event.clientX, event.clientY)
+                }}
+              >
+                {label}
+              </div>
+            )}
+            {issues.length > 0 && (
+              <button
+                type="button"
+                className={`edge-warning-badge nodrag nopan${hasError ? ' error' : ''}`}
+                title={issues.map((issue) => issue.message).join('\n')}
+                aria-label={`${issues.length} edge validation ${issues.length === 1 ? 'issue' : 'issues'}`}
+                onMouseDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  validation.openIssue(issues[0]!)
+                }}
+              >
+                {hasError ? <AlertCircle size={10} /> : <AlertTriangle size={10} />}
+                {issues.length > 1 ? <span>{issues.length}</span> : null}
+              </button>
+            )}
           </div>
         </EdgeLabelRenderer>
       )}

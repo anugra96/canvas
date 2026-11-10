@@ -1,6 +1,7 @@
 import type { NodeProps } from '@xyflow/react'
 import {
   Boxes,
+  Braces,
   ChevronDown,
   ChevronRight,
   Cable,
@@ -32,6 +33,7 @@ import { useOntology } from '../../../ontology/OntologyContext'
 import { colorFor } from '../../model/adapter'
 import type { CanvasFlowNode } from '../../model/adapter'
 import { useCanvasEditorActions } from '../CanvasEditorContext'
+import { useIsMobile } from '../../../useMediaQuery'
 import { MarkdownContent } from '../MarkdownContent'
 import { FocusEditor } from '../FocusEditor'
 import { MarkdownEditor } from '../MarkdownEditor'
@@ -46,6 +48,7 @@ const ICONS = {
   'triangle-alert': TriangleAlert,
   'user-round': UserRound,
   code: Code2,
+  braces: Braces,
   database: Database,
   'file-check': FileCheck,
   list: List,
@@ -142,6 +145,7 @@ function entityFields(
 
 export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
   const actions = useCanvasEditorActions()
+  const isMobile = useIsMobile()
   const ontology = useOntology()
   const meta = data.entity
   const [editing, setEditing] = useState(false)
@@ -288,7 +292,7 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
         <div className="entity-body">
           {rows.length === 0 && !contentValue && (
             <span className="entity-hint">
-              {entityType.id === 'note' ? 'Double-click to write a note' : 'Double-click to add fields'}
+              {entityType.id === 'note' ? `${isMobile ? 'Double-tap' : 'Double-click'} to write a note` : `${isMobile ? 'Double-tap' : 'Double-click'} to add fields`}
             </span>
           )}
           {rows.map(({ field, value }) => (

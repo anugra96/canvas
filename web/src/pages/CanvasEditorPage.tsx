@@ -9,10 +9,20 @@ import { CanvasEditor } from '../canvas/editor/CanvasEditor'
 interface CanvasEditorPageProps {
   client: CanvasClient
   canvasId: string
+  trail: Array<{ id: string; label: string }>
   onBack: () => void
+  onOpenTrail: (index: number) => void
+  onOpenLinkedCanvas: (canvasId: string, label: string) => void
 }
 
-export function CanvasEditorPage({ client, canvasId, onBack }: CanvasEditorPageProps) {
+export function CanvasEditorPage({
+  client,
+  canvasId,
+  trail,
+  onBack,
+  onOpenTrail,
+  onOpenLinkedCanvas,
+}: CanvasEditorPageProps) {
   const [document, setDocument] = useState<CanvasDocument | null>(null)
   const [error, setError] = useState('')
 
@@ -52,5 +62,15 @@ export function CanvasEditorPage({ client, canvasId, onBack }: CanvasEditorPageP
     )
   }
 
-  return <CanvasEditor client={client} document={document} onBack={onBack} />
+  return (
+    <CanvasEditor
+      key={document.id}
+      client={client}
+      document={document}
+      onBack={onBack}
+      trail={trail}
+      onOpenTrail={onOpenTrail}
+      onOpenLinkedCanvas={onOpenLinkedCanvas}
+    />
+  )
 }

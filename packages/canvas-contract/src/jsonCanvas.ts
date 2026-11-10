@@ -100,6 +100,7 @@ export interface CanvasSummary {
 }
 
 export interface CanvasDocument extends CanvasSummary {
+  schemaVersion: number
   canvas: JsonCanvas
 }
 

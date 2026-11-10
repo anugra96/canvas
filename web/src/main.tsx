@@ -7,6 +7,10 @@ import App from './App'
 import { AuthGate } from './auth/AuthGate'
 import { OntologyProvider } from './ontology/OntologyProvider'
 import './styles.css'
+import './themes.css'
+import { initializeTheme } from './themes'
+
+initializeTheme()
 
 createRoot(document.getElementById('root') as HTMLElement).render(
   <StrictMode>

@@ -1,0 +1,15 @@
+.git
+.github
+node_modules
+**/node_modules
+dist
+**/dist
+coverage
+playwright-report
+test-results
+api/.data
+api/.data-e2e
+.env
+.env.local
+*.log
+.DS_Store

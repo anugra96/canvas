@@ -1,0 +1,68 @@
+name: canvas
+
+services:
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${CANVAS_S3_ACCESS_KEY_ID:-canvas}
+      MINIO_ROOT_PASSWORD: ${CANVAS_S3_SECRET_ACCESS_KEY:-canvas-secret}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - canvas-minio:/data
+    restart: unless-stopped
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    environment:
+      CANVAS_S3_ACCESS_KEY_ID: ${CANVAS_S3_ACCESS_KEY_ID:-canvas}
+      CANVAS_S3_SECRET_ACCESS_KEY: ${CANVAS_S3_SECRET_ACCESS_KEY:-canvas-secret}
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        until mc alias set local http://minio:9000 "$$CANVAS_S3_ACCESS_KEY_ID" "$$CANVAS_S3_SECRET_ACCESS_KEY"; do
+          sleep 1
+        done
+        mc mb --ignore-existing local/canvas
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    environment:
+      CANVAS_STORE: s3
+      CANVAS_S3_ENDPOINT: http://minio:9000
+      CANVAS_S3_BUCKET: canvas
+      CANVAS_S3_REGION: us-east-1
+      CANVAS_S3_ACCESS_KEY_ID: ${CANVAS_S3_ACCESS_KEY_ID:-canvas}
+      CANVAS_S3_SECRET_ACCESS_KEY: ${CANVAS_S3_SECRET_ACCESS_KEY:-canvas-secret}
+      CANVAS_AUTH_MODE: local
+    ports:
+      - "8789:8787"
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8787/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    ports:
+      - "8090:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  canvas-minio:

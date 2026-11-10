@@ -35,6 +35,10 @@ const saveCanvasSchema = z.object({
   canvas: z.unknown(),
 })
 
+const renameCanvasSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+})
+
 const importCanvasSchema = z.object({
   title: z.string().trim().min(1).max(160).optional(),
   canvas: z.unknown(),
@@ -68,7 +72,7 @@ export function createApp(store: CanvasStore, options: CanvasAppOptions): Hono {
     '*',
     cors({
       origin: options.corsOrigin ?? '*',
-      allowMethods: ['GET', 'POST', 'PUT', 'OPTIONS'],
+      allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'OPTIONS'],
       allowHeaders: ['Authorization', 'Content-Type', 'If-Match'],
       exposeHeaders: ['ETag'],
       maxAge: 600,
@@ -180,6 +184,42 @@ export function createApp(store: CanvasStore, options: CanvasAppOptions): Hono {
         principal.tenantId,
         c.req.param('id'),
         validation.canvas,
+        ifMatch,
+        principal,
+      )
+      return withEtag(c, document)
+    } catch (error) {
+      if (error instanceof CanvasConflictError) {
+        return c.json({
+          detail: {
+            code: 'canvas_conflict',
+            latest: error.latest,
+          },
+        }, 412)
+      }
+      if (error instanceof CanvasNotFoundError) {
+        return c.json({ detail: 'Canvas not found.' }, 404)
+      }
+      throw error
+    }
+  })
+
+  app.patch('/v1/canvases/:id', async (c) => {
+    const principal = requireCanvasPrincipal(c, options.authMode)
+    const ifMatch = ifMatchValue(c.req.header('if-match'))
+    if (!ifMatch) {
+      return c.json({ detail: 'If-Match is required.' }, 428)
+    }
+    const body = await c.req.json().catch(() => null)
+    const parsed = renameCanvasSchema.safeParse(body)
+    if (!parsed.success) {
+      return c.json({ detail: 'Invalid canvas title.', errors: parsed.error.issues }, 400)
+    }
+    try {
+      const document = await store.rename(
+        principal.tenantId,
+        c.req.param('id'),
+        parsed.data.title,
         ifMatch,
         principal,
       )

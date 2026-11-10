@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: install dev api web test lint typecheck build clean
+.PHONY: install dev api web test lint typecheck build clean stack-up stack-down stack-logs
 
 install:
 	npm install
@@ -28,3 +28,12 @@ build:
 
 clean:
 	rm -rf api/.data web/dist api/dist mcp/dist
+
+stack-up:
+	docker compose up --build -d
+
+stack-down:
+	docker compose down
+
+stack-logs:
+	docker compose logs -f api web

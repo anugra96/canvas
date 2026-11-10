@@ -11,24 +11,16 @@ import {
   addEdge,
   applyEdgeChanges,
   applyNodeChanges,
+  getNodesBounds,
+  getViewportForBounds,
   useReactFlow,
   type Connection,
   type EdgeChange,
   type FinalConnectionState,
   type NodeChange,
 } from '@xyflow/react'
-import {
-  AlertTriangle,
-  ArrowLeft,
-  Download,
-  Keyboard,
-  Plus,
-  Redo2,
-  Save,
-  ShieldCheck,
-  Undo2,
-  X,
-} from 'lucide-react'
+import { X } from 'lucide-react'
+import { toPng } from 'html-to-image'
 import {
   useCallback,
   useEffect,
@@ -36,17 +28,21 @@ import {
   useRef,
   useState,
   type MouseEvent,
+  type PointerEvent,
 } from 'react'
 
 import {
   createNodeId,
   emptyEntityFields,
+  getCanvasLinks,
   findEntityType,
   getGroupMembers,
   mergeCanvas,
   renderEntityMarkdown,
   type CanvasDocument,
+  type CanvasLink,
   type CanvasNode,
+  type CanvasSummary,
   type CanvasNodeSide,
   type CanvasProfileIssue,
   type EntityFields,
@@ -68,6 +64,7 @@ import {
   type CanvasFlowNode,
 } from '../model/adapter'
 import { findSnap, type AlignmentGuide } from '../model/alignment'
+import { autoLayoutCanvas, dataFlowLayoutCanvas } from '../model/autoLayout'
 import { getCanvasEdgePath } from '../model/edgePath'
 import { convertNodeType } from '../model/cardTypes'
 import {
@@ -79,20 +76,41 @@ import {
   reverseFlowEdge,
 } from '../model/edgeRelations'
 import { useOntology } from '../../ontology/OntologyContext'
+import { useCoarsePointer, useIsMobile } from '../../useMediaQuery'
 import { findBestCardSize } from './autoFit'
 import { CanvasEditorActionsContext, type CanvasEditorActions } from './CanvasEditorContext'
+import { CanvasBackdrop } from '../backdrop/CanvasBackdrop'
+import { CanvasValidationContext } from './CanvasValidationContext'
+import { CanvasToolbar, type SaveStatus } from './CanvasToolbar'
 import { ConnectionTemplateMenu } from './ConnectionTemplateMenu'
 import { ProfileValidationTray } from './ProfileValidationTray'
+import { CanvasIntelligencePanel } from './CanvasIntelligencePanel'
 import { EdgeLabelEditor } from './EdgeLabelEditor'
 import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog'
+import { CanvasNameDialog } from '../../CanvasNameDialog'
+import { CanvasLinksDialog } from './CanvasLinksDialog'
+import { ScreenshotDialog } from './ScreenshotDialog'
+import { NodeSizeDialog } from './NodeSizeDialog'
 import { SelectionToolbar } from './SelectionToolbar'
 import { isEditableTarget } from './shortcuts'
 import { useCanvasHistory } from './useCanvasHistory'
 import { useCanvasProfile } from './useCanvasProfile'
 import { useProfileValidation } from './useProfileValidation'
+import { prioritizeValidationIssues } from './prioritizeIssues'
+import { buildSuggestions, type CanvasSuggestion } from '../suggestions/suggestionEngine'
+import {
+  createSuppression,
+  readValidationSuppressions,
+  withValidationSuppressions,
+  type IgnoreReason,
+  type ValidationSuppression,
+} from './validationSuppressions'
+import { validationIssueKey } from './validationIdentity'
 import { readViewport, writeViewport } from './viewport'
 import { CanvasEdge as CanvasEdgeComponent } from './edges/CanvasEdge'
+import { createCanvasLink, withCanvasLinks } from '../model/canvasLinks'
 import { CodeNode } from './nodes/CodeNode'
+import { SchemaNode } from './nodes/SchemaNode'
 import { EntityNode } from './nodes/EntityNode'
 import { FileNode } from './nodes/FileNode'
 import { GroupNode } from './nodes/GroupNode'
@@ -102,6 +120,7 @@ import { TextNode as TextNodeComponent } from './nodes/TextNode'
 const nodeTypes = {
   text: TextNodeComponent,
   entity: EntityNode,
+  schema: SchemaNode,
   code: CodeNode,
   group: GroupNode,
   file: FileNode,
@@ -116,9 +135,10 @@ interface CanvasEditorProps {
   client: CanvasClient
   document: CanvasDocument
   onBack: () => void
+  trail: Array<{ id: string; label: string }>
+  onOpenTrail: (index: number) => void
+  onOpenLinkedCanvas: (canvasId: string, label: string) => void
 }
-
-type SaveStatus = 'saved' | 'dirty' | 'saving' | 'conflict' | 'error'
 
 const OPPOSITE_SIDE: Record<CanvasNodeSide, CanvasNodeSide> = {
   top: 'bottom',
@@ -145,13 +165,6 @@ interface CardMenuState {
   screen: { x: number; y: number }
 }
 
-function statusLabel(status: SaveStatus): string {
-  if (status === 'saved') return 'Saved'
-  if (status === 'dirty') return 'Unsaved changes'
-  if (status === 'saving') return 'Saving'
-  if (status === 'conflict') return 'Conflict'
-  return 'Save failed'
-}
 
 function makeTextNode(
   position: { x: number; y: number },
@@ -253,11 +266,14 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), Math.max(min, max))
 }
 
-function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
+function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpenLinkedCanvas }: CanvasEditorProps) {
   const ontology = useOntology()
+  const isMobile = useIsMobile()
+  const coarsePointer = useCoarsePointer()
   const { profile, isSystems, availableEntityTypes, profileRelationTypes } = useCanvasProfile(ontology, document)
   const initial = useMemo(() => toFlowCanvas(document.canvas, ontology), [document, ontology])
-  const savedViewport = useMemo(() => readViewport(document.id), [document.id])
+  const viewportLayout = isMobile ? 'mobile' as const : 'desktop' as const
+  const savedViewport = useMemo(() => readViewport(document.id, viewportLayout), [document.id, viewportLayout])
   const shouldFitInitial = useMemo(
     () => !savedViewport && (document.canvas.nodes?.length ?? 0) > 0,
     [document.canvas.nodes?.length, savedViewport],
@@ -273,6 +289,13 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
   } = history
   const [nodes, setNodes] = useState<CanvasFlowNode[]>(initial.nodes)
   const [edges, setEdges] = useState<CanvasFlowEdge[]>(initial.edges)
+  const [title, setTitle] = useState(document.title)
+  const [renameOpen, setRenameOpen] = useState(false)
+  const [renameBusy, setRenameBusy] = useState(false)
+  const [canvasLinkNodeId, setCanvasLinkNodeId] = useState<string | null>(null)
+  const [canvasOptions, setCanvasOptions] = useState<CanvasSummary[]>([])
+  const [canvasOptionsLoading, setCanvasOptionsLoading] = useState(false)
+  const [canvasOptionsError, setCanvasOptionsError] = useState('')
   const [baseCanvas, setBaseCanvas] = useState<JsonCanvas>(document.canvas)
   const [etag, setEtag] = useState(document.etag)
   const [dirty, setDirty] = useState(false)
@@ -284,11 +307,26 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
   const [newRelationType, setNewRelationType] = useState(isSystems ? '' : 'relates_to')
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
-  const [validationOpen, setValidationOpen] = useState(false)
+  const [validationPanel, setValidationPanel] = useState<'warnings' | 'intelligence' | null>(null)
+  const [validationFocusRequest, setValidationFocusRequest] = useState<{ key: string; requestId: number } | null>(null)
+  const validationRequestId = useRef(0)
+  const [suppressions, setSuppressions] = useState<ValidationSuppression[]>(() => (
+    readValidationSuppressions(document.canvas)
+  ))
   const [pendingConnection, setPendingConnection] = useState<PendingConnection | null>(null)
   const [cardMenu, setCardMenu] = useState<CardMenuState | null>(null)
   const [edgeLabelEditor, setEdgeLabelEditor] = useState<EdgeLabelEditorState | null>(null)
   const [alignmentGuides, setAlignmentGuides] = useState<AlignmentGuide[]>([])
+  const [screenshotOpen, setScreenshotOpen] = useState(false)
+  const [screenshotBusy, setScreenshotBusy] = useState(false)
+  const [screenshotScale, setScreenshotScale] = useState(3)
+  const [screenshotError, setScreenshotError] = useState('')
+  const [areaMode, setAreaMode] = useState(false)
+  const [connectNodeId, setConnectNodeId] = useState<string | null>(null)
+  const [sizeDialogOpen, setSizeDialogOpen] = useState(false)
+  const [dragBox, setDragBox] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
+  const areaStart = useRef<{ clientX: number; clientY: number } | null>(null)
+  const areaCurrent = useRef<{ clientX: number; clientY: number } | null>(null)
   const flowRef = useRef<HTMLDivElement>(null)
   const nodesRef = useRef(nodes)
   const { fitView, getViewport, getZoom } = useReactFlow()
@@ -443,8 +481,8 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
 
   const currentCanvas = useCallback(
     (nodeList = nodes, edgeList = edges, base = baseCanvas) =>
-      fromFlowCanvas(nodeList, edgeList, base),
-    [baseCanvas, edges, nodes],
+      withValidationSuppressions(fromFlowCanvas(nodeList, edgeList, base), suppressions),
+    [baseCanvas, edges, nodes, suppressions],
   )
 
   const undo = useCallback(() => {
@@ -471,7 +509,215 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
   const clearSelection = useCallback(() => {
     setNodes((current) => current.map((node) => ({ ...node, selected: false })))
     setEdges((current) => current.map((edge) => ({ ...edge, selected: false })))
+    setSelectedEdgeId(null)
+    setConnectNodeId(null)
+    setSizeDialogOpen(false)
   }, [])
+
+  const autoLayout = useCallback(() => {
+    const layout = autoLayoutCanvas(nodes, edges)
+    setNodes(layout.nodes)
+    setEdges(layout.edges)
+    setAlignmentGuides([])
+    setNotice('Architecture layout applied.')
+    markDirty()
+    window.setTimeout(() => {
+      void fitView({ padding: 0.2, maxZoom: 1.2, duration: 300 })
+    }, 0)
+  }, [edges, fitView, markDirty, nodes])
+
+  const autoFitAll = useCallback(() => {
+    let fitted = 0
+    const nextNodes = nodes.map((node) => {
+      if (node.type === 'group') return node
+      const wrapper = flowRef.current?.querySelector<HTMLElement>(`.react-flow__node[data-id="${node.id}"]`)
+      const card = wrapper?.querySelector<HTMLElement>('.canvas-node')
+      if (!card) return node
+      const size = nodeDimensions(node)
+      const next = findBestCardSize(card, size.width, size.height)
+      if (next.width === size.width && next.height === size.height) return node
+      fitted += 1
+      return {
+        ...node,
+        style: { ...node.style, width: next.width, height: next.height },
+        data: {
+          ...node.data,
+          raw: { ...node.data.raw, width: next.width, height: next.height },
+        },
+      }
+    })
+    setNodes(nextNodes)
+    setAlignmentGuides([])
+    setNotice(fitted > 0 ? `Auto-fitted ${fitted} cards.` : 'All cards already fit their content.')
+    markDirty()
+  }, [markDirty, nodes])
+
+  const dataFlowLayout = useCallback(() => {
+    const layout = dataFlowLayoutCanvas(nodes, edges)
+    setNodes(layout.nodes)
+    setEdges(layout.edges)
+    setAlignmentGuides([])
+    setNotice('Data-flow layout applied. Schemas moved to the contract rail.')
+    markDirty()
+    window.setTimeout(() => {
+      void fitView({ padding: 0.2, maxZoom: 1.2, duration: 300 })
+    }, 0)
+  }, [edges, fitView, markDirty, nodes])
+
+  const screenshotDimensions = useCallback((bounds: { width: number; height: number }) => {
+    const longEdge = 1600
+    const ratio = bounds.width / Math.max(bounds.height, 1)
+    if (ratio >= 1) {
+      return { width: longEdge, height: Math.max(240, Math.round(longEdge / ratio)) }
+    }
+    return { width: Math.max(240, Math.round(longEdge * ratio)), height: longEdge }
+  }, [])
+
+  const captureBounds = useCallback(async (
+    bounds: { x: number; y: number; width: number; height: number },
+    suffix: string,
+    padding: number,
+  ) => {
+    const viewport = flowRef.current?.querySelector<HTMLElement>('.react-flow__viewport')
+    if (!viewport) throw new Error('Canvas viewport is not available.')
+    if (bounds.width <= 0 || bounds.height <= 0) throw new Error('The selected area is too small.')
+    const { width, height } = screenshotDimensions(bounds)
+    const transform = getViewportForBounds(bounds, width, height, 0.01, 4, padding)
+    const background = flowRef.current
+      ? getComputedStyle(flowRef.current).backgroundColor
+      : '#ffffff'
+
+    clearSelection()
+    setSelectedEdgeId(null)
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+    })
+
+    const dataUrl = await toPng(viewport, {
+      width,
+      height,
+      pixelRatio: screenshotScale,
+      backgroundColor: background,
+      cacheBust: true,
+      style: {
+        width: `${width}px`,
+        height: `${height}px`,
+        transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`,
+        transformOrigin: '0 0',
+      },
+    })
+
+    const safeTitle = title.replace(/[^a-z0-9._-]+/gi, '-').replace(/^-+|-+$/g, '') || 'canvas'
+    const link = window.document.createElement('a')
+    link.download = `${safeTitle}-${suffix}.png`
+    link.href = dataUrl
+    link.click()
+  }, [clearSelection, screenshotDimensions, screenshotScale, title])
+
+  const captureFull = useCallback(async () => {
+    if (nodes.length === 0) {
+      setScreenshotError('Add a card before capturing the canvas.')
+      return
+    }
+    setScreenshotBusy(true)
+    setScreenshotError('')
+    try {
+      await captureBounds(getNodesBounds(nodes), 'full', 0.05)
+      setScreenshotOpen(false)
+      setNotice('Screenshot downloaded.')
+    } catch (cause) {
+      setScreenshotError(cause instanceof Error ? cause.message : 'Could not create the screenshot.')
+    } finally {
+      setScreenshotBusy(false)
+    }
+  }, [captureBounds, nodes])
+
+  const beginAreaSelection = useCallback(() => {
+    setScreenshotOpen(false)
+    setScreenshotError('')
+    setAreaMode(true)
+    setDragBox(null)
+    setHelpOpen(false)
+    setPendingConnection(null)
+    setCardMenu(null)
+    setEdgeLabelEditor(null)
+    setAlignmentGuides([])
+    clearSelection()
+    setSelectedEdgeId(null)
+    setConnectNodeId(null)
+  }, [clearSelection])
+
+  const cancelAreaSelection = useCallback(() => {
+    setAreaMode(false)
+    setDragBox(null)
+    areaStart.current = null
+    areaCurrent.current = null
+  }, [])
+
+  useEffect(() => {
+    if (!areaMode) return
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') cancelAreaSelection()
+    }
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
+  }, [areaMode, cancelAreaSelection])
+
+  const onAreaPointerDown = useCallback((event: PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 && event.pointerType === 'mouse') return
+    const rect = event.currentTarget.getBoundingClientRect()
+    areaStart.current = { clientX: event.clientX, clientY: event.clientY }
+    areaCurrent.current = { clientX: event.clientX, clientY: event.clientY }
+    setDragBox({
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+      width: 0,
+      height: 0,
+    })
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }, [])
+
+  const onAreaPointerMove = useCallback((event: PointerEvent<HTMLDivElement>) => {
+    if (!areaStart.current) return
+    const rect = event.currentTarget.getBoundingClientRect()
+    const start = areaStart.current
+    areaCurrent.current = { clientX: event.clientX, clientY: event.clientY }
+    setDragBox({
+      x: Math.min(start.clientX, event.clientX) - rect.left,
+      y: Math.min(start.clientY, event.clientY) - rect.top,
+      width: Math.abs(event.clientX - start.clientX),
+      height: Math.abs(event.clientY - start.clientY),
+    })
+  }, [])
+
+  const onAreaPointerUp = useCallback(async (event: PointerEvent<HTMLDivElement>) => {
+    const start = areaStart.current
+    if (!start) return
+    const end = { clientX: event.clientX, clientY: event.clientY }
+    areaStart.current = null
+    areaCurrent.current = null
+    setDragBox(null)
+    const startFlow = clientToFlow(start.clientX, start.clientY)
+    const endFlow = clientToFlow(end.clientX, end.clientY)
+    const bounds = {
+      x: Math.min(startFlow.x, endFlow.x),
+      y: Math.min(startFlow.y, endFlow.y),
+      width: Math.abs(endFlow.x - startFlow.x),
+      height: Math.abs(endFlow.y - startFlow.y),
+    }
+    if (bounds.width < 12 || bounds.height < 12) return
+    setAreaMode(false)
+    setScreenshotBusy(true)
+    setNotice('Rendering screenshot...')
+    try {
+      await captureBounds(bounds, 'selection', 0.02)
+      setNotice('Screenshot downloaded.')
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not create the screenshot.')
+    } finally {
+      setScreenshotBusy(false)
+    }
+  }, [captureBounds, clientToFlow])
 
   const duplicateSelection = useCallback(() => {
     const selectedNodes = nodes.filter((node) => node.selected)
@@ -689,11 +935,13 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
       const saved = await client.saveCanvas(document.id, etagOverride ?? etag, local)
       setEtag(saved.etag)
       setBaseCanvas(saved.canvas)
+      setSuppressions(readValidationSuppressions(saved.canvas))
       setDirty(false)
       setStatus('saved')
       setNotice('')
       setConflicts([])
       setPendingLocal(null)
+      return saved
     } catch (cause) {
       if (cause instanceof CanvasConflictError) {
         const merged = mergeCanvas(baseCanvas, local, cause.latest.canvas)
@@ -703,6 +951,7 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
         resetHistory(flow)
         setBaseCanvas(cause.latest.canvas)
         setEtag(cause.latest.etag)
+        setSuppressions(readValidationSuppressions(merged.canvas))
         setPendingLocal(local)
         if (merged.conflicts.length > 0) {
           setConflicts(merged.conflicts)
@@ -715,10 +964,11 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
           setStatus('dirty')
           setNotice('Merged changes from another editor. Saving again.')
         }
-        return
+        return null
       }
       setError(cause instanceof Error ? cause.message : 'Could not save the canvas.')
       setStatus('error')
+      return null
     }
   }, [baseCanvas, client, currentCanvas, document.id, etag, ontology, resetHistory])
 
@@ -867,8 +1117,31 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
     const raw = edgeFromConnection(connection, newRelationType, ontology)
     if (isSystems && !newRelationType) raw.label = 'Define relation'
     setEdges((current) => addEdge(toFlowEdge(raw, ontology), current))
+    setConnectNodeId(null)
     markDirty()
   }, [isSystems, markDirty, newRelationType, ontology])
+
+  const connectNodes = useCallback((sourceId: string, targetId: string) => {
+    const source = nodes.find((node) => node.id === sourceId)
+    const target = nodes.find((node) => node.id === targetId)
+    if (!source || !target || source.type === 'group' || target.type === 'group') return
+    const sourceSize = nodeDimensions(source)
+    const targetSize = nodeDimensions(target)
+    const dx = (target.position.x + targetSize.width / 2) - (source.position.x + sourceSize.width / 2)
+    const dy = (target.position.y + targetSize.height / 2) - (source.position.y + sourceSize.height / 2)
+    const horizontal = Math.abs(dx) >= Math.abs(dy)
+    const sourceHandle = horizontal
+      ? (dx >= 0 ? 'right' : 'left')
+      : (dy >= 0 ? 'bottom' : 'top')
+    const targetHandle = horizontal
+      ? (dx >= 0 ? 'left' : 'right')
+      : (dy >= 0 ? 'top' : 'bottom')
+    const raw = edgeFromConnection({ source: sourceId, target: targetId, sourceHandle, targetHandle }, newRelationType, ontology)
+    if (isSystems && !newRelationType) raw.label = 'Define relation'
+    setEdges((current) => addEdge(toFlowEdge(raw, ontology), current))
+    setConnectNodeId(null)
+    markDirty()
+  }, [isSystems, markDirty, newRelationType, nodes, ontology])
 
   const onConnectEnd = useCallback((
     event: { clientX: number; clientY: number } | TouchEvent,
@@ -888,6 +1161,7 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
         y: point.y - bounds.top,
       },
     })
+    setConnectNodeId(null)
     setEdgeLabelEditor(null)
   }, [clientToFlow])
 
@@ -947,6 +1221,86 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
     })
   }, [edges])
 
+  const openCanvasLinks = useCallback(async (nodeId: string) => {
+    setCanvasLinkNodeId(nodeId)
+    setCanvasOptionsError('')
+    setCanvasOptionsLoading(true)
+    try {
+      setCanvasOptions(await client.listCanvases())
+    } catch (cause) {
+      setCanvasOptionsError(cause instanceof Error ? cause.message : 'Could not load canvases.')
+    } finally {
+      setCanvasOptionsLoading(false)
+    }
+  }, [client])
+
+  const updateCanvasLinks = useCallback((nodeId: string, update: (links: CanvasLink[]) => CanvasLink[]) => {
+    setNodes((current) => current.map((node) => {
+      if (node.id !== nodeId) return node
+      return withCanvasLinks(node, update(getCanvasLinks(node.data.raw)))
+    }))
+    markDirty()
+  }, [markDirty])
+
+  const linkExistingCanvas = useCallback((canvasId: string) => {
+    if (!canvasLinkNodeId) return
+    updateCanvasLinks(canvasLinkNodeId, (links) => (
+      links.some((link) => link.canvasId === canvasId)
+        ? links
+        : [...links, createCanvasLink(canvasId)]
+    ))
+  }, [canvasLinkNodeId, updateCanvasLinks])
+
+  const unlinkCanvas = useCallback((linkId: string) => {
+    if (!canvasLinkNodeId) return
+    updateCanvasLinks(canvasLinkNodeId, (links) => links.filter((link) => link.id !== linkId))
+  }, [canvasLinkNodeId, updateCanvasLinks])
+
+  const relabelCanvas = useCallback((linkId: string, label: string) => {
+    if (!canvasLinkNodeId) return
+    updateCanvasLinks(canvasLinkNodeId, (links) => links.map((link) => (
+      link.id === linkId
+        ? { ...link, ...(label.trim() ? { label } : { label: undefined }) }
+        : link
+    )))
+  }, [canvasLinkNodeId, updateCanvasLinks])
+
+  async function createLinkedCanvas(title: string) {
+    if (!canvasLinkNodeId) return
+    const child = await client.createCanvas(title, profile.id)
+    updateCanvasLinks(canvasLinkNodeId, (links) => [...links, createCanvasLink(child.id)])
+    setCanvasOptions((current) => [...current, {
+      id: child.id,
+      title: child.title,
+      etag: child.etag,
+      updatedAt: child.updatedAt,
+      updatedBy: child.updatedBy,
+      nodeCount: child.nodeCount,
+      edgeCount: child.edgeCount,
+      profile: child.canvas.app?.profile ?? profile.id,
+    }])
+    setNotice(`Created and linked "${child.title}".`)
+  }
+
+  async function openLinkedCanvas(link: CanvasLink) {
+    if (trail.some((entry) => entry.id === link.canvasId)) {
+      throw new Error('That canvas is already open in the trail.')
+    }
+    if (dirty) {
+      const saved = await save()
+      if (!saved) throw new Error('Save the current canvas before opening a linked canvas.')
+    }
+    onOpenLinkedCanvas(link.canvasId, link.label ?? 'Linked canvas')
+  }
+
+  async function openTrail(index: number) {
+    if (dirty) {
+      const saved = await save()
+      if (!saved) return
+    }
+    onOpenTrail(index)
+  }
+
   const actions = useMemo<CanvasEditorActions>(
     () => ({
       updateText,
@@ -956,8 +1310,9 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
       autoFitNode,
       editEdgeLabel: openEdgeLabelEditor,
       selectEdge,
+      openCanvasLinks,
     }),
-    [autoFitNode, openEdgeLabelEditor, resizeNode, selectEdge, updateEntityField, updateLabel, updateText],
+    [autoFitNode, openCanvasLinks, openEdgeLabelEditor, resizeNode, selectEdge, updateEntityField, updateLabel, updateText],
   )
 
   const onReconnect = useCallback((oldEdge: CanvasFlowEdge, connection: Connection) => {
@@ -1155,6 +1510,67 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
     revealPlacement(placement.visible)
   }
 
+  async function addProcessWithCanvas() {
+    const processType = findEntityType(ontology, 'process')
+    const noteType = findEntityType(ontology, 'note')
+    if (!processType || !noteType) return
+    setError('')
+    try {
+      const child = await client.createCanvas('Process documentation', profile.id)
+      const notes: Array<[string, string]> = [
+        ['Purpose', 'Describe the process goal and trigger.'],
+        ['Stages', 'Document stages, hand-offs, and owners.'],
+        ['Approvals', 'Document manual approvals and gates.'],
+        ['Failure handling', 'Document retries, rollback, and escalation.'],
+      ]
+      const nodes = notes.map(([name, body], index) => {
+        const base = makeEntityNode('note', {
+          x: 80 + (index % 2) * 380,
+          y: 80 + Math.floor(index / 2) * 260,
+        }, ontology)
+        if (!base) throw new Error('Could not create process documentation notes.')
+        const fields = { ...emptyEntityFields(noteType), name, body }
+        return {
+          ...base,
+          app: { ...(base.app ?? {}), entityType: 'note', fields },
+          text: renderEntityMarkdown(noteType, fields),
+        } as CanvasNode
+      })
+      await client.saveCanvas(child.id, child.etag, { ...child.canvas, nodes, edges: [] })
+
+      const placement = placementPosition(processType.defaultSize.width, processType.defaultSize.height)
+      const base = makeEntityNode('process', placement, ontology)
+      if (!base) return
+      const fields = {
+        ...emptyEntityFields(processType),
+        name: 'Process',
+        purpose: 'Document the process stages and decisions in the linked canvas.',
+        mode: 'hybrid',
+        status: 'planned',
+      }
+      const link = createCanvasLink(child.id, 'Process documentation')
+      const raw = {
+        ...base,
+        app: {
+          ...(base.app ?? {}),
+          entityType: 'process',
+          fields,
+          canvasLinks: [link],
+        },
+        text: renderEntityMarkdown(processType, fields),
+      } as CanvasNode
+      setNodes((current) => [
+        ...current.map((node) => ({ ...node, selected: false })),
+        { ...toFlowNode(raw), selected: true },
+      ])
+      markDirty()
+      setNotice(`Created process card and linked "${child.title}".`)
+      revealPlacement(placement.visible)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not create the linked process canvas.')
+    }
+  }
+
   async function reloadLatest() {
     setError('')
     try {
@@ -1165,6 +1581,7 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
       resetHistory(flow)
       setBaseCanvas(latest.canvas)
       setEtag(latest.etag)
+      setSuppressions(readValidationSuppressions(latest.canvas))
       setConflicts([])
       setPendingLocal(null)
       setDirty(false)
@@ -1210,7 +1627,7 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
   const relationValue = selectedEdge
     ? selectedEdge.data?.relationType ?? ''
     : newRelationType
-  const validationIssues = useProfileValidation({
+  const allValidationIssues = useProfileValidation({
     nodes,
     edges,
     baseCanvas,
@@ -1218,6 +1635,180 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
     ontology,
     isSystems,
   })
+  const suppressionByFingerprint = useMemo(
+    () => new Map(suppressions.map((suppression) => [suppression.fingerprint, suppression])),
+    [suppressions],
+  )
+  const validationIssues = useMemo(
+    () => allValidationIssues.filter((issue) => !suppressionByFingerprint.has(validationIssueKey(issue))),
+    [allValidationIssues, suppressionByFingerprint],
+  )
+  const ignoredValidationIssues = useMemo(
+    () => allValidationIssues.filter((issue) => suppressionByFingerprint.has(validationIssueKey(issue))),
+    [allValidationIssues, suppressionByFingerprint],
+  )
+  const prioritizedIssues = useMemo(
+    () => prioritizeValidationIssues(validationIssues, nodes, edges),
+    [edges, nodes, validationIssues],
+  )
+  const ignoredPrioritizedIssues = useMemo(
+    () => prioritizeValidationIssues(ignoredValidationIssues, nodes, edges),
+    [edges, ignoredValidationIssues, nodes],
+  )
+  const suggestions = useMemo(
+    () => buildSuggestions(validationIssues, nodes, edges),
+    [edges, nodes, validationIssues],
+  )
+  const ignoredReasons = useMemo(
+    () => new Map([...suppressionByFingerprint].map(([fingerprint, suppression]) => (
+      [fingerprint, suppression.reason]
+    ))),
+    [suppressionByFingerprint],
+  )
+
+  const ignoreValidationIssue = useCallback((issue: CanvasProfileIssue, reason: IgnoreReason) => {
+    const suppression = createSuppression(issue, reason)
+    setSuppressions((current) => (
+      current.some((candidate) => candidate.fingerprint === suppression.fingerprint)
+        ? current
+        : [...current, suppression]
+    ))
+    setNotice(`Warning ignored: ${reason}.`)
+    markDirty()
+  }, [markDirty])
+
+  const restoreValidationIssue = useCallback((issue: CanvasProfileIssue) => {
+    const fingerprint = validationIssueKey(issue)
+    setSuppressions((current) => current.filter((suppression) => suppression.fingerprint !== fingerprint))
+    setNotice('Warning restored.')
+    markDirty()
+  }, [markDirty])
+
+  function suggestedPlacement(
+    target: CanvasFlowNode,
+    width: number,
+    height: number,
+    nodeList: CanvasFlowNode[] = nodes,
+  ): { x: number; y: number; sourceHandle: CanvasNodeSide; targetHandle: CanvasNodeSide } {
+    const size = nodeDimensions(target)
+    const gap = 90
+    const candidates = [
+      {
+        x: target.position.x - width - gap,
+        y: target.position.y + (size.height - height) / 2,
+        sourceHandle: 'right' as const,
+        targetHandle: 'left' as const,
+      },
+      {
+        x: target.position.x + size.width + gap,
+        y: target.position.y + (size.height - height) / 2,
+        sourceHandle: 'left' as const,
+        targetHandle: 'right' as const,
+      },
+      {
+        x: target.position.x + (size.width - width) / 2,
+        y: target.position.y - height - gap,
+        sourceHandle: 'bottom' as const,
+        targetHandle: 'top' as const,
+      },
+      {
+        x: target.position.x + (size.width - width) / 2,
+        y: target.position.y + size.height + gap,
+        sourceHandle: 'top' as const,
+        targetHandle: 'bottom' as const,
+      },
+    ]
+    const isFree = (candidate: { x: number; y: number }) => nodeList.every((node) => {
+      const nodeSize = nodeDimensions(node)
+      return candidate.x + width + gap <= node.position.x
+        || candidate.x >= node.position.x + nodeSize.width + gap
+        || candidate.y + height + gap <= node.position.y
+        || candidate.y >= node.position.y + nodeSize.height + gap
+    })
+    return candidates.find(isFree) ?? candidates[0]!
+  }
+
+  function focusSuggestion(suggestion: CanvasSuggestion) {
+    const ids = new Set<string>()
+    for (const item of suggestion.items) {
+      for (const fix of item.action.fixes) ids.add(fix.targetId)
+    }
+    if (ids.size === 0) return
+    setNotice('Moved to the affected area. Apply the fix when ready.')
+    void fitView({
+      nodes: [...ids].map((id) => ({ id })),
+      padding: 0.35,
+      maxZoom: 1.2,
+      duration: 450,
+    })
+  }
+
+  function applySuggestion(suggestion: CanvasSuggestion) {
+    let nextNodes = nodes
+    let nextEdges = edges
+    const focusIds: string[] = []
+    const addedIds: string[] = []
+
+    for (const item of suggestion.items) {
+      for (const fix of item.action.fixes) {
+        const target = nextNodes.find((node) => node.id === fix.targetId)
+        const entityType = findEntityType(ontology, fix.entityType)
+        if (!target || !entityType) continue
+        const targetEntityType = target.data.entity
+          ? findEntityType(ontology, target.data.entity.entityType)
+          : undefined
+        const targetName = String(
+          target.data.entity?.fields.name ?? target.data.entity?.fields.title ?? '',
+        ).trim()
+        const name = `${targetName || targetEntityType?.label || entityType.label} ${fix.nameSuffix}`
+        const placement = suggestedPlacement(
+          target,
+          entityType.defaultSize.width,
+          entityType.defaultSize.height,
+          nextNodes,
+        )
+        const base = makeEntityNode(fix.entityType, placement, ontology)
+        if (!base) continue
+        const fields = { ...emptyEntityFields(entityType), name }
+        const raw = {
+          ...base,
+          app: { ...(base.app ?? {}), fields },
+          text: renderEntityMarkdown(entityType, fields),
+        } as CanvasNode
+        const newNode = toFlowNode(raw)
+        const edge = edgeFromConnection({
+          source: raw.id,
+          target: target.id,
+          sourceHandle: placement.sourceHandle,
+          targetHandle: placement.targetHandle,
+        }, fix.relationType, ontology)
+        nextNodes = [...nextNodes, newNode]
+        nextEdges = [...nextEdges, toFlowEdge(edge, ontology)]
+        addedIds.push(newNode.id)
+        focusIds.push(target.id, newNode.id)
+      }
+    }
+
+    if (addedIds.length === 0) return
+    const selectedId = addedIds.at(-1)
+    nextNodes = nextNodes.map((node) => ({ ...node, selected: node.id === selectedId }))
+    setNodes(nextNodes)
+    setEdges(nextEdges)
+    setSelectedEdgeId(null)
+    setNotice(`Applied suggested fix: ${suggestion.title.toLowerCase()}.`)
+    setValidationPanel(null)
+    setValidationFocusRequest(null)
+    markDirty()
+    window.setTimeout(() => {
+      void fitView({
+        nodes: [...new Set(focusIds)].map((id) => ({ id })),
+        padding: 0.35,
+        maxZoom: 1.2,
+        duration: 300,
+      })
+    }, 0)
+  }
+
 
   function focusValidationIssue(issue: CanvasProfileIssue) {
     if (issue.nodeId) {
@@ -1239,13 +1830,65 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
         })
       }
     }
-    setValidationOpen(false)
+  }
+
+  const nodeIssues = new Map<string, CanvasProfileIssue[]>()
+  const edgeIssues = new Map<string, CanvasProfileIssue[]>()
+  for (const issue of validationIssues) {
+    if (issue.nodeId) {
+      const list = nodeIssues.get(issue.nodeId) ?? []
+      list.push(issue)
+      nodeIssues.set(issue.nodeId, list)
+    }
+    if (issue.edgeId) {
+      const list = edgeIssues.get(issue.edgeId) ?? []
+      list.push(issue)
+      edgeIssues.set(issue.edgeId, list)
+    }
+  }
+  function openValidationIssue(issue: CanvasProfileIssue) {
+    focusValidationIssue(issue)
+    validationRequestId.current += 1
+    setValidationFocusRequest({
+      key: validationIssueKey(issue),
+      requestId: validationRequestId.current,
+    })
+    setValidationPanel('warnings')
+  }
+
+  const validation = {
+    nodeIssues,
+    edgeIssues,
+    openIssue: openValidationIssue,
+  }
+
+  async function renameCanvas(nextTitle: string) {
+    setRenameBusy(true)
+    setError('')
+    try {
+      let currentEtag = etag
+      if (dirty) {
+        const saved = await save()
+        if (!saved) return
+        currentEtag = saved.etag
+      }
+      const renamed = await client.renameCanvas(document.id, nextTitle, currentEtag)
+      setTitle(renamed.title)
+      setEtag(renamed.etag)
+      setBaseCanvas(renamed.canvas)
+      setRenameOpen(false)
+      setNotice('Canvas renamed.')
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not rename the canvas.')
+    } finally {
+      setRenameBusy(false)
+    }
   }
 
   async function download() {
     setError('')
     try {
-      await client.downloadCanvas(document.id, document.title)
+      await client.downloadCanvas(document.id, title)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not download the canvas.')
     }
@@ -1256,108 +1899,76 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
     onBack()
   }
 
+  const canvasLinkNode = canvasLinkNodeId
+    ? nodes.find((node) => node.id === canvasLinkNodeId)
+    : undefined
+  const canvasLinkNodeName = (() => {
+    if (!canvasLinkNode) return 'Card'
+    const fields = canvasLinkNode.data.entity?.fields ?? {}
+    return String(
+      fields.name
+      ?? fields.title
+      ?? canvasLinkNode.data.label
+      ?? canvasLinkNode.data.text?.split('\n').find((line) => line.trim())
+      ?? 'Card',
+    ).replace(/^#+\s*/, '').slice(0, 120)
+  })()
+
   return (
     <CanvasEditorActionsContext.Provider value={actions}>
-      <div className="editor-shell">
-        <div className="editor-toolbar">
-          <button className="button ghost" onClick={back}>
-            <ArrowLeft size={16} />
-            All canvases
-          </button>
-          <div className="editor-toolbar-title">
-            <h1>{document.title}</h1>
-            <span className={`profile-badge${isSystems ? ' systems' : ''}`}>{profile.label}</span>
-            <span className={`save-status ${status}`}>{statusLabel(status)}</span>
-          </div>
-          <div className="editor-actions">
-            <button
-              className="icon-button"
-              aria-label="Undo"
-              title="Undo"
-              onClick={undo}
-              disabled={!canUndo}
-            >
-              <Undo2 size={15} />
-            </button>
-            <button
-              className="icon-button"
-              aria-label="Redo"
-              title="Redo"
-              onClick={redo}
-              disabled={!canRedo}
-            >
-              <Redo2 size={15} />
-            </button>
-            <button
-              className="icon-button"
-              aria-label="Keyboard shortcuts"
-              title="Keyboard shortcuts"
-              onClick={() => setHelpOpen(true)}
-            >
-              <Keyboard size={15} />
-            </button>
-            <label className="toolbar-field">
-              <span>{selectedEdge ? 'Edge relation' : 'New edge'}</span>
-              <select
-                className="template-select"
-                value={relationValue}
-                onChange={(event) => changeRelation(event.target.value)}
-              >
-                {isSystems && <option value="">Unspecified</option>}
-                {profileRelationTypes.map((relationType) => (
-                  <option key={relationType.id} value={relationType.id}>{relationType.label}</option>
-                ))}
-              </select>
-            </label>
-            {isSystems && (
-              <button
-                className={`button validation-button${validationIssues.length > 0 ? ' warn' : ''}`}
-                onClick={() => setValidationOpen((open) => !open)}
-                aria-label="Systems validation"
-                title="Systems validation"
-              >
-                {validationIssues.length > 0 ? <AlertTriangle size={15} /> : <ShieldCheck size={15} />}
-                {validationIssues.length > 0
-                  ? `${validationIssues.length} warning${validationIssues.length === 1 ? '' : 's'}`
-                  : 'Valid'}
-              </button>
-            )}
-            {isSystems ? (
-              <button className="button" onClick={addNoteAtCenter}>
-                <Plus size={16} />
-                Add note
-              </button>
-            ) : (
-              <button className="button" onClick={addAtCenter}>
-                <Plus size={16} />
-                Add card
-              </button>
-            )}
-            <select
-              className="template-select"
-              aria-label="Add template"
-              defaultValue=""
-              onChange={(event) => {
-                const value = event.target.value
-                if (value) addEntityAtCenter(value)
-                event.target.value = ''
-              }}
-            >
-              <option value="">{isSystems ? 'Add architecture card' : 'Add template'}</option>
-              {availableEntityTypes.map((entityType) => (
-                <option key={entityType.id} value={entityType.id}>{entityType.label}</option>
-              ))}
-            </select>
-            <button className="button" onClick={() => void save()} disabled={status === 'saving'}>
-              <Save size={16} />
-              {status === 'saving' ? 'Saving' : 'Save'}
-            </button>
-            <button className="button" onClick={download}>
-              <Download size={16} />
-              .canvas
-            </button>
-          </div>
-        </div>
+      <CanvasValidationContext.Provider value={validation}>
+        <div className="editor-shell">
+        {trail.length > 1 && (
+          <nav className="editor-trail" aria-label="Canvas trail">
+            <button onClick={() => void openTrail(-1)}>Canvases</button>
+            {trail.map((entry, index) => (
+              index === trail.length - 1
+                ? <span key={entry.id}>{entry.label}</span>
+                : <button key={entry.id} onClick={() => void openTrail(index)}>{entry.label}</button>
+            ))}
+          </nav>
+        )}
+        <CanvasToolbar
+          title={title}
+          profileLabel={profile.label}
+          isSystems={isSystems}
+          status={status}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          selectedEdge={Boolean(selectedEdge)}
+          relationValue={relationValue}
+          relationTypes={profileRelationTypes}
+          availableEntityTypes={availableEntityTypes}
+          issueCount={validationIssues.length}
+          errorCount={validationIssues.filter((issue) => issue.severity === 'error').length}
+          suggestionCount={suggestions.length}
+          onBack={() => void back()}
+          backLabel={trail.length > 1 ? 'Back' : 'All canvases'}
+          onUndo={undo}
+          onRedo={redo}
+          onHelp={() => setHelpOpen(true)}
+          onRename={() => setRenameOpen(true)}
+          onRelationChange={changeRelation}
+          onToggleValidation={() => {
+            setValidationFocusRequest(null)
+            setValidationPanel((current) => current === 'warnings' ? null : 'warnings')
+          }}
+          onToggleIntelligence={() => {
+            setValidationFocusRequest(null)
+            setValidationPanel((current) => current === 'intelligence' ? null : 'intelligence')
+          }}
+          onAddNote={addNoteAtCenter}
+          onAddCard={addAtCenter}
+          onAddEntity={addEntityAtCenter}
+          onAddProcessCanvas={() => void addProcessWithCanvas()}
+          onSave={() => void save()}
+          onDownload={() => void download()}
+          onScreenshot={() => { setScreenshotError(''); setScreenshotOpen(true) }}
+          onFitView={fitCanvas}
+          onAutoLayout={autoLayout}
+          onDataFlowLayout={dataFlowLayout}
+          onAutoFitAll={autoFitAll}
+        />
 
         {notice && (
           <div className="editor-notice" role="status">
@@ -1370,7 +1981,8 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
 
         {error && <div className="alert editor-alert" role="alert">{error}</div>}
 
-        <div className="canvas-flow" ref={flowRef} onDoubleClick={handleDoubleClick}>
+        <div className={`canvas-flow${connectNodeId ? ' connect-mode' : ''}`} ref={flowRef} onDoubleClick={handleDoubleClick}>
+          <CanvasBackdrop />
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -1392,29 +2004,42 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
             edgesReconnectable
             reconnectRadius={26}
             onNodeDragStart={() => setAlignmentGuides([])}
-            onNodeDragStop={() => setAlignmentGuides([])}
+            onNodeDragStop={() => {
+              setAlignmentGuides([])
+            }}
             onMoveStart={() => setAlignmentGuides([])}
             onSelectionChange={({ edges: selectedEdgeList }) => {
               setSelectedEdgeId(selectedEdgeList[0]?.id ?? null)
+            }}
+            onNodeClick={(_, node) => {
+              if (!connectNodeId || node.id === connectNodeId) return
+              if (node.type === 'group') {
+                setNotice('Groups cannot be connection endpoints.')
+                return
+              }
+              connectNodes(connectNodeId, node.id)
+            }}
+            onPaneClick={() => {
+              if (connectNodeId) setConnectNodeId(null)
             }}
             connectionMode={ConnectionMode.Loose}
             fitView={shouldFitInitial}
             fitViewOptions={{ padding: 0.25, maxZoom: 1.2 }}
             defaultViewport={savedViewport ?? undefined}
-            onMoveEnd={(_, viewport: Viewport) => writeViewport(document.id, viewport)}
-            minZoom={0.2}
+            onMoveEnd={(_, viewport: Viewport) => writeViewport(document.id, viewport, viewportLayout)}
+            minZoom={isMobile ? 0.08 : 0.2}
             maxZoom={2.5}
             zoomOnDoubleClick={false}
             panOnScroll
             panActivationKeyCode="Space"
             zoomActivationKeyCode={['Meta', 'Control']}
             multiSelectionKeyCode="Shift"
-            selectionOnDrag
-            panOnDrag={[1, 2]}
+            panOnDrag={isMobile ? true : [1, 2]}
+            selectionOnDrag={!isMobile}
             deleteKeyCode={['Backspace', 'Delete']}
             proOptions={{ hideAttribution: true }}
           >
-            <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="rgba(255, 255, 255, 0.09)" />
+            <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="var(--ui-pattern)" />
             <Controls showInteractive={false} />
             {pendingConnection && (
               <ConnectionPreview nodes={nodes} pending={pendingConnection} />
@@ -1431,6 +2056,34 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
               ))}
             </ViewportPortal>
           </ReactFlow>
+          {areaMode && (
+            <div
+              className="screenshot-selection-layer"
+              onPointerDown={onAreaPointerDown}
+              onPointerMove={onAreaPointerMove}
+              onPointerUp={(event) => { void onAreaPointerUp(event) }}
+              onPointerCancel={cancelAreaSelection}
+            >
+              <div
+                className="screenshot-selection-hint"
+                onPointerDown={(event) => event.stopPropagation()}
+              >
+                <span>Drag to select an area</span>
+                <button className="button" onClick={cancelAreaSelection}>Cancel</button>
+              </div>
+              {dragBox && (
+                <div
+                  className="screenshot-selection-box"
+                  style={{
+                    left: dragBox.x,
+                    top: dragBox.y,
+                    width: dragBox.width,
+                    height: dragBox.height,
+                  }}
+                />
+              )}
+            </div>
+          )}
           <button
             className="canvas-help-hint"
             onClick={() => setHelpOpen(true)}
@@ -1443,6 +2096,11 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
               selectedNodes={selectedNodes.length}
               selectedEdges={selectedEdges.length}
               canGroup={selectedNodes.some((node) => node.type !== 'group')}
+              canConnect={coarsePointer && Boolean(singleSelectedNode) && singleSelectedNode?.type !== 'group'}
+              connectMode={connectNodeId !== null}
+              onConnect={() => setConnectNodeId((current) => current ? null : singleSelectedNode?.id ?? null)}
+              canResize={Boolean(singleSelectedNode)}
+              onResize={() => setSizeDialogOpen(true)}
               cardTypeValue={cardTypeValue}
               allowText={!isSystems}
               entityTypeIds={availableEntityTypes.map((entityType) => entityType.id)}
@@ -1454,6 +2112,7 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
               onToggleMembership={toggleGroupMembership}
               onDuplicate={duplicateSelection}
               onDelete={deleteSelected}
+              onClear={clearSelection}
               onColor={applyColor}
             />
           )}
@@ -1485,15 +2144,38 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
               onCancel={() => setEdgeLabelEditor(null)}
             />
           )}
+          {isSystems && validationPanel === 'warnings' && (
+            <ProfileValidationTray
+              key={validationFocusRequest?.requestId ?? 'validation'}
+              issues={prioritizedIssues}
+              ignoredIssues={ignoredPrioritizedIssues}
+              nodes={nodes}
+              edges={edges}
+              profile={profile}
+              ontology={ontology}
+              ignoredReasons={ignoredReasons}
+              focusRequest={validationFocusRequest}
+              onClose={() => {
+                setValidationPanel(null)
+                setValidationFocusRequest(null)
+              }}
+              onFocus={focusValidationIssue}
+              onIgnore={ignoreValidationIssue}
+              onRestore={restoreValidationIssue}
+            />
+          )}
+          {isSystems && validationPanel === 'intelligence' && (
+            <CanvasIntelligencePanel
+              suggestions={suggestions}
+              onClose={() => {
+                setValidationPanel(null)
+                setValidationFocusRequest(null)
+              }}
+              onPreviewSuggestion={focusSuggestion}
+              onApplySuggestion={applySuggestion}
+            />
+          )}
         </div>
-
-        {isSystems && validationOpen && (
-          <ProfileValidationTray
-            issues={validationIssues}
-            onClose={() => setValidationOpen(false)}
-            onFocus={focusValidationIssue}
-          />
-        )}
 
         {conflicts.length > 0 && (
           <div className="conflict-bar" role="alertdialog" aria-label="Merge conflict">
@@ -1508,8 +2190,63 @@ function CanvasEditorInner({ client, document, onBack }: CanvasEditorProps) {
           </div>
         )}
 
+        {singleSelectedNode && sizeDialogOpen && (
+          <NodeSizeDialog
+            key={singleSelectedNode.id}
+            label={singleSelectedNode.type === 'group' ? 'group' : 'card'}
+            width={nodeDimensions(singleSelectedNode).width}
+            height={nodeDimensions(singleSelectedNode).height}
+            onApply={(width, height) => {
+              resizeNode(singleSelectedNode.id, width, height)
+              setSizeDialogOpen(false)
+            }}
+            onClose={() => setSizeDialogOpen(false)}
+          />
+        )}
+
+        <ScreenshotDialog
+          open={screenshotOpen}
+          busy={screenshotBusy}
+          scale={screenshotScale}
+          error={screenshotError}
+          onScaleChange={setScreenshotScale}
+          onFull={() => { void captureFull() }}
+          onSelect={beginAreaSelection}
+          onClose={() => setScreenshotOpen(false)}
+        />
+
         <KeyboardShortcutsDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
-      </div>
+
+        {canvasLinkNode && (
+          <CanvasLinksDialog
+            nodeName={canvasLinkNodeName}
+            links={getCanvasLinks(canvasLinkNode.data.raw)}
+            currentCanvasId={document.id}
+            trailIds={trail.map((entry) => entry.id)}
+            canvases={canvasOptions}
+            loading={canvasOptionsLoading}
+            error={canvasOptionsError}
+            onClose={() => setCanvasLinkNodeId(null)}
+            onOpen={openLinkedCanvas}
+            onLinkExisting={linkExistingCanvas}
+            onUnlink={unlinkCanvas}
+            onLabel={relabelCanvas}
+            onCreateNew={createLinkedCanvas}
+          />
+        )}
+
+        {renameOpen && (
+          <CanvasNameDialog
+            heading="Rename canvas"
+            initialValue={title}
+            confirmLabel="Save name"
+            busy={renameBusy}
+            onConfirm={(nextTitle) => void renameCanvas(nextTitle)}
+            onCancel={() => setRenameOpen(false)}
+          />
+        )}
+        </div>
+      </CanvasValidationContext.Provider>
     </CanvasEditorActionsContext.Provider>
   )
 }

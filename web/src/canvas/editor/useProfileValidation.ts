@@ -8,6 +8,8 @@ import {
 } from '@canvas/contract'
 
 import { fromFlowCanvas, type CanvasFlowEdge, type CanvasFlowNode } from '../model/adapter'
+import { validateSchemaContracts } from '../schema/jsonSchema'
+import { validateSemanticRules } from '../semantics/semanticRules'
 
 export function useProfileValidation({
   nodes,
@@ -26,6 +28,11 @@ export function useProfileValidation({
 }) {
   return useMemo(() => {
     if (!isSystems) return []
-    return validateProfileCanvas(fromFlowCanvas(nodes, edges, baseCanvas), profile, ontology)
+    const canvas = fromFlowCanvas(nodes, edges, baseCanvas)
+    return [
+      ...validateProfileCanvas(canvas, profile, ontology),
+      ...validateSchemaContracts(canvas.nodes ?? [], canvas.edges ?? []),
+      ...validateSemanticRules(canvas.nodes ?? [], canvas.edges ?? []),
+    ]
   }, [baseCanvas, edges, isSystems, nodes, ontology, profile])
 }

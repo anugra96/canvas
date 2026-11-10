@@ -1,8 +1,8 @@
 # Systems Profile Contract
 
-Status: Implemented v2
+Status: Implemented v4
 Profile ID: `systems`
-Version: `2`
+Version: `4`
 Scope: `container`
 
 ## Decision
@@ -18,13 +18,12 @@ future profile.
 
 | Card | Responsibility | Examples |
 | --- | --- | --- |
-| System | Runtime behaviour | Application, service, worker, CLI, queue, platform, frontend |
+| System | Runtime, API, database, CLI, or worker | Service, API, database, CLI, worker |
 | Repository | Source code location | GitHub, GitLab, local, other |
-| API | Contract and access surface | HTTP, GraphQL, gRPC, event, webhook, CLI |
-| Database | Durable state | Relational, document, object, cache, search, warehouse |
 | Actor | Human responsibility | Person, role, team |
 | Process | Coordination | Manual, automated, hybrid |
-| Artifact | Versioned deliverable | Manifest, container, model, config, schema, dataset, document |
+| Artifact | Versioned deliverable | Manifest, container, model, config, dataset, document |
+| Schema | Versioned contract | JSON Schema for API payloads, databases, events, config, datasets |
 
 Annotations: Note, Decision, Risk.
 
@@ -34,21 +33,18 @@ Annotations: Note, Decision, Risk.
 | --- | --- |
 | System | Name, Purpose, Kind, Owner, Deployment URL, Status |
 | Repository | Name, Provider, URL, Default branch, Owner, Status |
-| API | Name, Purpose, Protocol, Owner, Docs URL, Status |
-| Database | Name, Purpose, Kind, Owner, Console URL, Status |
 | Actor | Name, Kind, Responsibility |
 | Process | Name, Purpose, Mode, Owner, Runbook URL, Status |
 | Artifact | Name, Kind, Version, URI, Digest, Owner, Status |
+| Schema | Name, Contract kind, Version, Owner, Status, Review status, Reviewed version, Last reviewed, Review interval, JSON Schema |
 | Decision | Title, Status, Rationale, Owner |
 | Risk | Title, Severity, Owner, Mitigation, Status |
 | Note | Name, Body |
 
 Field choices:
 
-- System Kind: application, service, worker, CLI, queue, platform, frontend
+- System Kind: service, API, database, CLI, worker
 - Repository Provider: GitHub, GitLab, local, other
-- API Protocol: HTTP, GraphQL, gRPC, event, webhook, CLI
-- Database Kind: relational, document, object, cache, search, warehouse
 - Actor Kind: person, role, team
 - Process Mode: manual, automated, hybrid
 - Artifact Kind: manifest, container, model, config, schema, dataset, document
@@ -58,29 +54,23 @@ Field choices:
 
 | Relation | Allowed source -> target |
 | --- | --- |
-| `exposes` | System -> API |
-| `calls` | System -> API |
-| `stores_in` | System -> Database |
-| `depends_on` | System -> System |
-| `runs` | Actor or System -> Process |
-| `orchestrates` | Process -> System, API, or Database |
-| `produces` | System or Repository -> Artifact |
-| `uses` | System or Process -> Artifact; System -> Repository; Actor -> System |
+| `runs` | Actor, System, Repository, or Process -> Process |
+| `uses` | Actor, System, or Process -> System, Repository, Artifact, or Schema; Schema -> Schema |
+| `produces` | System, Repository, or Process -> Artifact |
+| `defines` | Repository or System -> Schema |
+| `describes` | Schema -> System with kind API or database |
 | `relates_to` | Annotations ↔ anything; architecture -> annotations |
 
 Default relation selection:
 
-- System -> API: `exposes`
-- System -> Database: `stores_in`
-- System -> System: `depends_on`
-- System -> Process: `runs`
-- Actor -> Process: `runs`
-- Actor -> System: `uses`
-- Process -> System/API/Database: `orchestrates`
+- Actor or Repository -> Process: `runs`
+- System or Process -> System: `uses`
 - System -> Artifact: `produces`
-- System -> Repository: `uses`
 - Repository -> Artifact: `produces`
-- Annotation -> anything: `relates_to`
+- Process -> Artifact: `produces`
+- System or Repository -> Schema: `defines`
+- System/Process -> Schema: `uses`
+- Schema -> System: `describes`
 
 ## Open Linking
 
@@ -95,8 +85,27 @@ Any two content cards can be connected. A relation type is optional.
 
 ## Validation
 
-Warnings do not block saving.
+Warnings do not block saving. **Canvas intelligence** and **Warnings** are
+separate panels. Canvas intelligence shows suggested fixes without warning
+codes or detailed messages. Each suggestion has a short context line, optional
+**Show** to zoom to the affected area, and **Fix** to apply the change as one
+undoable edit. Fix works before or after Show. The Warnings panel is a minimal
+grouped list with ambiguous relation controls and ignored items.
 
+- Relation warnings offer only relations allowed for the card-type pair. If the
+  forward direction has no legal relation, the panel can reverse the edge and
+  set a legal relation in one action.
+- Safe bulk fixes apply only when a missing relation has one legal choice or the
+  edge label exactly matches a legal relation. The panel previews every change
+  and applies the batch as one undoable edit.
+- Ignored warnings require a reason. They are stored in the canvas metadata and
+  can be restored from the Ignored filter.
+- The MVP semantic checks are limited to two rules. An Artifact needs a producer
+  from a System, Process, Repository, or API. A Process needs a runner from an
+  Actor or System.
+- Canvas intelligence only suggests the two MVP semantic repairs: add a producer
+  card for an Artifact or add a runner card for a Process. Every other warning
+  remains manual.
 - Untyped text cards are warnings.
 - Unknown entity or relation types are warnings.
 - Missing required fields are warnings.
@@ -104,6 +113,8 @@ Warnings do not block saving.
 - Group endpoints are warnings.
 - Every content card has a title or name.
 - Artifact identity is recommended through URI and digest.
+- JSON Schema contracts are parsed and meta-validated.
+- Active API and database Systems should have a linked schema contract.
 
 ## Layout
 
@@ -113,6 +124,22 @@ Warnings do not block saving.
 - Double-click a card edge to fit it to its content.
 - Groups remain visual boundaries and are not semantic endpoints.
 - Capability and product boundaries can use groups instead of card types.
+
+## Schema contracts
+
+Schema is a first-class contract, not an Artifact kind. Artifact is a concrete
+versioned deliverable; Schema is the normative structure shared across components.
+
+- JSON Schema is the first supported format. Draft-07, 2019-09, and 2020-12
+  meta-validation are supported where the bundled Ajv validator supports them.
+- The Schema card source is authoritative so the outline, validation, and review
+  feedback remain synchronized.
+- `defines` connects repositories or systems to schemas they own.
+- `describes` connects a schema to the API or database System it governs.
+- `uses` declares that a system, process, or schema consumes a schema contract.
+- Schema-to-schema `uses` records ERD/foreign-key relationships.
+- Validation reports parse/meta-schema errors, missing contract links, draft
+  schemas on active surfaces, and review obligations.
 
 ## Legacy
 
@@ -124,11 +151,12 @@ The previous detailed types remain readable in Raw canvases:
 Systems canvases migrate them as follows:
 
 - service, queue, external system, repository -> System with a mapped kind
-- event -> API with protocol event
+- event -> System with kind API
 - requirement, comment, code -> Note
-- reads_from and writes_to -> stores_in
-- calls and contains -> depends_on when both endpoints are Systems
+- reads_from and writes_to -> uses
+- calls, exposes, depends_on, orchestration, storage, and references -> uses
 - unsupported group and annotation edges are dropped during migration
 
-Migration updates the canvas profile metadata to version 2 and preserves labels,
-positions, groups, and unknown extension fields.
+Migration updates the canvas profile metadata to version 4 and preserves labels,
+positions, groups, and unknown extension fields. API and database cards become
+System cards with kind `api` or `database`.

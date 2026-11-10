@@ -11,8 +11,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hono/node-server": "^2.1.6",
+    "@aws-sdk/client-s3": "^3.1164.0",
     "@canvas/contract": "*",
+    "@hono/node-server": "^2.1.6",
     "hono": "^4.9.10",
     "zod": "^4.6.7"
   },

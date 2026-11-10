@@ -1,5 +1,8 @@
 import { Highlight, themes } from 'prism-react-renderer'
 
+import { useTheme } from '../../themes'
+import { useIsMobile } from '../../useMediaQuery'
+
 const LANGUAGE_ALIASES: Record<string, string> = {
   js: 'javascript',
   ts: 'typescript',
@@ -25,13 +28,16 @@ export function CodeBlock({
   language?: string
   showLineNumbers?: boolean
 }) {
+  const theme = useTheme()
+  const isMobile = useIsMobile()
+  const light = theme === 'paper' || theme === 'glacier' || theme === 'lagoon' || theme === 'fern' || theme === 'marigold' || theme === 'clay' || theme === 'blossom' || theme === 'dune-light'
   const value = code.replace(/\s+$/, '')
   if (!value) {
-    return <div className="code-empty">Double-click to add code</div>
+    return <div className="code-empty">{isMobile ? 'Double-tap to add code' : 'Double-click to add code'}</div>
   }
 
   return (
-    <Highlight theme={themes.vsDark} code={value} language={normalizeLanguage(language)}>
+    <Highlight theme={light ? themes.vsLight : themes.vsDark} code={value} language={normalizeLanguage(language)}>
       {({ className, style, tokens, getLineProps, getTokenProps }) => (
         <pre className={`code-block ${className}`} style={{ ...style, background: 'transparent' }}>
           <code>

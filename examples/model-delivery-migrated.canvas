@@ -1,0 +1,1316 @@
+{
+  "nodes": [
+    {
+      "id": "sys-delivery-trigger",
+      "type": "text",
+      "x": 40,
+      "y": 2138,
+      "width": 380,
+      "height": 220,
+      "text": "## System: Delivery trigger\n- **Purpose:** Protected-branch merge starts a staging or production delivery run.\n- **Kind:** worker\n- **Owner:** Forge\n- **Status:** planned",
+      "app": {
+        "entityType": "system",
+        "fields": {
+          "name": "Delivery trigger",
+          "purpose": "Protected-branch merge starts a staging or production delivery run.",
+          "kind": "worker",
+          "owner": "Forge",
+          "status": "planned"
+        }
+      }
+    },
+    {
+      "id": "sys-validate-artifact",
+      "type": "text",
+      "x": 530,
+      "y": 2148,
+      "width": 380,
+      "height": 200,
+      "text": "## System: Validate artifact\n- **Purpose:** Check artifact exists and SHA-256 matches.\n- **Kind:** worker\n- **Owner:** Forge\n- **Status:** planned",
+      "app": {
+        "entityType": "system",
+        "fields": {
+          "name": "Validate artifact",
+          "purpose": "Check artifact exists and SHA-256 matches.",
+          "kind": "worker",
+          "owner": "Forge",
+          "status": "planned"
+        }
+      }
+    },
+    {
+      "id": "sys-register-candidate",
+      "type": "text",
+      "x": 1020,
+      "y": 1860,
+      "width": 380,
+      "height": 220,
+      "text": "## System: Register model candidate\n- **Purpose:** POST a candidate model and continue or resume the run.\n- **Kind:** worker\n- **Owner:** Forge\n- **Status:** planned",
+      "app": {
+        "entityType": "system",
+        "fields": {
+          "name": "Register model candidate",
+          "purpose": "POST a candidate model and continue or resume the run.",
+          "kind": "worker",
+          "owner": "Forge",
+          "status": "planned"
+        }
+      }
+    },
+    {
+      "id": "sys-build-image",
+      "type": "text",
+      "x": 1510,
+      "y": 1572,
+      "width": 380,
+      "height": 200,
+      "text": "## System: Build container image\n- **Purpose:** Build and push the container image to ECR.\n- **Kind:** worker\n- **Owner:** Forge\n- **Status:** planned",
+      "app": {
+        "entityType": "system",
+        "fields": {
+          "name": "Build container image",
+          "purpose": "Build and push the container image to ECR.",
+          "kind": "worker",
+          "owner": "Forge",
+          "status": "planned"
+        }
+      }
+    },
+    {
+      "id": "sys-save-run-setup",
+      "type": "text",
+      "x": 2000,
+      "y": 1140,
+      "width": 380,
+      "height": 220,
+      "text": "## System: Save run setup\n- **Purpose:** Record the ECR image URI and the resumable run setup.\n- **Kind:** worker\n- **Owner:** Forge\n- **Status:** planned",
+      "app": {
+        "entityType": "system",
+        "fields": {
+          "name": "Save run setup",
+          "purpose": "Record the ECR image URI and the resumable run setup.",
+          "kind": "worker",
+          "owner": "Forge",
+          "status": "planned"
+        }
+      }
+    },
+    {
+      "id": "sys-create-image",
+      "type": "text",
+      "x": 2490,
+      "y": 852,
+      "width": 380,
+      "height": 200,
+      "text": "## System: Create image record\n- **Purpose:** Create the image record and return its URI.\n- **Kind:** worker\n- **Owner:** Forge\n- **Status:** planned",
+      "app": {
+        "entityType": "system",
+        "fields": {
+          "name": "Create image record",
+          "purpose": "Create the image record and return its URI.",
+          "kind": "worker",
+          "owner": "Forge",
+          "status": "planned"
+        }
+      }
+    },
+    {
+      "id": "sys-update-jobs",
+      "type": "text",
+      "x": 2980,
+      "y": 616,
+      "width": 380,
+      "height": 220,
+      "text": "## System: Update pipeline jobs\n- **Purpose:** Update staging or production jobs.yaml for the environment.\n- **Kind:** worker\n- **Owner:** Forge\n- **Status:** planned",
+      "app": {
+        "entityType": "system",
+        "fields": {
+          "name": "Update pipeline jobs",
+          "purpose": "Update staging or production jobs.yaml for the environment.",
+          "kind": "worker",
+          "owner": "Forge",
+          "status": "planned"
+        }
+      }
+    },
+    {
+      "id": "sys-update-history",
+      "type": "text",
+      "x": 3470,
+      "y": 40,
+      "width": 380,
+      "height": 200,
+      "text": "## System: Update CI/CD history\n- **Purpose:** Update lifecycle and daily evaluation records.\n- **Kind:** worker\n- **Owner:** Tower\n- **Status:** planned",
+      "app": {
+        "entityType": "system",
+        "fields": {
+          "name": "Update CI/CD history",
+          "purpose": "Update lifecycle and daily evaluation records.",
+          "kind": "worker",
+          "owner": "Tower",
+          "status": "planned"
+        }
+      }
+    },
+    {
+      "id": "sys-promote-model",
+      "type": "text",
+      "x": 4430,
+      "y": 164,
+      "width": 380,
+      "height": 200,
+      "text": "## System: Promote model\n- **Purpose:** Promote an approved model into production.\n- **Kind:** worker\n- **Owner:** Tower\n- **Status:** planned",
+      "app": {
+        "entityType": "system",
+        "fields": {
+          "name": "Promote model",
+          "purpose": "Promote an approved model into production.",
+          "kind": "worker",
+          "owner": "Tower",
+          "status": "planned"
+        }
+      }
+    },
+    {
+      "id": "process-review-gate",
+      "type": "text",
+      "x": 3960,
+      "y": 154,
+      "width": 360,
+      "height": 220,
+      "text": "## Process: Review gate\n- **Purpose:** Model team tests staging results and approves promotion.\n- **Mode:** hybrid\n- **Owner:** Model team\n- **Status:** planned",
+      "app": {
+        "entityType": "process",
+        "fields": {
+          "name": "Review gate",
+          "purpose": "Model team tests staging results and approves promotion.",
+          "mode": "hybrid",
+          "owner": "Model team",
+          "status": "planned"
+        }
+      }
+    },
+    {
+      "id": "actor-model-team",
+      "type": "text",
+      "x": 3500,
+      "y": 338,
+      "width": 320,
+      "height": 200,
+      "text": "## Actor: Model team\n- **Kind:** team\n- **Responsibility:** Review staging results and approve production promotion.",
+      "app": {
+        "entityType": "actor",
+        "fields": {
+          "name": "Model team",
+          "kind": "team",
+          "responsibility": "Review staging results and approve production promotion."
+        }
+      }
+    },
+    {
+      "id": "repo-midthor-inference",
+      "type": "text",
+      "x": 2010,
+      "y": 1912,
+      "width": 360,
+      "height": 220,
+      "text": "## Repository: midthor_inference\n- **Provider:** github\n- **URL:** https://github.com/example/midthor_inference\n- **Default branch:** staging\n- **Owner:** Forge\n- **Status:** planned",
+      "app": {
+        "entityType": "repository",
+        "fields": {
+          "name": "midthor_inference",
+          "provider": "github",
+          "url": "https://github.com/example/midthor_inference",
+          "defaultBranch": "staging",
+          "owner": "Forge",
+          "status": "planned"
+        }
+      }
+    },
+    {
+      "id": "repo-midcast-pipeline",
+      "type": "text",
+      "x": 3480,
+      "y": 874,
+      "width": 360,
+      "height": 220,
+      "text": "## Repository: midcast_pipeline\n- **Provider:** github\n- **URL:** https://github.com/example/midcast_pipeline\n- **Default branch:** main\n- **Owner:** Forge\n- **Status:** planned",
+      "app": {
+        "entityType": "repository",
+        "fields": {
+          "name": "midcast_pipeline",
+          "provider": "github",
+          "url": "https://github.com/example/midcast_pipeline",
+          "defaultBranch": "main",
+          "owner": "Forge",
+          "status": "planned"
+        }
+      }
+    },
+    {
+      "id": "artifact-ecr-repository",
+      "type": "text",
+      "x": 2500,
+      "y": 1614,
+      "width": 360,
+      "height": 240,
+      "text": "## Artifact: ECR Repository\n- **Kind:** container\n- **Version:** latest\n- **URI:** ecr://example/model-delivery\n- **Owner:** Forge\n- **Status:** planned",
+      "app": {
+        "entityType": "artifact",
+        "fields": {
+          "name": "ECR Repository",
+          "kind": "container",
+          "version": "latest",
+          "uri": "ecr://example/model-delivery",
+          "owner": "Forge",
+          "status": "planned"
+        }
+      }
+    },
+    {
+      "id": "artifact-jobs-yaml",
+      "type": "text",
+      "x": 3960,
+      "y": 936,
+      "width": 360,
+      "height": 240,
+      "text": "## Artifact: jobs.yaml\n- **Kind:** config\n- **Version:** 1.0.0\n- **URI:** midcast_pipeline/jobs.yaml\n- **Owner:** Forge\n- **Status:** planned",
+      "app": {
+        "entityType": "artifact",
+        "fields": {
+          "name": "jobs.yaml",
+          "kind": "config",
+          "version": "1.0.0",
+          "uri": "midcast_pipeline/jobs.yaml",
+          "owner": "Forge",
+          "status": "planned"
+        }
+      }
+    },
+    {
+      "id": "artifact-model-x",
+      "type": "text",
+      "x": 2500,
+      "y": 1902,
+      "width": 360,
+      "height": 240,
+      "text": "## Artifact: Model X\n- **Kind:** model\n- **Version:** candidate\n- **Owner:** Forge\n- **Status:** planned",
+      "app": {
+        "entityType": "artifact",
+        "fields": {
+          "name": "Model X",
+          "kind": "model",
+          "version": "candidate",
+          "owner": "Forge",
+          "status": "planned"
+        }
+      }
+    },
+    {
+      "id": "api-registry",
+      "type": "text",
+      "x": 4930,
+      "y": 392,
+      "width": 360,
+      "height": 240,
+      "text": "## API: Registry API\n- **Purpose:** Register models, images, deployments, and history.\n- **Protocol:** http\n- **Owner:** Forge\n- **Status:** planned",
+      "app": {
+        "entityType": "api",
+        "fields": {
+          "name": "Registry API",
+          "purpose": "Register models, images, deployments, and history.",
+          "protocol": "http",
+          "owner": "Forge",
+          "status": "planned"
+        }
+      }
+    },
+    {
+      "id": "api-staging-deployment",
+      "type": "text",
+      "x": 2490,
+      "y": 1326,
+      "width": 380,
+      "height": 240,
+      "text": "## API: Staging Deployment API\n- **Purpose:** Create a staging deployment and record its model environment.\n- **Protocol:** http\n- **Owner:** Tower\n- **Status:** planned",
+      "app": {
+        "entityType": "api",
+        "fields": {
+          "name": "Staging Deployment API",
+          "purpose": "Create a staging deployment and record its model environment.",
+          "protocol": "http",
+          "owner": "Tower",
+          "status": "planned"
+        }
+      }
+    },
+    {
+      "id": "api-github-contents",
+      "type": "text",
+      "x": 3480,
+      "y": 586,
+      "width": 360,
+      "height": 240,
+      "text": "## API: GitHub Contents API\n- **Purpose:** Read and update pipeline job configuration.\n- **Protocol:** http\n- **Owner:** Forge\n- **Status:** planned",
+      "app": {
+        "entityType": "api",
+        "fields": {
+          "name": "GitHub Contents API",
+          "purpose": "Read and update pipeline job configuration.",
+          "protocol": "http",
+          "owner": "Forge",
+          "status": "planned"
+        }
+      }
+    },
+    {
+      "id": "db-model-delivery",
+      "type": "text",
+      "x": 4920,
+      "y": 680,
+      "width": 380,
+      "height": 240,
+      "text": "## Database: Model Delivery DB\n- **Purpose:** Models, deployments, CI/CD history, and evaluation results.\n- **Kind:** relational\n- **Owner:** Tower\n- **Status:** planned",
+      "app": {
+        "entityType": "database",
+        "fields": {
+          "name": "Model Delivery DB",
+          "purpose": "Models, deployments, CI/CD history, and evaluation results.",
+          "kind": "relational",
+          "owner": "Tower",
+          "status": "planned"
+        }
+      }
+    },
+    {
+      "id": "db-model-artifacts",
+      "type": "text",
+      "x": 1020,
+      "y": 2128,
+      "width": 380,
+      "height": 240,
+      "text": "## Database: Model Artifacts Bucket\n- **Purpose:** Object storage for model artifacts and checksums.\n- **Kind:** object\n- **Owner:** Forge\n- **Status:** planned",
+      "app": {
+        "entityType": "database",
+        "fields": {
+          "name": "Model Artifacts Bucket",
+          "purpose": "Object storage for model artifacts and checksums.",
+          "kind": "object",
+          "owner": "Forge",
+          "status": "planned"
+        }
+      }
+    },
+    {
+      "id": "schema-model-product",
+      "type": "text",
+      "x": 5480,
+      "y": 922,
+      "width": 560,
+      "height": 420,
+      "text": "## Schema: Model Product\n- **Contract kind:** database\n- **Version:** 1.0.0\n- **Owner:** Forge\n- **Status:** active\n- **Review status:** approved\n- **Reviewed version:** 1.0.0\n- **Last reviewed:** 2026-11-01\n- **Review interval (days):** 180",
+      "app": {
+        "entityType": "schema",
+        "fields": {
+          "name": "Model Product",
+          "kind": "database",
+          "version": "1.0.0",
+          "owner": "Forge",
+          "status": "active",
+          "reviewStatus": "approved",
+          "reviewedVersion": "1.0.0",
+          "lastReviewed": "2026-11-01",
+          "reviewIntervalDays": 180,
+          "source": "{\n  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n  \"$id\": \"https://canvas.local/model-delivery/model-product/1.0.0\",\n  \"title\": \"Model Product\",\n  \"type\": \"object\",\n  \"additionalProperties\": false,\n  \"properties\": {\n    \"id\": {\n      \"type\": \"string\"\n    },\n    \"name\": {\n      \"type\": \"string\"\n    },\n    \"family\": {\n      \"type\": \"string\"\n    },\n    \"product\": {\n      \"type\": \"string\"\n    },\n    \"region_name\": {\n      \"type\": \"string\"\n    },\n    \"status\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"candidate\",\n        \"staged\",\n        \"production\",\n        \"retired\"\n      ]\n    },\n    \"container_id\": {\n      \"type\": [\n        \"string\",\n        \"null\"\n      ]\n    }\n  },\n  \"required\": [\n    \"id\",\n    \"name\",\n    \"family\",\n    \"product\",\n    \"region_name\",\n    \"status\"\n  ]\n}"
+        }
+      }
+    },
+    {
+      "id": "schema-deployment",
+      "type": "text",
+      "x": 5480,
+      "y": 1874,
+      "width": 560,
+      "height": 420,
+      "text": "## Schema: Deployment\n- **Contract kind:** database\n- **Version:** 1.0.0\n- **Owner:** Tower\n- **Status:** active\n- **Review status:** approved\n- **Reviewed version:** 1.0.0\n- **Last reviewed:** 2026-11-01\n- **Review interval (days):** 180",
+      "app": {
+        "entityType": "schema",
+        "fields": {
+          "name": "Deployment",
+          "kind": "database",
+          "version": "1.0.0",
+          "owner": "Tower",
+          "status": "active",
+          "reviewStatus": "approved",
+          "reviewedVersion": "1.0.0",
+          "lastReviewed": "2026-11-01",
+          "reviewIntervalDays": 180,
+          "source": "{\n  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n  \"$id\": \"https://canvas.local/model-delivery/deployment/1.0.0\",\n  \"title\": \"Deployment\",\n  \"type\": \"object\",\n  \"additionalProperties\": false,\n  \"properties\": {\n    \"id\": {\n      \"type\": \"string\"\n    },\n    \"model_id\": {\n      \"type\": \"string\"\n    },\n    \"previous_model_id\": {\n      \"type\": [\n        \"string\",\n        \"null\"\n      ]\n    },\n    \"model_family\": {\n      \"type\": \"string\"\n    },\n    \"product\": {\n      \"type\": \"string\"\n    },\n    \"region_name\": {\n      \"type\": \"string\"\n    },\n    \"environment\": {\n      \"type\": \"string\",\n      \"enum\": [\n        \"staging\",\n        \"production\"\n      ]\n    },\n    \"deployed_date\": {\n      \"type\": \"string\",\n      \"format\": \"date\"\n    },\n    \"image_uri\": {\n      \"type\": \"string\",\n      \"format\": \"uri\"\n    }\n  },\n  \"required\": [\n    \"id\",\n    \"model_id\",\n    \"environment\",\n    \"deployed_date\",\n    \"image_uri\"\n  ]\n}"
+        }
+      }
+    },
+    {
+      "id": "schema-cicd-history",
+      "type": "text",
+      "x": 5480,
+      "y": 446,
+      "width": 560,
+      "height": 420,
+      "text": "## Schema: CI/CD History\n- **Contract kind:** database\n- **Version:** 1.0.0\n- **Owner:** Tower\n- **Status:** active\n- **Review status:** approved\n- **Reviewed version:** 1.0.0\n- **Last reviewed:** 2026-11-01\n- **Review interval (days):** 180",
+      "app": {
+        "entityType": "schema",
+        "fields": {
+          "name": "CI/CD History",
+          "kind": "database",
+          "version": "1.0.0",
+          "owner": "Tower",
+          "status": "active",
+          "reviewStatus": "approved",
+          "reviewedVersion": "1.0.0",
+          "lastReviewed": "2026-11-01",
+          "reviewIntervalDays": 180,
+          "source": "{\n  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n  \"$id\": \"https://canvas.local/model-delivery/cicd-history/1.0.0\",\n  \"title\": \"CI/CD History\",\n  \"type\": \"object\",\n  \"additionalProperties\": false,\n  \"properties\": {\n    \"id\": {\n      \"type\": \"string\"\n    },\n    \"model_id\": {\n      \"type\": \"string\"\n    },\n    \"staging_start_date\": {\n      \"type\": [\n        \"string\",\n        \"null\"\n      ],\n      \"format\": \"date\"\n    },\n    \"staging_end_date\": {\n      \"type\": [\n        \"string\",\n        \"null\"\n      ],\n      \"format\": \"date\"\n    },\n    \"production_start_date\": {\n      \"type\": [\n        \"string\",\n        \"null\"\n      ],\n      \"format\": \"date\"\n    }\n  },\n  \"required\": [\n    \"id\",\n    \"model_id\"\n  ]\n}"
+        }
+      }
+    },
+    {
+      "id": "schema-evaluation-result",
+      "type": "text",
+      "x": 5480,
+      "y": 1398,
+      "width": 560,
+      "height": 420,
+      "text": "## Schema: Evaluation Result\n- **Contract kind:** database\n- **Version:** 1.0.0\n- **Owner:** Tower\n- **Status:** active\n- **Review status:** approved\n- **Reviewed version:** 1.0.0\n- **Last reviewed:** 2026-11-01\n- **Review interval (days):** 180",
+      "app": {
+        "entityType": "schema",
+        "fields": {
+          "name": "Evaluation Result",
+          "kind": "database",
+          "version": "1.0.0",
+          "owner": "Tower",
+          "status": "active",
+          "reviewStatus": "approved",
+          "reviewedVersion": "1.0.0",
+          "lastReviewed": "2026-11-01",
+          "reviewIntervalDays": 180,
+          "source": "{\n  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n  \"$id\": \"https://canvas.local/model-delivery/evaluation-result/1.0.0\",\n  \"title\": \"Evaluation Result\",\n  \"type\": \"object\",\n  \"additionalProperties\": false,\n  \"properties\": {\n    \"id\": {\n      \"type\": \"string\"\n    },\n    \"model_id\": {\n      \"type\": \"string\"\n    },\n    \"run_date\": {\n      \"type\": \"string\",\n      \"format\": \"date\"\n    },\n    \"passed\": {\n      \"type\": \"boolean\"\n    },\n    \"prefect_run_id\": {\n      \"type\": \"string\"\n    }\n  },\n  \"required\": [\n    \"id\",\n    \"model_id\",\n    \"run_date\",\n    \"passed\",\n    \"prefect_run_id\"\n  ]\n}"
+        }
+      }
+    },
+    {
+      "id": "note-delivery-design",
+      "type": "text",
+      "x": 40,
+      "y": 2508,
+      "width": 700,
+      "height": 220,
+      "text": "## Note: Delivery target design\n- **Note:** **Target design — not yet deployed.** Each protected-branch PR merge starts a separate run. `staging` delivers for evaluation; `main` delivers to production. Steps depend on the branch.\n\nTable headers use deployed fields. **Needs change** marks required changes.",
+      "app": {
+        "entityType": "note",
+        "fields": {
+          "name": "Delivery target design",
+          "body": "**Target design — not yet deployed.** Each protected-branch PR merge starts a separate run. `staging` delivers for evaluation; `main` delivers to production. Steps depend on the branch.\n\nTable headers use deployed fields. **Needs change** marks required changes."
+        }
+      }
+    },
+    {
+      "id": "note-register-example",
+      "type": "text",
+      "x": 780,
+      "y": 2508,
+      "width": 620,
+      "height": 220,
+      "text": "## Note: Register candidate example\n- **Note:** **New row.** Illustrative values; other fields omitted.\n\n| id | name | family | product | region_name | status | container_id |\n| --- | --- | --- | --- | --- | --- | --- |\n| `1111…1111` | `model-x` | `thor` | `midthor` | `na` | **`candidate`** | `null` |\n\n**CI/CD History: new row**\n\n| id | model_id | staging_start_date | production_start_date |\n| --- | --- | --- | --- |\n| `3333…3333` | `1111…1111` | `null` | `null` |\n\nTwo separate API requests today; model registration does not create History.",
+      "app": {
+        "entityType": "note",
+        "fields": {
+          "name": "Register candidate example",
+          "body": "**New row.** Illustrative values; other fields omitted.\n\n| id | name | family | product | region_name | status | container_id |\n| --- | --- | --- | --- | --- | --- | --- |\n| `1111…1111` | `model-x` | `thor` | `midthor` | `na` | **`candidate`** | `null` |\n\n**CI/CD History: new row**\n\n| id | model_id | staging_start_date | production_start_date |\n| --- | --- | --- | --- |\n| `3333…3333` | `1111…1111` | `null` | `null` |\n\nTwo separate API requests today; model registration does not create History."
+        }
+      }
+    },
+    {
+      "id": "note-runtime-example",
+      "type": "text",
+      "x": 40,
+      "y": 2768,
+      "width": 620,
+      "height": 220,
+      "text": "## Note: Save image example\n- **Note:** **Update existing row.** Values are shortened.\n\n| id | name | status | container_id |\n| --- | --- | --- | --- |\n| `1111…1111` | `model-x` | **`staged`** | `ECR image digest URI` |\n\n**API change needed:** the current runtime route also requires `task_definition_arn`. The target Registry reference is the image URI. ECS still uses a task definition.",
+      "app": {
+        "entityType": "note",
+        "fields": {
+          "name": "Save image example",
+          "body": "**Update existing row.** Values are shortened.\n\n| id | name | status | container_id |\n| --- | --- | --- | --- |\n| `1111…1111` | `model-x` | **`staged`** | `ECR image digest URI` |\n\n**API change needed:** the current runtime route also requires `task_definition_arn`. The target Registry reference is the image URI. ECS still uses a task definition."
+        }
+      }
+    },
+    {
+      "id": "note-staging-example",
+      "type": "text",
+      "x": 700,
+      "y": 2768,
+      "width": 620,
+      "height": 220,
+      "text": "## Note: Staging deployment example\n- **Note:** **New row.** This table shows deployed field names.\n\n| id | model_id | previous_model_id | model_family | product | region_name | deployed_date |\n| --- | --- | --- | --- | --- | --- | --- |\n| `7777…7777` | `1111…1111` | `null` | `thor` | `midthor` | `na` | `2026-11-04` |\n\n**API change needed:** record and select by environment; support multiple staged models. The image URI is currently on Model Product. Its final placement needs a decision.",
+      "app": {
+        "entityType": "note",
+        "fields": {
+          "name": "Staging deployment example",
+          "body": "**New row.** This table shows deployed field names.\n\n| id | model_id | previous_model_id | model_family | product | region_name | deployed_date |\n| --- | --- | --- | --- | --- | --- | --- |\n| `7777…7777` | `1111…1111` | `null` | `thor` | `midthor` | `na` | `2026-11-04` |\n\n**API change needed:** record and select by environment; support multiple staged models. The image URI is currently on Model Product. Its final placement needs a decision."
+        }
+      }
+    },
+    {
+      "id": "note-promotion-example",
+      "type": "text",
+      "x": 40,
+      "y": 3028,
+      "width": 620,
+      "height": 220,
+      "text": "## Note: Promotion deployment example\n- **Note:** **Update existing row.** Example assumes Model Y was previously selected.\n\n| id | model_id | previous_model_id | model_family | product | region_name | deployed_date |\n| --- | --- | --- | --- | --- | --- | --- |\n| `7777…7777` | `1111…1111` | `2222…2222` | `thor` | `midthor` | `na` | **`2026-11-11`** |\n\n**Model Product: update status**\n\n| id | name | status |\n| --- | --- | --- |\n| `1111…1111` | `model-x` | **`production`** |\n\n**API change needed:** record the environment and end staging. Current promotion updates a separate production slot.",
+      "app": {
+        "entityType": "note",
+        "fields": {
+          "name": "Promotion deployment example",
+          "body": "**Update existing row.** Example assumes Model Y was previously selected.\n\n| id | model_id | previous_model_id | model_family | product | region_name | deployed_date |\n| --- | --- | --- | --- | --- | --- | --- |\n| `7777…7777` | `1111…1111` | `2222…2222` | `thor` | `midthor` | `na` | **`2026-11-11`** |\n\n**Model Product: update status**\n\n| id | name | status |\n| --- | --- | --- |\n| `1111…1111` | `model-x` | **`production`** |\n\n**API change needed:** record the environment and end staging. Current promotion updates a separate production slot."
+        }
+      }
+    },
+    {
+      "id": "note-history-first-example",
+      "type": "text",
+      "x": 700,
+      "y": 3028,
+      "width": 620,
+      "height": 220,
+      "text": "## Note: Staging history example\n- **Note:** **Update existing row.**\n\n| id | model_id | staging_start_date | staging_end_date | production_start_date |\n| --- | --- | --- | --- | --- |\n| `3333…3333` | `1111…1111` | **`2026-11-04`** | `null` | `null` |\n\n**Needs change:** the deployed History API has no update route.",
+      "app": {
+        "entityType": "note",
+        "fields": {
+          "name": "Staging history example",
+          "body": "**Update existing row.**\n\n| id | model_id | staging_start_date | staging_end_date | production_start_date |\n| --- | --- | --- | --- | --- |\n| `3333…3333` | `1111…1111` | **`2026-11-04`** | `null` | `null` |\n\n**Needs change:** the deployed History API has no update route."
+        }
+      }
+    },
+    {
+      "id": "note-history-second-example",
+      "type": "text",
+      "x": 40,
+      "y": 3288,
+      "width": 620,
+      "height": 220,
+      "text": "## Note: Promotion history example\n- **Note:** **Update existing row.**\n\n| id | model_id | staging_start_date | staging_end_date | production_start_date |\n| --- | --- | --- | --- | --- |\n| `3333…3333` | `1111…1111` | `2026-11-04` | **`2026-11-11`** | **`2026-11-11`** |\n\n**Needs change:** current promotion creates a new History row; it does not update this row.",
+      "app": {
+        "entityType": "note",
+        "fields": {
+          "name": "Promotion history example",
+          "body": "**Update existing row.**\n\n| id | model_id | staging_start_date | staging_end_date | production_start_date |\n| --- | --- | --- | --- | --- |\n| `3333…3333` | `1111…1111` | `2026-11-04` | **`2026-11-11`** | **`2026-11-11`** |\n\n**Needs change:** current promotion creates a new History row; it does not update this row."
+        }
+      }
+    },
+    {
+      "id": "note-evaluation-example",
+      "type": "text",
+      "x": 700,
+      "y": 3288,
+      "width": 620,
+      "height": 220,
+      "text": "## Note: Daily evaluation example\n- **Note:** **Separate daily row.** The current evaluation route creates this record.\n\n| id | model_id | run_date | passed | prefect_run_id |\n| --- | --- | --- | --- | --- |\n| `4444…4444` | `1111…1111` | `2026-11-04` | **`true`** | `run-01` |\n\nApproval currently checks consecutive passing days. Keep these daily results.",
+      "app": {
+        "entityType": "note",
+        "fields": {
+          "name": "Daily evaluation example",
+          "body": "**Separate daily row.** The current evaluation route creates this record.\n\n| id | model_id | run_date | passed | prefect_run_id |\n| --- | --- | --- | --- | --- |\n| `4444…4444` | `1111…1111` | `2026-11-04` | **`true`** | `run-01` |\n\nApproval currently checks consecutive passing days. Keep these daily results."
+        }
+      }
+    },
+    {
+      "id": "note-deployment-role",
+      "type": "text",
+      "x": 40,
+      "y": 3548,
+      "width": 620,
+      "height": 220,
+      "text": "## Note: Deployment table notes\n- **Note:** Track each model's environment. Create a staging row; update it on promotion. Multiple models can be staged.\n\n**API change needed:** record environment and support these updates. Image URI is currently on Model Product; its final placement is open.",
+      "app": {
+        "entityType": "note",
+        "fields": {
+          "name": "Deployment table notes",
+          "body": "Track each model's environment. Create a staging row; update it on promotion. Multiple models can be staged.\n\n**API change needed:** record environment and support these updates. Image URI is currently on Model Product; its final placement is open."
+        }
+      }
+    },
+    {
+      "id": "note-history-role",
+      "type": "text",
+      "x": 700,
+      "y": 3548,
+      "width": 620,
+      "height": 220,
+      "text": "## Note: CI/CD History table notes\n- **Note:** Update a lifecycle row across staging and production. Keep separate daily evaluation rows.\n\n**API change needed:** update the lifecycle row. Current promotion creates a new History row. Lifecycle identity and repeat promotions remain open.",
+      "app": {
+        "entityType": "note",
+        "fields": {
+          "name": "CI/CD History table notes",
+          "body": "Update a lifecycle row across staging and production. Keep separate daily evaluation rows.\n\n**API change needed:** update the lifecycle row. Current promotion creates a new History row. Lifecycle identity and repeat promotions remain open."
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-trigger-validate",
+      "fromNode": "sys-delivery-trigger",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "sys-validate-artifact",
+      "label": "starts",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "depends_on"
+      }
+    },
+    {
+      "id": "e-validate-register",
+      "fromNode": "sys-validate-artifact",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "sys-register-candidate",
+      "label": "next",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "depends_on"
+      }
+    },
+    {
+      "id": "e-register-build",
+      "fromNode": "sys-register-candidate",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "sys-build-image",
+      "label": "next",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "depends_on"
+      }
+    },
+    {
+      "id": "e-build-save",
+      "fromNode": "sys-build-image",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "sys-save-run-setup",
+      "label": "next",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "depends_on"
+      }
+    },
+    {
+      "id": "e-save-create-image",
+      "fromNode": "sys-save-run-setup",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "sys-create-image",
+      "label": "next",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "depends_on"
+      }
+    },
+    {
+      "id": "e-create-image-jobs",
+      "fromNode": "sys-create-image",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "sys-update-jobs",
+      "label": "next",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "depends_on"
+      }
+    },
+    {
+      "id": "e-jobs-history",
+      "fromNode": "sys-update-jobs",
+      "fromSide": "top",
+      "toSide": "left",
+      "toNode": "sys-update-history",
+      "label": "next",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "depends_on"
+      }
+    },
+    {
+      "id": "e-history-review",
+      "fromNode": "sys-update-history",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "process-review-gate",
+      "label": "requests review",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "runs"
+      }
+    },
+    {
+      "id": "e-review-promote",
+      "fromNode": "process-review-gate",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "sys-promote-model",
+      "label": "approves",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "orchestrates"
+      }
+    },
+    {
+      "id": "e-team-review",
+      "fromNode": "actor-model-team",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "process-review-gate",
+      "label": "reviews",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "runs"
+      }
+    },
+    {
+      "id": "e-register-api",
+      "fromNode": "sys-register-candidate",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "toNode": "api-registry",
+      "label": "POST /v0/models",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "calls"
+      }
+    },
+    {
+      "id": "e-save-registry",
+      "fromNode": "sys-save-run-setup",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "api-registry",
+      "label": "runtime PUT",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "calls"
+      }
+    },
+    {
+      "id": "e-save-staging",
+      "fromNode": "sys-save-run-setup",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "api-staging-deployment",
+      "label": "create staging row",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "calls"
+      }
+    },
+    {
+      "id": "e-jobs-github",
+      "fromNode": "sys-update-jobs",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "api-github-contents",
+      "label": "update jobs.yaml",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "calls"
+      }
+    },
+    {
+      "id": "e-history-api",
+      "fromNode": "sys-update-history",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "toNode": "api-registry",
+      "label": "update history",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "calls"
+      }
+    },
+    {
+      "id": "e-promote-api",
+      "fromNode": "sys-promote-model",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "api-registry",
+      "label": "promotion POST",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "calls"
+      }
+    },
+    {
+      "id": "e-create-db",
+      "fromNode": "sys-create-image",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "db-model-delivery",
+      "label": "create model row",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "stores_in"
+      }
+    },
+    {
+      "id": "e-history-db",
+      "fromNode": "sys-update-history",
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "toNode": "db-model-delivery",
+      "label": "update history",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "stores_in"
+      }
+    },
+    {
+      "id": "e-promote-db",
+      "fromNode": "sys-promote-model",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "toNode": "db-model-delivery",
+      "label": "update deployment",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "stores_in"
+      }
+    },
+    {
+      "id": "e-validate-bucket",
+      "fromNode": "sys-validate-artifact",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "db-model-artifacts",
+      "label": "validate artifact",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "stores_in"
+      }
+    },
+    {
+      "id": "e-build-ecr",
+      "fromNode": "sys-build-image",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "artifact-ecr-repository",
+      "label": "push image",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "produces"
+      }
+    },
+    {
+      "id": "e-build-repo",
+      "fromNode": "sys-build-image",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "repo-midthor-inference",
+      "label": "build from repo",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "uses"
+      }
+    },
+    {
+      "id": "e-jobs-repo",
+      "fromNode": "sys-update-jobs",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "repo-midcast-pipeline",
+      "label": "jobs repo",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "uses"
+      }
+    },
+    {
+      "id": "e-jobs-yaml",
+      "fromNode": "sys-update-jobs",
+      "fromSide": "right",
+      "toSide": "top",
+      "toNode": "artifact-jobs-yaml",
+      "label": "update config",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "uses"
+      }
+    },
+    {
+      "id": "e-midthor-model",
+      "fromNode": "repo-midthor-inference",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "artifact-model-x",
+      "label": "model source",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "produces"
+      }
+    },
+    {
+      "id": "e-midcast-jobs",
+      "fromNode": "repo-midcast-pipeline",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "artifact-jobs-yaml",
+      "label": "pipeline config",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "produces"
+      }
+    },
+    {
+      "id": "e-validate-model",
+      "fromNode": "sys-validate-artifact",
+      "fromSide": "right",
+      "toSide": "bottom",
+      "toNode": "artifact-model-x",
+      "label": "validate model",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "uses"
+      }
+    },
+    {
+      "id": "e-save-ecr",
+      "fromNode": "sys-save-run-setup",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "artifact-ecr-repository",
+      "label": "image URI",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "uses"
+      }
+    },
+    {
+      "id": "e-model-product-api",
+      "fromNode": "schema-model-product",
+      "fromSide": "left",
+      "toSide": "right",
+      "toNode": "api-registry",
+      "label": "model records",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "describes"
+      }
+    },
+    {
+      "id": "e-model-product-db",
+      "fromNode": "schema-model-product",
+      "fromSide": "left",
+      "toSide": "right",
+      "toNode": "db-model-delivery",
+      "label": "model products",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "describes"
+      }
+    },
+    {
+      "id": "e-deployment-api",
+      "fromNode": "schema-deployment",
+      "fromSide": "left",
+      "toSide": "right",
+      "toNode": "api-staging-deployment",
+      "label": "staging payload",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "describes"
+      }
+    },
+    {
+      "id": "e-deployment-db",
+      "fromNode": "schema-deployment",
+      "fromSide": "left",
+      "toSide": "bottom",
+      "toNode": "db-model-delivery",
+      "label": "deployments",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "describes"
+      }
+    },
+    {
+      "id": "e-history-schema-api",
+      "fromNode": "schema-cicd-history",
+      "fromSide": "left",
+      "toSide": "right",
+      "toNode": "api-registry",
+      "label": "history records",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "describes"
+      }
+    },
+    {
+      "id": "e-history-schema-db",
+      "fromNode": "schema-cicd-history",
+      "fromSide": "left",
+      "toSide": "right",
+      "toNode": "db-model-delivery",
+      "label": "history table",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "describes"
+      }
+    },
+    {
+      "id": "e-evaluation-db",
+      "fromNode": "schema-evaluation-result",
+      "fromSide": "left",
+      "toSide": "bottom",
+      "toNode": "db-model-delivery",
+      "label": "evaluation rows",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "describes"
+      }
+    },
+    {
+      "id": "e-register-schema",
+      "fromNode": "sys-register-candidate",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "schema-model-product",
+      "label": "model contract",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "uses"
+      }
+    },
+    {
+      "id": "e-validate-schema",
+      "fromNode": "sys-validate-artifact",
+      "fromSide": "top",
+      "toSide": "left",
+      "toNode": "schema-model-product",
+      "label": "model contract",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "uses"
+      }
+    },
+    {
+      "id": "e-save-schema",
+      "fromNode": "sys-save-run-setup",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "schema-model-product",
+      "label": "model contract",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "uses"
+      }
+    },
+    {
+      "id": "e-save-deployment-schema",
+      "fromNode": "sys-save-run-setup",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "schema-deployment",
+      "label": "deployment contract",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "uses"
+      }
+    },
+    {
+      "id": "e-create-schema",
+      "fromNode": "sys-create-image",
+      "fromSide": "bottom",
+      "toSide": "bottom",
+      "toNode": "schema-model-product",
+      "label": "model contract",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "uses"
+      }
+    },
+    {
+      "id": "e-history-schema",
+      "fromNode": "sys-update-history",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "toNode": "schema-cicd-history",
+      "label": "history contract",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "uses"
+      }
+    },
+    {
+      "id": "e-history-evaluation-schema",
+      "fromNode": "sys-update-history",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "schema-evaluation-result",
+      "label": "evaluation contract",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "uses"
+      }
+    },
+    {
+      "id": "e-promote-deployment-schema",
+      "fromNode": "sys-promote-model",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "toNode": "schema-deployment",
+      "label": "deployment contract",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "uses"
+      }
+    },
+    {
+      "id": "e-promote-history-schema",
+      "fromNode": "sys-promote-model",
+      "fromSide": "right",
+      "toSide": "top",
+      "toNode": "schema-cicd-history",
+      "label": "history contract",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "uses"
+      }
+    },
+    {
+      "id": "note-register-schema",
+      "fromNode": "note-register-example",
+      "fromSide": "right",
+      "toSide": "right",
+      "toNode": "schema-model-product",
+      "label": "model example",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "relates_to"
+      }
+    },
+    {
+      "id": "note-runtime-schema",
+      "fromNode": "note-runtime-example",
+      "fromSide": "right",
+      "toSide": "right",
+      "toNode": "schema-model-product",
+      "label": "model example",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "relates_to"
+      }
+    },
+    {
+      "id": "note-staging-schema",
+      "fromNode": "note-staging-example",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "schema-deployment",
+      "label": "deployment example",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "relates_to"
+      }
+    },
+    {
+      "id": "note-promotion-schema",
+      "fromNode": "note-promotion-example",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "schema-deployment",
+      "label": "deployment example",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "relates_to"
+      }
+    },
+    {
+      "id": "note-history-first-schema",
+      "fromNode": "note-history-first-example",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "schema-cicd-history",
+      "label": "history example",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "relates_to"
+      }
+    },
+    {
+      "id": "note-history-second-schema",
+      "fromNode": "note-history-second-example",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "schema-cicd-history",
+      "label": "history example",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "relates_to"
+      }
+    },
+    {
+      "id": "note-evaluation-schema",
+      "fromNode": "note-evaluation-example",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "schema-evaluation-result",
+      "label": "evaluation example",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "relates_to"
+      }
+    },
+    {
+      "id": "note-deployment-schema",
+      "fromNode": "note-deployment-role",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "schema-deployment",
+      "label": "deployment notes",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "relates_to"
+      }
+    },
+    {
+      "id": "note-history-schema",
+      "fromNode": "note-history-role",
+      "fromSide": "right",
+      "toSide": "left",
+      "toNode": "schema-cicd-history",
+      "label": "history notes",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "relates_to"
+      }
+    },
+    {
+      "id": "note-design-api",
+      "fromNode": "note-delivery-design",
+      "fromSide": "left",
+      "toSide": "left",
+      "toNode": "api-registry",
+      "label": "target design",
+      "toEnd": "arrow",
+      "app": {
+        "relationType": "relates_to"
+      }
+    }
+  ],
+  "app": {
+    "profile": "systems",
+    "profileVersion": 3,
+    "scope": "container"
+  }
+}

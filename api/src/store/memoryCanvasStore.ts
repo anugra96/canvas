@@ -1,4 +1,5 @@
 import {
+  CURRENT_CANVAS_DOCUMENT_SCHEMA_VERSION,
   EMPTY_CANVAS,
   createCanvasId,
   type CanvasDocument,
@@ -46,6 +47,7 @@ export class MemoryCanvasStore implements CanvasStore {
     const document: CanvasDocument = {
       id,
       title,
+      schemaVersion: CURRENT_CANVAS_DOCUMENT_SCHEMA_VERSION,
       etag: nextEtag(),
       updatedAt: now(),
       updatedBy: principal.displayName,
@@ -81,6 +83,28 @@ export class MemoryCanvasStore implements CanvasStore {
       nodeCount: canvas.nodes?.length ?? 0,
       edgeCount: canvas.edges?.length ?? 0,
       canvas: structuredClone(canvas),
+    }
+    this.documents.set(key, next)
+    return structuredClone(next)
+  }
+
+  async rename(
+    tenantId: string,
+    id: string,
+    title: string,
+    ifMatch: string,
+    principal: CanvasPrincipal,
+  ): Promise<CanvasDocument> {
+    const key = this.key(tenantId, id)
+    const current = this.documents.get(key)
+    if (!current) throw new CanvasNotFoundError(id)
+    if (current.etag !== ifMatch) throw new CanvasConflictError(structuredClone(current))
+    const next: CanvasDocument = {
+      ...current,
+      title,
+      etag: nextEtag(),
+      updatedAt: now(),
+      updatedBy: principal.displayName,
     }
     this.documents.set(key, next)
     return structuredClone(next)

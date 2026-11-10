@@ -16,6 +16,7 @@ export interface CanvasClient {
   importCanvas(title: string, canvas: JsonCanvas): Promise<CanvasDocument>
   getCanvas(id: string): Promise<CanvasDocument>
   saveCanvas(id: string, etag: string, canvas: JsonCanvas): Promise<CanvasDocument>
+  renameCanvas(id: string, title: string, etag: string): Promise<CanvasDocument>
   downloadCanvas(id: string, title: string): Promise<void>
 }
 
@@ -84,6 +85,19 @@ function createApiClient(session: CanvasSession): CanvasClient {
           'if-match': `"${etag}"`,
         }),
         body: JSON.stringify({ canvas }),
+      })
+      if (!response.ok) throw await errorFrom(response)
+      return response.json() as Promise<CanvasDocument>
+    },
+
+    async renameCanvas(id, title, etag) {
+      const response = await request(`/v1/canvases/${id}`, {
+        method: 'PATCH',
+        headers: headers({
+          'content-type': 'application/json',
+          'if-match': `"${etag}"`,
+        }),
+        body: JSON.stringify({ title }),
       })
       if (!response.ok) throw await errorFrom(response)
       return response.json() as Promise<CanvasDocument>

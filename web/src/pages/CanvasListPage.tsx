@@ -1,4 +1,4 @@
-import { ArrowRight, Plus, Upload } from 'lucide-react'
+import { PenLine, Plus, Upload } from 'lucide-react'
 import {
   useEffect,
   useRef,
@@ -16,10 +16,11 @@ import {
 } from '@canvas/contract'
 
 import type { CanvasClient } from '../api/client'
+import { CanvasNameDialog } from '../CanvasNameDialog'
 
 interface CanvasListPageProps {
   client: CanvasClient
-  onOpen: (id: string) => void
+  onOpen: (id: string, title: string) => void
 }
 
 function formatDate(value: string): string {
@@ -35,9 +36,12 @@ function formatDate(value: string): string {
 export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
   const [canvases, setCanvases] = useState<CanvasSummary[] | null>(null)
   const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
   const [importing, setImporting] = useState(false)
   const [profileId, setProfileId] = useState('raw')
+  const [nameDialog, setNameDialog] = useState<
+    { mode: 'create' } | { mode: 'rename'; canvas: CanvasSummary } | null
+  >(null)
+  const [nameBusy, setNameBusy] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -79,7 +83,7 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
       }
       const title = file.name.replace(/\.canvas$/i, '').trim() || 'Imported canvas'
       const document = await client.importCanvas(title, validation.canvas)
-      onOpen(document.id)
+      onOpen(document.id, document.title)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not import that canvas.')
     } finally {
@@ -87,16 +91,32 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
     }
   }
 
-  async function createCanvas() {
-    setBusy(true)
+  async function submitCanvasName(title: string) {
+    if (!nameDialog) return
+    setNameBusy(true)
     setError('')
     try {
-      const document = await client.createCanvas(undefined, profileId)
-      onOpen(document.id)
+      if (nameDialog.mode === 'create') {
+        const document = await client.createCanvas(title, profileId)
+        setNameDialog(null)
+        onOpen(document.id, document.title)
+        return
+      }
+      const renamed = await client.renameCanvas(nameDialog.canvas.id, title, nameDialog.canvas.etag)
+      setCanvases((current) => current?.map((canvas) => (
+        canvas.id === renamed.id ? {
+          ...canvas,
+          title: renamed.title,
+          etag: renamed.etag,
+          updatedAt: renamed.updatedAt,
+          updatedBy: renamed.updatedBy,
+        } : canvas
+      )) ?? current)
+      setNameDialog(null)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not create a canvas.')
+      setError(cause instanceof Error ? cause.message : 'Could not save the canvas name.')
     } finally {
-      setBusy(false)
+      setNameBusy(false)
     }
   }
 
@@ -112,7 +132,7 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
           <button
             className="button"
             onClick={() => fileInputRef.current?.click()}
-            disabled={busy || importing}
+            disabled={nameBusy || importing}
           >
             <Upload size={16} />
             {importing ? 'Importing' : 'Import .canvas'}
@@ -122,15 +142,15 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
             aria-label="Canvas type"
             value={profileId}
             onChange={(event) => setProfileId(event.target.value)}
-            disabled={busy || importing}
+            disabled={nameBusy || importing}
           >
             {DEFAULT_PROFILES.map((profile) => (
               <option key={profile.id} value={profile.id}>{profile.label}</option>
             ))}
           </select>
-          <button className="button primary" onClick={createCanvas} disabled={busy || importing}>
+          <button className="button primary" onClick={() => setNameDialog({ mode: 'create' })} disabled={nameBusy || importing}>
             <Plus size={16} />
-            {busy ? 'Creating' : 'New canvas'}
+            New canvas
           </button>
           <input
             ref={fileInputRef}
@@ -156,7 +176,7 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
           <div className="empty-icon"><span className="brand-mark">SC</span></div>
           <h2>No canvases yet</h2>
           <p>Create a fresh board. Your edits stay local until you connect S3 later.</p>
-          <button className="button primary" onClick={createCanvas} disabled={busy}>
+          <button className="button primary" onClick={() => setNameDialog({ mode: 'create' })} disabled={nameBusy}>
             <Plus size={16} />
             Create the first canvas
           </button>
@@ -166,24 +186,48 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
       {canvases && canvases.length > 0 && (
         <div className="canvas-grid">
           {canvases.map((canvas) => (
-            <button className="canvas-card" key={canvas.id} onClick={() => onOpen(canvas.id)}>
-              <div className="canvas-card-top">
-                <span className="canvas-card-kicker">
-                  {findProfile(DEFAULT_PROFILES, canvas.profile ?? 'raw')?.label ?? 'Canvas'}
-                </span>
-                <ArrowRight size={16} />
-              </div>
-              <h2>{canvas.title}</h2>
-              <div className="canvas-card-meta">
-                <span>{canvas.nodeCount} nodes</span>
-                <span>{canvas.edgeCount} edges</span>
-              </div>
-              <p className="canvas-card-updated">
-                {formatDate(canvas.updatedAt)} by {canvas.updatedBy}
-              </p>
-            </button>
+            <div className="canvas-card" key={canvas.id}>
+              <button
+                className="canvas-card-open"
+                onClick={() => onOpen(canvas.id, canvas.title)}
+                aria-label={`Open ${canvas.title}`}
+              >
+                <div className="canvas-card-top">
+                  <span className="canvas-card-kicker">
+                    {findProfile(DEFAULT_PROFILES, canvas.profile ?? 'raw')?.label ?? 'Canvas'}
+                  </span>
+                </div>
+                <h2>{canvas.title}</h2>
+                <div className="canvas-card-meta">
+                  <span>{canvas.nodeCount} nodes</span>
+                  <span>{canvas.edgeCount} edges</span>
+                </div>
+                <p className="canvas-card-updated">
+                  {formatDate(canvas.updatedAt)} by {canvas.updatedBy}
+                </p>
+              </button>
+              <button
+                className="canvas-card-rename"
+                onClick={() => setNameDialog({ mode: 'rename', canvas })}
+                aria-label={`Edit title for ${canvas.title}`}
+                title="Edit canvas title"
+              >
+                <PenLine size={15} />
+              </button>
+            </div>
           ))}
         </div>
+      )}
+
+      {nameDialog && (
+        <CanvasNameDialog
+          heading={nameDialog.mode === 'create' ? 'Name your canvas' : 'Rename canvas'}
+          initialValue={nameDialog.mode === 'create' ? 'Untitled canvas' : nameDialog.canvas.title}
+          confirmLabel={nameDialog.mode === 'create' ? 'Create canvas' : 'Save name'}
+          busy={nameBusy}
+          onConfirm={(title) => void submitCanvasName(title)}
+          onCancel={() => setNameDialog(null)}
+        />
       )}
     </main>
   )

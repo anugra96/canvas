@@ -17,6 +17,7 @@ export const ontologyFieldSchema = z.object({
   required: z.boolean().optional(),
   primary: z.boolean().optional(),
   defaultValue: z.union([z.string(), z.number()]).optional(),
+  content: z.boolean().optional(),
 })
 
 export const entityTypeSchema = z.object({
@@ -63,10 +64,17 @@ export const canvasEntityMetaSchema = z.object({
   fields: z.record(z.string(), entityFieldValueSchema),
 }).passthrough()
 
+export const canvasLinkSchema = z.object({
+  id: z.string().min(1),
+  canvasId: z.string().min(1),
+  label: z.string().trim().min(1).max(120).optional(),
+})
+
 export const canvasNodeMetaSchema = z.object({
   entityType: z.string().min(1).optional(),
   fields: z.record(z.string(), entityFieldValueSchema).optional(),
   groupMembers: z.array(z.string().min(1)).optional(),
+  canvasLinks: z.array(canvasLinkSchema).optional(),
 }).passthrough()
 
 export const canvasEdgeMetaSchema = z.object({
@@ -82,6 +90,7 @@ export type Ontology = z.infer<typeof ontologySchema>
 export type EntityFieldValue = z.infer<typeof entityFieldValueSchema>
 export type CanvasEntityMeta = z.infer<typeof canvasEntityMetaSchema>
 export type CanvasNodeMeta = z.infer<typeof canvasNodeMetaSchema>
+export type CanvasLink = z.infer<typeof canvasLinkSchema>
 export type CanvasEdgeMeta = z.infer<typeof canvasEdgeMetaSchema>
 
 export type EntityFields = Record<string, EntityFieldValue>
@@ -267,11 +276,11 @@ export const DEFAULT_ONTOLOGY: Ontology = {
     {
       id: 'system',
       label: 'System',
-      description: 'Any runtime system: application, service, worker, CLI, queue, platform, or frontend.',
+      description: 'A runtime system, API surface, database, CLI, or worker.',
       icon: 'boxes',
       color: '5',
       defaultSize: { width: 380, height: 260 },
-      relationTypes: ['exposes', 'calls', 'stores_in', 'depends_on', 'runs', 'produces', 'uses'],
+      relationTypes: ['runs', 'uses', 'produces', 'defines', 'describes'],
       fields: [
         { key: 'name', label: 'Name', type: 'text', primary: true, required: true },
         { key: 'purpose', label: 'Purpose', type: 'textarea' },
@@ -279,7 +288,7 @@ export const DEFAULT_ONTOLOGY: Ontology = {
           key: 'kind',
           label: 'Kind',
           type: 'select',
-          options: ['application', 'service', 'worker', 'cli', 'queue', 'platform', 'frontend'],
+          options: ['service', 'api', 'database', 'cli', 'worker'],
           defaultValue: 'service',
           required: true,
         },
@@ -445,6 +454,53 @@ export const DEFAULT_ONTOLOGY: Ontology = {
       ],
     },
     {
+      id: 'schema',
+      label: 'Schema',
+      description: 'A versioned JSON Schema contract shared across systems.',
+      icon: 'braces',
+      color: '3',
+      defaultSize: { width: 560, height: 420 },
+      relationTypes: ['defines', 'describes', 'uses', 'references', 'relates_to'],
+      fields: [
+        { key: 'name', label: 'Name', type: 'text', primary: true, required: true },
+        {
+          key: 'kind',
+          label: 'Contract kind',
+          type: 'select',
+          options: ['api', 'database', 'event', 'config', 'dataset', 'other'],
+          defaultValue: 'api',
+          required: true,
+        },
+        { key: 'version', label: 'Version', type: 'text', required: true, placeholder: '1.0.0', defaultValue: '1.0.0' },
+        { key: 'owner', label: 'Owner', type: 'text' },
+        {
+          key: 'status',
+          label: 'Status',
+          type: 'select',
+          options: ['draft', 'active', 'deprecated'],
+          defaultValue: 'draft',
+        },
+        {
+          key: 'reviewStatus',
+          label: 'Review status',
+          type: 'select',
+          options: ['needs_review', 'approved', 'changes_requested'],
+          defaultValue: 'needs_review',
+        },
+        { key: 'reviewedVersion', label: 'Reviewed version', type: 'text', placeholder: '1.0.0' },
+        { key: 'lastReviewed', label: 'Last reviewed', type: 'text', placeholder: 'YYYY-MM-DD' },
+        { key: 'reviewIntervalDays', label: 'Review interval (days)', type: 'number', defaultValue: 90 },
+        {
+          key: 'source',
+          label: 'JSON Schema',
+          type: 'textarea',
+          content: true,
+          placeholder: 'Paste a JSON Schema document.',
+          defaultValue: '{\n  "$schema": "https://json-schema.org/draft/2020-12/schema",\n  "title": "New contract",\n  "type": "object",\n  "properties": {},\n  "required": []\n}\n',
+        },
+      ],
+    },
+    {
       id: 'code',
       label: 'Code',
       description: 'A syntax-highlighted code sample with a language and notes.',
@@ -516,6 +572,9 @@ export const DEFAULT_ONTOLOGY: Ontology = {
     { id: 'orchestrates', label: 'orchestrates', color: '3', category: 'runtime', directed: true },
     { id: 'produces', label: 'produces', color: '6', category: 'data', directed: true },
     { id: 'uses', label: 'uses', color: '2', category: 'data', directed: true },
+    { id: 'defines', label: 'defines', color: '4', category: 'structure', directed: true },
+    { id: 'describes', label: 'describes', color: '3', category: 'data', directed: true },
+    { id: 'references', label: 'references', color: '2', category: 'data', directed: true },
   ],
 }
 
@@ -556,7 +615,7 @@ export function renderEntityMarkdown(
   const title = entityTitle(entityType, fields).trim() || `Untitled ${entityType.label.toLowerCase()}`
   const lines = [`## ${entityType.label}: ${title}`]
   for (const field of entityType.fields) {
-    if (field.primary) continue
+    if (field.primary || field.content) continue
     const value = fields[field.key]
     const text = value == null ? '' : String(value).trim()
     if (!text) continue
@@ -568,6 +627,11 @@ export function renderEntityMarkdown(
 export function getEntityMeta(node: { app?: unknown }): CanvasEntityMeta | undefined {
   const parsed = canvasEntityMetaSchema.safeParse(node.app)
   return parsed.success ? parsed.data : undefined
+}
+
+export function getCanvasLinks(node: { app?: unknown }): CanvasLink[] {
+  const parsed = canvasNodeMetaSchema.safeParse(node.app)
+  return parsed.success ? parsed.data.canvasLinks ?? [] : []
 }
 
 export function getGroupMembers(node: { app?: unknown }): string[] | undefined {

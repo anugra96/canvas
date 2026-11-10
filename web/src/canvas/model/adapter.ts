@@ -45,28 +45,16 @@ const PRESET_COLORS: Record<string, string> = {
 
 export const CANVAS_COLOR_PRESETS = Object.entries(PRESET_COLORS).map(([id, hex]) => ({ id, hex }))
 
-const CARD_BACKGROUNDS: Record<string, string> = {
-  '1': '#3a1f20',
-  '2': '#3a2a1b',
-  '3': '#37321b',
-  '4': '#1e3424',
-  '5': '#1b3335',
-  '6': '#2b2338',
-}
-
 export function cardBackgroundFor(value: string | undefined): string | undefined {
-  if (!value) return undefined
-  if (CARD_BACKGROUNDS[value]) return CARD_BACKGROUNDS[value]
   const accent = colorFor(value)
   if (!accent) return undefined
-  return accent.length === 7 ? `${accent}28` : accent
+  return `color-mix(in srgb, ${accent} 14%, var(--ui-panel-solid))`
 }
 
 export function groupBackgroundFor(value: string | undefined): string | undefined {
-  if (!value) return undefined
   const accent = colorFor(value)
   if (!accent) return undefined
-  return accent.length === 7 ? `${accent}73` : accent
+  return `color-mix(in srgb, ${accent} 26%, transparent)`
 }
 
 export function colorFor(value: string | undefined): string | undefined {
@@ -90,7 +78,13 @@ export function toFlowNode(raw: CanvasNode): CanvasFlowNode {
   return {
     id: raw.id,
     type: raw.type === 'text' && getEntityMeta(raw)
-      ? (getEntityMeta(raw)?.entityType === 'code' ? 'code' : 'entity')
+      ? (
+        getEntityMeta(raw)?.entityType === 'code'
+          ? 'code'
+          : getEntityMeta(raw)?.entityType === 'schema'
+            ? 'schema'
+            : 'entity'
+      )
       : raw.type,
     position: { x: raw.x, y: raw.y },
     data: nodeData(raw),
@@ -134,10 +128,9 @@ export function toFlowCanvas(
   nodes: CanvasFlowNode[]
   edges: CanvasFlowEdge[]
 } {
-  return {
-    nodes: (canvas.nodes ?? []).map(toFlowNode),
-    edges: (canvas.edges ?? []).map((edge) => toFlowEdge(edge, ontology)),
-  }
+  const nodes = (canvas.nodes ?? []).map(toFlowNode)
+  const edges = (canvas.edges ?? []).map((edge) => toFlowEdge(edge, ontology))
+  return { nodes, edges }
 }
 
 function styleDimension(node: CanvasFlowNode, key: 'width' | 'height', fallback: number): number {

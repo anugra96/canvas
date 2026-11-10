@@ -5,6 +5,7 @@ import {
   emptyEntityFields,
   entityTitle,
   findEntityType,
+  getCanvasLinks,
   getEntityMeta,
   renderEntityMarkdown,
 } from './ontology'
@@ -38,6 +39,34 @@ describe('default ontology', () => {
     expect(markdown).toContain('## Repository: Canvas Engine')
     expect(markdown).toContain('- **Owner:** Forge')
     expect(markdown).toContain('- **URL:** https://github.com/Canvas-Wildfire/app-engine')
+  })
+
+  it('keeps schema source out of the markdown summary', () => {
+    const schema = findEntityType(DEFAULT_ONTOLOGY, 'schema')
+    expect(schema).toBeTruthy()
+    if (!schema) return
+    const fields = emptyEntityFields(schema)
+    fields.name = 'Order'
+    fields.owner = 'Tower'
+    fields.source = '{"type":"object","properties":{"id":{"type":"string"}}}'
+    const markdown = renderEntityMarkdown(schema, fields)
+    expect(markdown).toContain('## Schema: Order')
+    expect(markdown).toContain('- **Owner:** Tower')
+    expect(markdown).not.toContain('properties')
+  })
+
+  it('parses linked canvas metadata from any card extension', () => {
+    expect(getCanvasLinks({
+      app: {
+        canvasLinks: [
+          { id: 'link-1', canvasId: 'canvas-1', label: 'Process documentation' },
+        ],
+      },
+    })).toEqual([
+      { id: 'link-1', canvasId: 'canvas-1', label: 'Process documentation' },
+    ])
+    expect(getCanvasLinks({ app: { canvasLinks: [] } })).toEqual([])
+    expect(getCanvasLinks({})).toEqual([])
   })
 
   it('parses entity metadata from a node extension', () => {

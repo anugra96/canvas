@@ -7,6 +7,32 @@ export default defineConfig({
   },
   envDir: '..',
   plugins: [react()],
+  build: {
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [
+            {
+              name: 'flow',
+              test: /node_modules[\\/](@xyflow|d3-|zustand)/,
+              priority: 3,
+            },
+            {
+              name: 'editor',
+              test: /node_modules[\\/](@tiptap|prosemirror)/,
+              priority: 2,
+            },
+            {
+              name: 'vendor',
+              test: /node_modules/,
+              priority: 1,
+              maxSize: 500_000,
+            },
+          ],
+        },
+      },
+    },
+  },
   server: {
     host: '127.0.0.1',
     port: 5173,
