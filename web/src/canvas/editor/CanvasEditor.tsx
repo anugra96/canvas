@@ -19,22 +19,14 @@ import {
 } from 'react'
 
 import {
-  emptyEntityFields,
   getCanvasLinks,
-  findEntityType,
-  renderEntityMarkdown,
   type CanvasDocument,
-  type CanvasNode,
-  type CanvasNodeSide,
-  type CanvasProfileIssue,
 } from '@canvas/contract'
 
 import type { CanvasClient } from '../../api/client'
 import {
   nodeDimensions,
   toFlowCanvas,
-  toFlowEdge,
-  toFlowNode,
   type CanvasFlowEdge,
   type CanvasFlowNode,
 } from '../model/adapter'
@@ -47,8 +39,9 @@ import { CanvasToolbar } from './CanvasToolbar'
 import { useCanvasDocument } from './document/useCanvasDocument'
 import { useCanvasCommands } from './commands'
 import { ConnectionTemplateMenu } from './ConnectionTemplateMenu'
-import { ReviewPanel, type ReviewTab } from './ReviewPanel'
+
 import { EdgeLabelEditor } from './EdgeLabelEditor'
+import { ReviewPanel } from './ReviewPanel'
 import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog'
 import { CanvasNameDialog } from '../../CanvasNameDialog'
 import { CanvasLinksDialog } from './CanvasLinksDialog'
@@ -59,24 +52,17 @@ import { SelectionToolbar } from './SelectionToolbar'
 import { isEditableTarget } from './shortcuts'
 import { useCanvasHistory } from './useCanvasHistory'
 import { ConnectionPreview } from './graph/ConnectionPreview'
-import { makeEntityNode } from './graph/nodes'
 import { useCanvasGraph } from './graph/useCanvasGraph'
 import { useCanvasCapture } from './capture/useCanvasCapture'
 import { useCanvasLinks } from './links/useCanvasLinks'
 import { useCanvasProfile } from './useCanvasProfile'
-import { useProfileValidation } from './useProfileValidation'
-import { prioritizeValidationIssues } from './prioritizeIssues'
-import { buildSuggestions, type CanvasSuggestion } from '../suggestions/suggestionEngine'
+import { useCanvasValidation } from './validation/useCanvasValidation'
 import {
-  createSuppression,
   readValidationSuppressions,
-  type IgnoreReason,
   type ValidationSuppression,
 } from './validationSuppressions'
-import { validationIssueKey } from './validationIdentity'
 import { readViewport, writeViewport } from './viewport'
 import { CanvasEdge as CanvasEdgeComponent } from './edges/CanvasEdge'
-import { edgeFromConnection } from '../model/edgeRelations'
 import { CodeNode } from './nodes/CodeNode'
 import { SchemaNode } from './nodes/SchemaNode'
 import { EntityNode } from './nodes/EntityNode'
@@ -131,10 +117,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const [edges, setEdges] = useState<CanvasFlowEdge[]>(initial.edges)
   const [helpOpen, setHelpOpen] = useState(false)
   const [viewsOpen, setViewsOpen] = useState(false)
-  const [reviewOpen, setReviewOpen] = useState(false)
-  const [reviewTab, setReviewTab] = useState<ReviewTab>('issues')
-  const [validationFocusRequest, setValidationFocusRequest] = useState<{ key: string; requestId: number } | null>(null)
-  const validationRequestId = useRef(0)
   const [suppressions, setSuppressions] = useState<ValidationSuppression[]>(() => (
     readValidationSuppressions(document.canvas)
   ))
@@ -330,6 +312,42 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     addProcessWithCanvas,
   } = links
 
+  const validationEditor = useCanvasValidation({
+    nodes,
+    edges,
+    baseCanvas,
+    profile,
+    ontology,
+    isSystems,
+    suppressions,
+    setSuppressions,
+    setNodes,
+    setEdges,
+    selectEdge,
+    markDirty,
+    setNotice,
+  })
+
+  const {
+    validation,
+    reviewOpen,
+    reviewTab,
+    setReviewTab,
+    openReview,
+    closeReview,
+    validationFocusRequest,
+    validationIssues,
+    prioritizedIssues,
+    ignoredPrioritizedIssues,
+    suggestions,
+    ignoredReasons,
+    ignoreValidationIssue,
+    restoreValidationIssue,
+    focusSuggestion,
+    applySuggestion,
+    focusValidationIssue,
+  } = validationEditor
+
   useEffect(() => observeHistory({ nodes, edges }), [edges, nodes, observeHistory])
 
   useEffect(() => {
@@ -450,240 +468,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     [autoFitNode, openCanvasLinks, openEdgeLabelEditor, resizeNode, selectEdge, updateEntityField, updateLabel, updateText],
   )
 
-  const allValidationIssues = useProfileValidation({
-    nodes,
-    edges,
-    baseCanvas,
-    profile,
-    ontology,
-    isSystems,
-  })
-  const suppressionByFingerprint = useMemo(
-    () => new Map(suppressions.map((suppression) => [suppression.fingerprint, suppression])),
-    [suppressions],
-  )
-  const validationIssues = useMemo(
-    () => allValidationIssues.filter((issue) => !suppressionByFingerprint.has(validationIssueKey(issue))),
-    [allValidationIssues, suppressionByFingerprint],
-  )
-  const ignoredValidationIssues = useMemo(
-    () => allValidationIssues.filter((issue) => suppressionByFingerprint.has(validationIssueKey(issue))),
-    [allValidationIssues, suppressionByFingerprint],
-  )
-  const prioritizedIssues = useMemo(
-    () => prioritizeValidationIssues(validationIssues, nodes, edges),
-    [edges, nodes, validationIssues],
-  )
-  const ignoredPrioritizedIssues = useMemo(
-    () => prioritizeValidationIssues(ignoredValidationIssues, nodes, edges),
-    [edges, ignoredValidationIssues, nodes],
-  )
-  const suggestions = useMemo(
-    () => buildSuggestions(validationIssues, nodes, edges),
-    [edges, nodes, validationIssues],
-  )
-  const ignoredReasons = useMemo(
-    () => new Map([...suppressionByFingerprint].map(([fingerprint, suppression]) => (
-      [fingerprint, suppression.reason]
-    ))),
-    [suppressionByFingerprint],
-  )
-
-  const ignoreValidationIssue = useCallback((issue: CanvasProfileIssue, reason: IgnoreReason) => {
-    const suppression = createSuppression(issue, reason)
-    setSuppressions((current) => (
-      current.some((candidate) => candidate.fingerprint === suppression.fingerprint)
-        ? current
-        : [...current, suppression]
-    ))
-    setNotice(`Warning ignored: ${reason}.`)
-    markDirty()
-  }, [markDirty, setNotice, setSuppressions])
-
-  const restoreValidationIssue = useCallback((issue: CanvasProfileIssue) => {
-    const fingerprint = validationIssueKey(issue)
-    setSuppressions((current) => current.filter((suppression) => suppression.fingerprint !== fingerprint))
-    setNotice('Warning restored.')
-    markDirty()
-  }, [markDirty, setNotice, setSuppressions])
-
-  function suggestedPlacement(
-    target: CanvasFlowNode,
-    width: number,
-    height: number,
-    nodeList: CanvasFlowNode[] = nodes,
-  ): { x: number; y: number; sourceHandle: CanvasNodeSide; targetHandle: CanvasNodeSide } {
-    const size = nodeDimensions(target)
-    const gap = 90
-    const candidates = [
-      {
-        x: target.position.x - width - gap,
-        y: target.position.y + (size.height - height) / 2,
-        sourceHandle: 'right' as const,
-        targetHandle: 'left' as const,
-      },
-      {
-        x: target.position.x + size.width + gap,
-        y: target.position.y + (size.height - height) / 2,
-        sourceHandle: 'left' as const,
-        targetHandle: 'right' as const,
-      },
-      {
-        x: target.position.x + (size.width - width) / 2,
-        y: target.position.y - height - gap,
-        sourceHandle: 'bottom' as const,
-        targetHandle: 'top' as const,
-      },
-      {
-        x: target.position.x + (size.width - width) / 2,
-        y: target.position.y + size.height + gap,
-        sourceHandle: 'top' as const,
-        targetHandle: 'bottom' as const,
-      },
-    ]
-    const isFree = (candidate: { x: number; y: number }) => nodeList.every((node) => {
-      const nodeSize = nodeDimensions(node)
-      return candidate.x + width + gap <= node.position.x
-        || candidate.x >= node.position.x + nodeSize.width + gap
-        || candidate.y + height + gap <= node.position.y
-        || candidate.y >= node.position.y + nodeSize.height + gap
-    })
-    return candidates.find(isFree) ?? candidates[0]!
-  }
-
-  function focusSuggestion(suggestion: CanvasSuggestion) {
-    const ids = new Set<string>()
-    for (const item of suggestion.items) {
-      for (const fix of item.action.fixes) ids.add(fix.targetId)
-    }
-    if (ids.size === 0) return
-    setNotice('Moved to the affected area. Apply the fix when ready.')
-    void fitView({
-      nodes: [...ids].map((id) => ({ id })),
-      padding: 0.35,
-      maxZoom: 1.2,
-      duration: 450,
-    })
-  }
-
-  function applySuggestion(suggestion: CanvasSuggestion) {
-    let nextNodes = nodes
-    let nextEdges = edges
-    const focusIds: string[] = []
-    const addedIds: string[] = []
-
-    for (const item of suggestion.items) {
-      for (const fix of item.action.fixes) {
-        const target = nextNodes.find((node) => node.id === fix.targetId)
-        const entityType = findEntityType(ontology, fix.entityType)
-        if (!target || !entityType) continue
-        const targetEntityType = target.data.entity
-          ? findEntityType(ontology, target.data.entity.entityType)
-          : undefined
-        const targetName = String(
-          target.data.entity?.fields.name ?? target.data.entity?.fields.title ?? '',
-        ).trim()
-        const name = `${targetName || targetEntityType?.label || entityType.label} ${fix.nameSuffix}`
-        const placement = suggestedPlacement(
-          target,
-          entityType.defaultSize.width,
-          entityType.defaultSize.height,
-          nextNodes,
-        )
-        const base = makeEntityNode(fix.entityType, placement, ontology)
-        if (!base) continue
-        const fields = { ...emptyEntityFields(entityType), name }
-        const raw = {
-          ...base,
-          app: { ...(base.app ?? {}), fields },
-          text: renderEntityMarkdown(entityType, fields),
-        } as CanvasNode
-        const newNode = toFlowNode(raw)
-        const edge = edgeFromConnection({
-          source: raw.id,
-          target: target.id,
-          sourceHandle: placement.sourceHandle,
-          targetHandle: placement.targetHandle,
-        }, fix.relationType, ontology)
-        nextNodes = [...nextNodes, newNode]
-        nextEdges = [...nextEdges, toFlowEdge(edge, ontology)]
-        addedIds.push(newNode.id)
-        focusIds.push(target.id, newNode.id)
-      }
-    }
-
-    if (addedIds.length === 0) return
-    const selectedId = addedIds.at(-1)
-    nextNodes = nextNodes.map((node) => ({ ...node, selected: node.id === selectedId }))
-    setNodes(nextNodes)
-    setEdges(nextEdges)
-    setNotice(`Applied suggested fix: ${suggestion.title.toLowerCase()}.`)
-    setReviewOpen(false)
-    setValidationFocusRequest(null)
-    markDirty()
-    window.setTimeout(() => {
-      void fitView({
-        nodes: [...new Set(focusIds)].map((id) => ({ id })),
-        padding: 0.35,
-        maxZoom: 1.2,
-        duration: 300,
-      })
-    }, 0)
-  }
-
-
-  function focusValidationIssue(issue: CanvasProfileIssue) {
-    if (issue.nodeId) {
-      setNodes((current) => current.map((node) => ({
-        ...node,
-        selected: node.id === issue.nodeId,
-      })))
-      setEdges((current) => current.map((edge) => ({ ...edge, selected: false })))
-        void fitView({ nodes: [{ id: issue.nodeId }], duration: 300, maxZoom: 1.5 })
-    } else if (issue.edgeId) {
-      selectEdge(issue.edgeId)
-      const edge = edges.find((candidate) => candidate.id === issue.edgeId)
-      if (edge) {
-        void fitView({
-          nodes: [{ id: edge.source }, { id: edge.target }],
-          duration: 300,
-          maxZoom: 1.5,
-        })
-      }
-    }
-  }
-
-  const nodeIssues = new Map<string, CanvasProfileIssue[]>()
-  const edgeIssues = new Map<string, CanvasProfileIssue[]>()
-  for (const issue of validationIssues) {
-    if (issue.nodeId) {
-      const list = nodeIssues.get(issue.nodeId) ?? []
-      list.push(issue)
-      nodeIssues.set(issue.nodeId, list)
-    }
-    if (issue.edgeId) {
-      const list = edgeIssues.get(issue.edgeId) ?? []
-      list.push(issue)
-      edgeIssues.set(issue.edgeId, list)
-    }
-  }
-  function openValidationIssue(issue: CanvasProfileIssue) {
-    focusValidationIssue(issue)
-    validationRequestId.current += 1
-    setValidationFocusRequest({
-      key: validationIssueKey(issue),
-      requestId: validationRequestId.current,
-    })
-    setReviewTab('issues')
-    setReviewOpen(true)
-  }
-
-  const validation = {
-    nodeIssues,
-    edgeIssues,
-    openIssue: openValidationIssue,
-  }
-
   const commands = useCanvasCommands({
     backLabel: trail.length > 1 ? 'Back' : 'All canvases',
     isSystems,
@@ -699,10 +483,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     onAddEntity: addEntityAtCenter,
     onAddProcessCanvas: () => void addProcessWithCanvas(),
     onViews: () => setViewsOpen(true),
-    onReview: () => {
-      setValidationFocusRequest(null)
-      setReviewOpen(true)
-    },
+    onReview: openReview,
     onUndo: undo,
     onRedo: redo,
     onSave: () => { void save() },
@@ -924,10 +705,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
               ontology={ontology}
               ignoredReasons={ignoredReasons}
               focusRequest={validationFocusRequest}
-              onClose={() => {
-                setReviewOpen(false)
-                setValidationFocusRequest(null)
-              }}
+              onClose={closeReview}
               onFocus={focusValidationIssue}
               onIgnore={ignoreValidationIssue}
               onRestore={restoreValidationIssue}
