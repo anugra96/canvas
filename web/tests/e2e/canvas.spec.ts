@@ -889,6 +889,34 @@ test('suggests a deterministic producer card for an artifact', async ({ page }) 
   await expect(page.locator('.edge-label')).toHaveCount(0)
 })
 
+test('navigates review tabs with arrow, home, and end keys', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Canvas type').selectOption('systems')
+  await createCanvas(page)
+  await addCanvasItem(page, 'Artifact')
+
+  await page.getByRole('button', { name: /Review/ }).click()
+  const panel = page.locator('.review-panel')
+  const issuesTab = panel.getByRole('tab', { name: /Issues/ })
+  const fixesTab = panel.getByRole('tab', { name: /Fixes/ })
+  await expect(issuesTab).toHaveAttribute('aria-selected', 'true')
+  await expect(issuesTab).toHaveAttribute('tabindex', '0')
+  await expect(fixesTab).toHaveAttribute('tabindex', '-1')
+
+  await issuesTab.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(fixesTab).toBeFocused()
+  await expect(fixesTab).toHaveAttribute('aria-selected', 'true')
+  await expect(fixesTab).toHaveAttribute('tabindex', '0')
+
+  await page.keyboard.press('ArrowLeft')
+  await expect(issuesTab).toBeFocused()
+  await page.keyboard.press('End')
+  await expect(fixesTab).toBeFocused()
+  await page.keyboard.press('Home')
+  await expect(issuesTab).toBeFocused()
+})
+
 test('merges issues and fixes in one review panel and remembers the tab', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Canvas type').selectOption('systems')

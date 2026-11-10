@@ -7,6 +7,13 @@ import { isEditableTarget } from './shortcuts'
 export function useEditorShortcuts(commands: CanvasCommand[]) {
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      if (
+        event.key.startsWith('Arrow')
+        && event.target instanceof HTMLElement
+        && event.target.closest('[role="tab"], [role="listbox"], [role="menu"]')
+      ) {
+        return
+      }
       const command = findCommandForShortcut(commands, event, isEditableTarget(event.target))
       if (!command) return
       if (

@@ -1,4 +1,5 @@
 import { X } from 'lucide-react'
+import { useRef, type KeyboardEvent } from 'react'
 
 import type { CanvasProfile, CanvasProfileIssue, Ontology } from '@canvas/contract'
 
@@ -48,6 +49,29 @@ export function ReviewPanel({
   onPreviewSuggestion: (suggestion: CanvasSuggestion) => void
   onApplySuggestion: (suggestion: CanvasSuggestion) => void
 }) {
+  const issuesRef = useRef<HTMLButtonElement>(null)
+  const fixesRef = useRef<HTMLButtonElement>(null)
+  const tabOrder: ReviewTab[] = ['issues', 'fixes']
+
+  function selectTab(next: ReviewTab) {
+    onTabChange(next)
+    const target = next === 'issues' ? issuesRef.current : fixesRef.current
+    target?.focus()
+  }
+
+  function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    const index = tabOrder.indexOf(tab)
+    let next: ReviewTab | undefined
+    if (event.key === 'ArrowRight') next = tabOrder[(index + 1) % tabOrder.length]
+    else if (event.key === 'ArrowLeft') next = tabOrder[(index - 1 + tabOrder.length) % tabOrder.length]
+    else if (event.key === 'Home') next = tabOrder[0]
+    else if (event.key === 'End') next = tabOrder.at(-1)
+    if (!next) return
+    event.preventDefault()
+    event.stopPropagation()
+    selectTab(next)
+  }
+
   return (
     <aside className="validation-tray validation-panel review-panel" aria-label="Review">
       <header className="validation-panel-head review-head">
@@ -61,20 +85,26 @@ export function ReviewPanel({
       </header>
       <div className="review-tabs" role="tablist" aria-label="Review sections">
         <button
+          ref={issuesRef}
           type="button"
           role="tab"
           aria-selected={tab === 'issues'}
+          tabIndex={tab === 'issues' ? 0 : -1}
           className={tab === 'issues' ? 'active' : ''}
           onClick={() => onTabChange('issues')}
+          onKeyDown={handleTabKeyDown}
         >
           Issues <span>{issues.length}</span>
         </button>
         <button
+          ref={fixesRef}
           type="button"
           role="tab"
           aria-selected={tab === 'fixes'}
+          tabIndex={tab === 'fixes' ? 0 : -1}
           className={tab === 'fixes' ? 'active' : ''}
           onClick={() => onTabChange('fixes')}
+          onKeyDown={handleTabKeyDown}
         >
           Fixes <span>{suggestions.length}</span>
         </button>
