@@ -37,7 +37,6 @@ import {
   getCanvasLinks,
   findEntityType,
   getGroupMembers,
-  mergeCanvas,
   renderEntityMarkdown,
   type CanvasDocument,
   type CanvasLink,
@@ -46,16 +45,12 @@ import {
   type CanvasNodeSide,
   type CanvasProfileIssue,
   type EntityFields,
-  type JsonCanvas,
-  type MergeConflict,
   type Ontology,
   type TextNode,
 } from '@canvas/contract'
 
 import type { CanvasClient } from '../../api/client'
-import { CanvasConflictError } from '../../api/errors'
 import {
-  fromFlowCanvas,
   nodeDimensions,
   toFlowCanvas,
   toFlowEdge,
@@ -82,7 +77,8 @@ import { findBestCardSize } from './autoFit'
 import { CanvasEditorActionsContext, type CanvasEditorActions } from './CanvasEditorContext'
 import { CanvasBackdrop } from '../backdrop/CanvasBackdrop'
 import { CanvasValidationContext } from './CanvasValidationContext'
-import { CanvasToolbar, type SaveStatus } from './CanvasToolbar'
+import { CanvasToolbar } from './CanvasToolbar'
+import { useCanvasDocument } from './document/useCanvasDocument'
 import { useCanvasCommands } from './commands'
 import { ConnectionTemplateMenu } from './ConnectionTemplateMenu'
 import { ReviewPanel, type ReviewTab } from './ReviewPanel'
@@ -103,7 +99,6 @@ import { buildSuggestions, type CanvasSuggestion } from '../suggestions/suggesti
 import {
   createSuppression,
   readValidationSuppressions,
-  withValidationSuppressions,
   type IgnoreReason,
   type ValidationSuppression,
 } from './validationSuppressions'
@@ -118,7 +113,6 @@ import { FileNode } from './nodes/FileNode'
 import { GroupNode } from './nodes/GroupNode'
 import { LinkNode } from './nodes/LinkNode'
 import { TextNode as TextNodeComponent } from './nodes/TextNode'
-import { autosaveDelay, isNetworkFailure, useLeaveGuard } from './saveSafety'
 
 const nodeTypes = {
   text: TextNodeComponent,
@@ -292,22 +286,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   } = history
   const [nodes, setNodes] = useState<CanvasFlowNode[]>(initial.nodes)
   const [edges, setEdges] = useState<CanvasFlowEdge[]>(initial.edges)
-  const [title, setTitle] = useState(document.title)
-  const [renameOpen, setRenameOpen] = useState(false)
-  const [renameBusy, setRenameBusy] = useState(false)
-  const [canvasLinkNodeId, setCanvasLinkNodeId] = useState<string | null>(null)
-  const [canvasOptions, setCanvasOptions] = useState<CanvasSummary[]>([])
-  const [canvasOptionsLoading, setCanvasOptionsLoading] = useState(false)
-  const [canvasOptionsError, setCanvasOptionsError] = useState('')
-  const [baseCanvas, setBaseCanvas] = useState<JsonCanvas>(document.canvas)
-  const [etag, setEtag] = useState(document.etag)
-  const [dirty, setDirty] = useState(false)
-  const [status, setStatus] = useState<SaveStatus>('saved')
-  const [saveFailures, setSaveFailures] = useState(0)
-  const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
-  const [conflicts, setConflicts] = useState<MergeConflict[]>([])
-  const [pendingLocal, setPendingLocal] = useState<JsonCanvas | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
   const [viewsOpen, setViewsOpen] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
@@ -317,6 +295,48 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const [suppressions, setSuppressions] = useState<ValidationSuppression[]>(() => (
     readValidationSuppressions(document.canvas)
   ))
+  const {
+    title,
+    renameOpen,
+    setRenameOpen,
+    renameBusy,
+    baseCanvas,
+    dirty,
+    status,
+    error,
+    setError,
+    notice,
+    setNotice,
+    conflicts,
+    markDirty,
+    save,
+    renameCanvas,
+    download,
+    back,
+    reloadLatest,
+    keepMine,
+  } = useCanvasDocument({
+    client,
+    document,
+    ontology,
+    nodes,
+    edges,
+    suppressions,
+    setNodes,
+    setEdges,
+    setSuppressions,
+    resetHistory,
+    onBack,
+    onReloaded: () => {
+      window.setTimeout(() => {
+        void fitView({ padding: 0.25, maxZoom: 1.2 })
+      }, 0)
+    },
+  })
+  const [canvasLinkNodeId, setCanvasLinkNodeId] = useState<string | null>(null)
+  const [canvasOptions, setCanvasOptions] = useState<CanvasSummary[]>([])
+  const [canvasOptionsLoading, setCanvasOptionsLoading] = useState(false)
+  const [canvasOptionsError, setCanvasOptionsError] = useState('')
   const [pendingConnection, setPendingConnection] = useState<PendingConnection | null>(null)
   const [cardMenu, setCardMenu] = useState<CardMenuState | null>(null)
   const [edgeLabelEditor, setEdgeLabelEditor] = useState<EdgeLabelEditorState | null>(null)
@@ -349,12 +369,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   useEffect(() => {
     nodesRef.current = nodes
   }, [nodes])
-
-  const markDirty = useCallback(() => {
-    setDirty(true)
-    setStatus('dirty')
-    setNotice('')
-  }, [])
 
   useEffect(() => observeHistory({ nodes, edges }), [edges, nodes, observeHistory])
 
@@ -482,12 +496,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     markDirty()
   }, [markDirty])
 
-  const currentCanvas = useCallback(
-    (nodeList = nodes, edgeList = edges, base = baseCanvas) =>
-      withValidationSuppressions(fromFlowCanvas(nodeList, edgeList, base), suppressions),
-    [baseCanvas, edges, nodes, suppressions],
-  )
-
   const undo = useCallback(() => {
     const snapshot = undoHistory({ nodes, edges })
     if (!snapshot) return
@@ -514,7 +522,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     setEdges((current) => current.map((edge) => ({ ...edge, selected: false })))
     setConnectNodeId(null)
     setSizeDialogOpen(false)
-  }, [])
+  }, [setConnectNodeId, setEdges, setNodes, setSizeDialogOpen])
 
   const autoLayout = useCallback(() => {
     const layout = autoLayoutCanvas(nodes, edges)
@@ -526,7 +534,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     window.setTimeout(() => {
       void fitView({ padding: 0.2, maxZoom: 1.2, duration: 300 })
     }, 0)
-  }, [edges, fitView, markDirty, nodes])
+  }, [edges, fitView, markDirty, nodes, setAlignmentGuides, setEdges, setNodes, setNotice])
 
   const autoFitAll = useCallback(() => {
     let fitted = 0
@@ -552,7 +560,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     setAlignmentGuides([])
     setNotice(fitted > 0 ? `Auto-fitted ${fitted} cards.` : 'All cards already fit their content.')
     markDirty()
-  }, [markDirty, nodes])
+  }, [markDirty, nodes, setAlignmentGuides, setNodes, setNotice])
 
   const screenshotDimensions = useCallback((bounds: { width: number; height: number }) => {
     const longEdge = 1600
@@ -619,7 +627,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     } finally {
       setScreenshotBusy(false)
     }
-  }, [captureBounds, nodes])
+  }, [captureBounds, nodes, setNotice, setScreenshotBusy, setScreenshotError, setScreenshotOpen])
 
   const beginAreaSelection = useCallback(() => {
     setScreenshotOpen(false)
@@ -633,14 +641,14 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     setAlignmentGuides([])
     clearSelection()
     setConnectNodeId(null)
-  }, [clearSelection])
+  }, [clearSelection, setAlignmentGuides, setAreaMode, setCardMenu, setConnectNodeId, setDragBox, setEdgeLabelEditor, setHelpOpen, setPendingConnection, setScreenshotError, setScreenshotOpen])
 
   const cancelAreaSelection = useCallback(() => {
     setAreaMode(false)
     setDragBox(null)
     areaStart.current = null
     areaCurrent.current = null
-  }, [])
+  }, [setAreaMode, setDragBox])
 
   useEffect(() => {
     if (!areaMode) return
@@ -663,7 +671,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       height: 0,
     })
     event.currentTarget.setPointerCapture(event.pointerId)
-  }, [])
+  }, [setDragBox])
 
   const onAreaPointerMove = useCallback((event: PointerEvent<HTMLDivElement>) => {
     if (!areaStart.current) return
@@ -676,7 +684,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       width: Math.abs(event.clientX - start.clientX),
       height: Math.abs(event.clientY - start.clientY),
     })
-  }, [])
+  }, [setDragBox])
 
   const onAreaPointerUp = useCallback(async (event: PointerEvent<HTMLDivElement>) => {
     const start = areaStart.current
@@ -705,7 +713,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     } finally {
       setScreenshotBusy(false)
     }
-  }, [captureBounds, clientToFlow])
+  }, [captureBounds, clientToFlow, setAreaMode, setDragBox, setError, setNotice, setScreenshotBusy])
 
   const duplicateSelection = useCallback(() => {
     const selectedNodes = nodes.filter((node) => node.selected)
@@ -913,80 +921,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     zoomSelection,
   ])
 
-  const save = useCallback(async (canvasOverride?: JsonCanvas, etagOverride?: string) => {
-    const local = canvasOverride ?? currentCanvas()
-    setStatus('saving')
-    setError('')
-    try {
-      const saved = await client.saveCanvas(document.id, etagOverride ?? etag, local)
-      setEtag(saved.etag)
-      setBaseCanvas(saved.canvas)
-      setSuppressions(readValidationSuppressions(saved.canvas))
-      setDirty(false)
-      setStatus('saved')
-      setSaveFailures(0)
-      setNotice('')
-      setConflicts([])
-      setPendingLocal(null)
-      return saved
-    } catch (cause) {
-      if (cause instanceof CanvasConflictError) {
-        const merged = mergeCanvas(baseCanvas, local, cause.latest.canvas)
-        const flow = toFlowCanvas(merged.canvas, ontology)
-        setNodes(flow.nodes)
-        setEdges(flow.edges)
-        resetHistory(flow)
-        setBaseCanvas(cause.latest.canvas)
-        setEtag(cause.latest.etag)
-        setSuppressions(readValidationSuppressions(merged.canvas))
-        setPendingLocal(local)
-        if (merged.conflicts.length > 0) {
-          setConflicts(merged.conflicts)
-          setDirty(false)
-          setStatus('conflict')
-          setNotice('Another editor changed the same content. Choose a resolution.')
-        } else {
-          setConflicts([])
-          setDirty(true)
-          setStatus('dirty')
-          setNotice('Merged changes from another editor. Saving again.')
-        }
-        return null
-      }
-      setSaveFailures((count) => count + 1)
-      if (isNetworkFailure(cause)) {
-        setStatus('offline')
-        return null
-      }
-      setError(cause instanceof Error ? cause.message : 'Could not save the canvas.')
-      setStatus('error')
-      return null
-    }
-  }, [baseCanvas, client, currentCanvas, document.id, etag, ontology, resetHistory])
-
-  useEffect(() => {
-    function onSaveKey(event: KeyboardEvent) {
-      if (event.key.toLowerCase() !== 's' || !(event.metaKey || event.ctrlKey)) return
-      event.preventDefault()
-      event.stopPropagation()
-      void save()
-    }
-    window.addEventListener('keydown', onSaveKey, true)
-    return () => window.removeEventListener('keydown', onSaveKey, true)
-  }, [save])
-
-  useEffect(() => {
-    if (!dirty || status === 'saving' || conflicts.length > 0) return
-    const timer = window.setTimeout(() => {
-      void save()
-    }, autosaveDelay(saveFailures))
-    return () => window.clearTimeout(timer)
-  }, [baseCanvas, dirty, edges, nodes, save, saveFailures, status, conflicts.length])
-
-  useLeaveGuard(dirty || status === 'saving' || conflicts.length > 0, () => {
-    if (dirty && status !== 'saving' && conflicts.length === 0) void save()
-  })
-
   const onNodesChange = useCallback((changes: NodeChange<CanvasFlowNode>[]) => {
     type PositionChange = Extract<NodeChange<CanvasFlowNode>, { type: 'position' }>
     const positionChanges = changes.filter((change): change is PositionChange =>
@@ -1090,7 +1024,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       || (change.type === 'position' && change.dragging === false)
       || (change.type === 'dimensions' && change.resizing === false))
     if (material) markDirty()
-  }, [getZoom, markDirty])
+  }, [getZoom, markDirty, setAlignmentGuides, setNodes])
 
   const onEdgesChange = useCallback((changes: EdgeChange<CanvasFlowEdge>[]) => {
     setEdges((current) => applyEdgeChanges(changes, current))
@@ -1099,7 +1033,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       || change.type === 'add'
       || change.type === 'replace')
     if (material) markDirty()
-  }, [markDirty])
+  }, [markDirty, setEdges])
 
   const addCard = useCallback((position = { x: 120, y: 120 }) => {
     const raw = makeTextNode(position)
@@ -1120,7 +1054,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     setEdges((current) => addEdge(toFlowEdge(raw, ontology), current))
     setConnectNodeId(null)
     markDirty()
-  }, [isSystems, markDirty, ontology])
+  }, [isSystems, markDirty, ontology, setConnectNodeId, setEdges])
 
   const connectNodes = useCallback((sourceId: string, targetId: string) => {
     const source = nodes.find((node) => node.id === sourceId)
@@ -1142,7 +1076,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     setEdges((current) => addEdge(toFlowEdge(raw, ontology), current))
     setConnectNodeId(null)
     markDirty()
-  }, [isSystems, markDirty, nodes, ontology])
+  }, [isSystems, markDirty, nodes, ontology, setConnectNodeId, setEdges])
 
   const onConnectEnd = useCallback((
     event: { clientX: number; clientY: number } | TouchEvent,
@@ -1164,7 +1098,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     })
     setConnectNodeId(null)
     setEdgeLabelEditor(null)
-  }, [clientToFlow])
+  }, [clientToFlow, setConnectNodeId, setEdgeLabelEditor, setPendingConnection])
 
   const insertConnectedNode = useCallback((templateId: string) => {
     const pending = pendingConnection
@@ -1197,12 +1131,12 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     setNodes((current) => insertNodes(current, [{ ...toFlowNode(raw), selected: true }]))
     setEdges((current) => [...current, toFlowEdge(edge, ontology)])
     markDirty()
-  }, [isSystems, markDirty, ontology, pendingConnection])
+  }, [isSystems, markDirty, ontology, pendingConnection, setEdges, setNodes, setPendingConnection])
 
   const selectEdge = useCallback((id: string) => {
     setNodes((current) => current.map((node) => ({ ...node, selected: false })))
     setEdges((current) => current.map((edge) => ({ ...edge, selected: edge.id === id })))
-  }, [])
+  }, [setEdges, setNodes])
 
   const openEdgeLabelEditor = useCallback((id: string, clientX: number, clientY: number) => {
     const bounds = flowRef.current?.getBoundingClientRect()
@@ -1215,7 +1149,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       x: clamp(clientX - bounds.left, 8, bounds.width - 270),
       y: clamp(clientY - bounds.top, 8, bounds.height - 150),
     })
-  }, [edges])
+  }, [edges, setEdgeLabelEditor, setPendingConnection])
 
   const openCanvasLinks = useCallback(async (nodeId: string) => {
     setCanvasLinkNodeId(nodeId)
@@ -1228,7 +1162,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     } finally {
       setCanvasOptionsLoading(false)
     }
-  }, [client])
+  }, [client, setCanvasLinkNodeId, setCanvasOptions, setCanvasOptionsError, setCanvasOptionsLoading])
 
   const updateCanvasLinks = useCallback((nodeId: string, update: (links: CanvasLink[]) => CanvasLink[]) => {
     setNodes((current) => current.map((node) => {
@@ -1585,35 +1519,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     }
   }
 
-  async function reloadLatest() {
-    setError('')
-    try {
-      const latest = await client.getCanvas(document.id)
-      const flow = toFlowCanvas(latest.canvas, ontology)
-      setNodes(flow.nodes)
-      setEdges(flow.edges)
-      resetHistory(flow)
-      setBaseCanvas(latest.canvas)
-      setEtag(latest.etag)
-      setSuppressions(readValidationSuppressions(latest.canvas))
-      setConflicts([])
-      setPendingLocal(null)
-      setDirty(false)
-      setStatus('saved')
-      setNotice('Loaded the latest saved canvas.')
-      window.setTimeout(() => fitView({ padding: 0.25, maxZoom: 1.2 }), 0)
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not reload the canvas.')
-      setStatus('error')
-    }
-  }
-
-  async function keepMine() {
-    const local = pendingLocal ?? currentCanvas()
-    setConflicts([])
-    await save(local, etag)
-  }
-
   const allValidationIssues = useProfileValidation({
     nodes,
     edges,
@@ -1662,14 +1567,14 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     ))
     setNotice(`Warning ignored: ${reason}.`)
     markDirty()
-  }, [markDirty])
+  }, [markDirty, setNotice, setSuppressions])
 
   const restoreValidationIssue = useCallback((issue: CanvasProfileIssue) => {
     const fingerprint = validationIssueKey(issue)
     setSuppressions((current) => current.filter((suppression) => suppression.fingerprint !== fingerprint))
     setNotice('Warning restored.')
     markDirty()
-  }, [markDirty])
+  }, [markDirty, setNotice, setSuppressions])
 
   function suggestedPlacement(
     target: CanvasFlowNode,
@@ -1846,43 +1751,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     nodeIssues,
     edgeIssues,
     openIssue: openValidationIssue,
-  }
-
-  async function renameCanvas(nextTitle: string) {
-    setRenameBusy(true)
-    setError('')
-    try {
-      let currentEtag = etag
-      if (dirty) {
-        const saved = await save()
-        if (!saved) return
-        currentEtag = saved.etag
-      }
-      const renamed = await client.renameCanvas(document.id, nextTitle, currentEtag)
-      setTitle(renamed.title)
-      setEtag(renamed.etag)
-      setBaseCanvas(renamed.canvas)
-      setRenameOpen(false)
-      setNotice('Canvas renamed.')
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not rename the canvas.')
-    } finally {
-      setRenameBusy(false)
-    }
-  }
-
-  async function download() {
-    setError('')
-    try {
-      await client.downloadCanvas(document.id, title)
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not download the canvas.')
-    }
-  }
-
-  async function back() {
-    if (dirty) await save()
-    onBack()
   }
 
   const canvasLinkNode = canvasLinkNodeId
