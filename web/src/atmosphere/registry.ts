@@ -1,4 +1,4 @@
-import type { AmbienceId } from '../ambience/ambience'
+import type { AmbienceId } from '../atmosphere/ambience'
 import type { BackdropSceneId } from './scenes'
 
 export interface ThemeDefinition {

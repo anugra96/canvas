@@ -9,7 +9,7 @@ import {
   startAmbience,
   stopAmbience,
   type AmbienceId,
-} from './ambience/ambience'
+} from './atmosphere/ambience'
 
 export function AmbiencePicker() {
   const [active, setActive] = useState<AmbienceId | ''>('')
