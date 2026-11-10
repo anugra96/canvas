@@ -21,6 +21,7 @@ const themes = [
   { id: 'blossom', background: 'rgb(247, 236, 236)' },
   { id: 'tide', background: 'rgb(10, 22, 34)' },
   { id: 'sunset', background: 'rgb(26, 16, 36)' },
+  { id: 'gargantua', background: 'rgb(5, 6, 8)' },
 ]
 
 test('applies and persists color themes', async ({ page }) => {

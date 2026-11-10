@@ -19,6 +19,8 @@ function sceneForTheme(theme: string): BackdropSceneId | null {
       return 'tide'
     case 'ember':
       return 'ember'
+    case 'gargantua':
+      return 'void'
     default:
       return null
   }

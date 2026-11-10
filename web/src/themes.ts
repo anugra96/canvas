@@ -111,6 +111,12 @@ export const THEMES = [
     description: 'Violet dusk, amber glow',
     themeColor: '#1a1024',
   },
+  {
+    id: 'gargantua',
+    label: 'Gargantua',
+    description: 'Black-hole dark',
+    themeColor: '#050608',
+  },
 ] as const
 
 export type ThemeId = (typeof THEMES)[number]['id']

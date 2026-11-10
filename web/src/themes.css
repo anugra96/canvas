@@ -1036,6 +1036,67 @@
   --ui-shadow: 0 16px 36px rgba(0, 0, 0, 0.5);
 }
 
+:root[data-theme="gargantua"] {
+  color-scheme: dark;
+  --ui-black: #050608;
+  --ui-header: #0a0d14;
+  --ui-panel-solid: #080b12;
+  --ui-panel-raised: #0e1320;
+  --ui-line: rgba(150, 180, 220, 0.2);
+  --ui-line-strong: rgba(150, 180, 220, 0.46);
+  --ui-accent: #e8a34e;
+  --ui-accent-bright: #ffd9a0;
+  --ui-text: #e9edf5;
+  --ui-strong: #fbfdff;
+  --ui-muted: rgba(233, 237, 245, 0.72);
+  --ui-faint: rgba(233, 237, 245, 0.5);
+  --ui-amber: #dfae5c;
+  --ui-green: #7fc9a8;
+  --ui-red: #e08484;
+  --ui-danger-text: #ffd9d9;
+  --ui-danger-bg: rgba(64, 12, 18, 0.55);
+  --ui-danger-border: rgba(224, 132, 132, 0.5);
+  --ui-warning-text: #f4d19a;
+  --ui-warning-accent: #e0b05c;
+  --ui-warning-bg: rgba(54, 40, 20, 0.92);
+  --ui-warning-border: rgba(224, 176, 92, 0.52);
+  --ui-notice-bg: rgba(20, 30, 55, 0.78);
+  --ui-input-bg: rgba(4, 6, 10, 0.7);
+  --ui-input-border: rgba(150, 180, 220, 0.3);
+  --ui-code-bg: #060910;
+  --ui-code-border: rgba(150, 180, 220, 0.18);
+  --ui-code-gutter: rgba(255, 217, 160, 0.35);
+  --ui-code-accent: #f0c894;
+  --ui-code-card-border: rgba(232, 163, 78, 0.5);
+  --ui-canvas-bg: #04060b;
+  --ui-node-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+  --ui-node-shadow-selected: 0 0 0 1px #ffd9a0, 0 12px 30px rgba(0, 0, 0, 0.6);
+  --ui-group-bg: rgba(232, 163, 78, 0.05);
+  --ui-group-bg-selected: rgba(232, 163, 78, 0.09);
+  --ui-group-border: rgba(232, 163, 78, 0.32);
+  --ui-group-label-bg: rgba(5, 6, 8, 0.88);
+  --ui-edge-bg: rgba(5, 6, 8, 0.94);
+  --ui-edge-border: rgba(150, 180, 220, 0.28);
+  --ui-edge-outline: rgba(5, 6, 8, 0.75);
+  --ui-highlight: rgba(251, 253, 255, 0.06);
+  --ui-highlight-strong: rgba(251, 253, 255, 0.12);
+  --ui-selection-bg: rgba(232, 163, 78, 0.1);
+  --ui-skeleton-start: #080b12;
+  --ui-skeleton-mid: #0e1320;
+  --ui-pattern: rgba(150, 180, 220, 0.1);
+  --ui-overlay: rgba(2, 3, 6, 0.78);
+  --ui-primary-start: #b57a2e;
+  --ui-primary-end: #8a5a1f;
+  --ui-primary-text: #0a0603;
+  --ui-brand-text: #fff4e2;
+  --ui-brand-start: #a86f2c;
+  --ui-brand-end: #7e521c;
+  --ui-swatch-border: rgba(233, 237, 245, 0.28);
+  --ui-resize-handle-border: #050608;
+  --ui-resize-handle: #ffd9a0;
+  --ui-shadow: 0 16px 36px rgba(0, 0, 0, 0.55);
+}
+
 :root[data-theme="ember"] {
   color-scheme: dark;
   --ui-black: #120e0b;
