@@ -1,4 +1,3 @@
-import type { AmbienceId } from '../atmosphere/ambience'
 import type { BackdropSceneId } from './scenes'
 
 export interface ThemeDefinition {
@@ -7,7 +6,6 @@ export interface ThemeDefinition {
   description: string
   themeColor: string
   scene?: BackdropSceneId
-  defaultAmbience?: AmbienceId
 }
 
 export const THEMES = [
