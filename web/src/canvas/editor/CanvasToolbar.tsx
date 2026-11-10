@@ -8,6 +8,7 @@ import {
   Maximize2,
   Workflow,
   MoreHorizontal,
+  PanelsTopLeft,
   PenLine,
   Plus,
   Redo2,
@@ -58,6 +59,7 @@ interface CanvasToolbarProps {
   onSave: () => void
   onDownload: () => void
   onScreenshot: () => void
+  onOpenViews: () => void
   onFitView: () => void
   onAutoLayout: () => void
   onDataFlowLayout: () => void
@@ -117,6 +119,7 @@ function DesktopToolbar({
   onSave,
   onDownload,
   onScreenshot,
+  onOpenViews,
   onAutoLayout,
   onDataFlowLayout,
   onAutoFitAll,
@@ -176,6 +179,17 @@ function DesktopToolbar({
         >
           <Camera size={15} />
         </button>
+        {isSystems && (
+          <button
+            className="button"
+            onClick={onOpenViews}
+            aria-label="Derived views"
+            title="Derived views"
+          >
+            <PanelsTopLeft size={15} />
+            Views
+          </button>
+        )}
         <select
           className="template-select"
           aria-label="Canvas layout"
@@ -314,6 +328,7 @@ function MobileToolbar({
   onSave,
   onDownload,
   onScreenshot,
+  onOpenViews,
   onFitView,
   onAutoLayout,
   onDataFlowLayout,
@@ -448,6 +463,16 @@ function MobileToolbar({
                 ))}
               </select>
             </label>
+            {isSystems && (
+              <button
+                className="button"
+                onClick={() => { onOpenViews(); setMoreOpen(false) }}
+                aria-label="Derived views"
+              >
+                <PanelsTopLeft size={15} />
+                Derived views
+              </button>
+            )}
             <div className="editor-more-row">
               <button className="button" onClick={() => { onAutoLayout(); setMoreOpen(false) }}>
                 <LayoutGrid size={15} />

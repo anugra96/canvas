@@ -125,6 +125,33 @@ grouped list with ambiguous relation controls and ignored items.
 - Groups remain visual boundaries and are not semantic endpoints.
 - Capability and product boundaries can use groups instead of card types.
 
+## Derived views
+
+Derived views are read-only projections of the source canvas. They use the
+current editor state, including unsaved changes, and never write cards or
+relations back to the source.
+
+| View | Cards | Relations |
+| --- | --- | --- |
+| Architecture | All architecture cards; annotations and groups excluded | All explicit relations between included cards |
+| Runtime | Actor, System, Process, Artifact | `runs`, `uses`, `produces` |
+| Data flow | System, Process, Artifact, Schema | `uses`, `produces`, `defines`, `describes` |
+| Contracts | Schema plus the System, Repository, or Process endpoints of contract relations | `defines`, `describes`, `uses` where a Schema is an endpoint |
+| Pipeline | Actor, Repository, System, Process, Artifact | `runs`, `uses`, `produces` |
+| Sequence | Selected Process plus participants within two relation hops | Explicit non-annotation relations between participants |
+
+Sequence diagrams require an opinionated order because architecture relations do
+not carry timestamps. The order is deterministic:
+
+1. Inbound `runs` relations to the selected Process.
+2. Outbound relations from the Process, ordered `uses`, then `produces`.
+3. Remaining participant relations, ordered `runs`, `uses`, `produces`,
+   `defines`, then `describes`.
+4. Stable participant and relation IDs break ties.
+
+The sequence is an inferred aid, not a runtime trace. Relation direction defines
+sender and receiver.
+
 ## Schema contracts
 
 Schema is a first-class contract, not an Artifact kind. Artifact is a concrete

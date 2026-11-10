@@ -115,6 +115,24 @@ describe. Notes, decisions, and risks move to a reference area below the active
 architecture. It is available from the **Layout** selector and the mobile More
 menu.
 
+## Derived views
+
+Systems canvases expose read-only **Derived views** from the toolbar. These
+projections never change source cards, positions, or relations; they derive from
+the current unsaved editor state.
+
+- **Architecture** shows every architecture card and explicit relation.
+- **Runtime** shows actors, systems, processes, and artifacts.
+- **Data flow** shows systems, processes, artifacts, and schema contracts.
+- **Contracts** shows schemas, their owners, and the surfaces they describe.
+- **Pipeline** shows the execution and delivery chain.
+- **Sequence** shows a selected Process and its nearby participants.
+
+Sequence order is inferred, not authoritative. Inbound `runs` relations appear
+first, followed by process `uses` and `produces` relations, then nearby
+relations. Relation direction controls sender and receiver. Add or reverse
+source relations to change the inferred order.
+
 The Schema workbench includes a derived field table and a tree view. The table
 shows field path, type, required state, constraints, and descriptions from the
 JSON Schema source.
@@ -127,7 +145,7 @@ standard `.canvas` format is preserved. See
 [`docs/systems-profile.md`](docs/systems-profile.md) for the full contract.
 
 ## Schema migrations
-Persisted canvas documents carry a `schemaVersion`. The current version is `1`.
+Persisted canvas documents carry a `schemaVersion`. The current version is `2`.
 `migrateCanvasDocument` runs registered migrations whenever a document is read,
 so legacy documents remain editable and are stamped on their next save. Future
 document-shape changes add an entry to `canvasDocumentMigrations` in
@@ -166,9 +184,9 @@ Theme tokens live in `web/src/themes.css`; layout and component styles live in
 matching `:root[data-theme="..."]` token block.
 
 Optional background ambience is generated in the browser with the Web Audio
-API. No external audio files are used. **Space sci-fi**, **Cyberpunk**, **Dune**,
-and **Medieval sci-fi** loops are available from the topbar and can be switched
-off at any time.
+API. No external audio files are used. Multiple procedural ambience loops and a
+volume control are available from the topbar and can be switched off at any
+time.
 
 New canvases open with a name dialog. A canvas can also be renamed from its list
 card or from the editor title. Renames use the same optimistic `ETag` protection

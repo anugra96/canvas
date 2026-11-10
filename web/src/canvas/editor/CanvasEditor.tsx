@@ -89,6 +89,7 @@ import { EdgeLabelEditor } from './EdgeLabelEditor'
 import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog'
 import { CanvasNameDialog } from '../../CanvasNameDialog'
 import { CanvasLinksDialog } from './CanvasLinksDialog'
+import { DerivedViewsDialog } from './DerivedViewsDialog'
 import { ScreenshotDialog } from './ScreenshotDialog'
 import { NodeSizeDialog } from './NodeSizeDialog'
 import { SelectionToolbar } from './SelectionToolbar'
@@ -307,6 +308,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const [newRelationType, setNewRelationType] = useState(isSystems ? '' : 'relates_to')
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
+  const [viewsOpen, setViewsOpen] = useState(false)
   const [validationPanel, setValidationPanel] = useState<'warnings' | 'intelligence' | null>(null)
   const [validationFocusRequest, setValidationFocusRequest] = useState<{ key: string; requestId: number } | null>(null)
   const validationRequestId = useRef(0)
@@ -1964,6 +1966,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
           onSave={() => void save()}
           onDownload={() => void download()}
           onScreenshot={() => { setScreenshotError(''); setScreenshotOpen(true) }}
+          onOpenViews={() => setViewsOpen(true)}
           onFitView={fitCanvas}
           onAutoLayout={autoLayout}
           onDataFlowLayout={dataFlowLayout}
@@ -2216,6 +2219,17 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
         />
 
         <KeyboardShortcutsDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
+
+        {isSystems && (
+          <DerivedViewsDialog
+            open={viewsOpen}
+            title={title}
+            nodes={nodes}
+            edges={edges}
+            ontology={ontology}
+            onClose={() => setViewsOpen(false)}
+          />
+        )}
 
         {canvasLinkNode && (
           <CanvasLinksDialog

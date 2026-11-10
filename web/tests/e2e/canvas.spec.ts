@@ -838,3 +838,57 @@ test('creates a process card with a linked documentation canvas', async ({ page 
   await expect(page.locator('.entity-node')).toHaveCount(4)
   await expect(page.locator('.entity-type')).toContainText(['Note'])
 })
+
+test('derives focused graph views and a process sequence', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Canvas type').selectOption('systems')
+  await createCanvas(page, 'Derived views test')
+  for (const template of ['actor', 'process', 'system', 'artifact']) {
+    await page.getByLabel('Add template').selectOption(template)
+  }
+  await expect(page.locator('.entity-node')).toHaveCount(4)
+  await page.getByLabel('Canvas layout').selectOption('architecture')
+  await page.waitForTimeout(450)
+
+  const nodes = page.locator('.react-flow__node')
+  async function connect(fromIndex: number, toIndex: number) {
+    const from = await nodes.nth(fromIndex).locator('.react-flow__handle-right').boundingBox()
+    const to = await nodes.nth(toIndex).locator('.react-flow__handle-left').boundingBox()
+    if (!from || !to) throw new Error('Missing connection handles')
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
+    await page.mouse.down()
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 })
+    await page.mouse.up()
+  }
+
+  await page.getByLabel('Edge relation').selectOption('runs')
+  await connect(0, 1)
+  await page.getByLabel('Edge relation').selectOption('uses')
+  await connect(1, 2)
+  await page.getByLabel('Edge relation').selectOption('produces')
+  await connect(1, 3)
+  await expect(page.locator('.react-flow__edge')).toHaveCount(3)
+
+  await page.getByRole('button', { name: 'Derived views' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Derived views' })
+  await expect(dialog).toBeVisible()
+  await expect(dialog.locator('.derived-card')).toHaveCount(4)
+  await expect(dialog.locator('.derived-card')).toContainText(['Actor', 'Process', 'System', 'Artifact'])
+
+  await dialog.getByRole('tab', { name: 'Runtime' }).click()
+  await expect(dialog.locator('.derived-card')).toHaveCount(4)
+  await expect(dialog.locator('.derived-edge-label')).toContainText(['runs', 'uses', 'produces'])
+
+  await dialog.getByRole('tab', { name: 'Contracts' }).click()
+  await expect(dialog.getByText('No cards match this view.')).toBeVisible()
+
+  await dialog.getByRole('tab', { name: 'Sequence' }).click()
+  await expect(dialog.getByLabel('Sequence process')).toHaveCount(1)
+  await expect(dialog.locator('.derived-participant')).toHaveCount(4)
+  await expect(dialog.locator('.derived-message-label')).toContainText(['runs', 'uses', 'produces'])
+  await expect(dialog).toContainText('Inferred order')
+
+  await dialog.getByRole('button', { name: 'Close derived views' }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(page.locator('.entity-node')).toHaveCount(4)
+})
