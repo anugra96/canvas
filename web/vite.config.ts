@@ -21,7 +21,7 @@ export default defineConfig({
               name: 'editor',
               test: /node_modules[\\/](@tiptap|prosemirror)/,
               priority: 2,
-              maxSize: 495_000,
+              maxSize: 495_000, // Warning-only split; lazy loading is the real bundle fix.
             },
             {
               name: 'vendor',

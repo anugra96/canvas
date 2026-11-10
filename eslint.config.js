@@ -31,6 +31,18 @@ export default tseslint.config(
     },
   },
   {
+    files: ['web/src/**/*.{ts,tsx}'],
+    ignores: ['web/src/canvas/editor/MarkdownEditorLazy.tsx'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        patterns: [{
+          group: ['**/MarkdownEditor', './MarkdownEditor', '../MarkdownEditor'],
+          message: 'Import MarkdownEditorLazy so Tiptap stays out of the editor-page bundle.',
+        }],
+      }],
+    },
+  },
+  {
     files: ['api/**/*.ts', 'mcp/**/*.ts', 'packages/**/*.ts'],
     languageOptions: {
       globals: globals.node,
