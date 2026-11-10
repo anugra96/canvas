@@ -1,3 +1,18 @@
+import {
+  bands as pixelBands,
+  dither,
+  drawGlow as pixelGlow,
+  drawStars,
+  fbm,
+  hash,
+  makeStars,
+  mix,
+  noise,
+  rgb,
+  smoothstep,
+  type Rgb,
+  type Star,
+} from '../../atmosphere/pixel'
 import type { BackdropScene } from './scenes'
 
 // Reynisfjara at night under the aurora, seen from the black sand looking out
@@ -7,10 +22,6 @@ import type { BackdropScene } from './scenes'
 // on the plateau, a survey drone, walkers, seabirds, boats, and the occasional
 // sneaker wave keep the world alive. Same pixel language as the Dune scenes:
 // quantized bands, Bayer dithering, glow sprites, and rim light.
-
-type Rgb = [number, number, number]
-
-const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
 
 const AURORA_GREEN: Rgb = [110, 255, 175]
 const AURORA_MINT: Rgb = [200, 255, 225]
@@ -24,95 +35,27 @@ const OVERLAY_ALPHA = 0.5
 const WARM = '#ffc27a'
 const COOL = '#bfe4ff'
 
-function rgb(c: Rgb): string {
-  return `rgb(${c[0]},${c[1]},${c[2]})`
+const GLOW_OPTIONS = { size: 16, skipInvisible: true, clampAlpha: true } as const
+
+function drawGlow(
+  g: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  color: Rgb,
+  alpha: number,
+): void {
+  pixelGlow(g, x, y, radius, color, alpha, GLOW_OPTIONS)
 }
 
-function mix(a: Rgb, b: Rgb, t: number): Rgb {
-  return [
-    Math.round(a[0] + (b[0] - a[0]) * t),
-    Math.round(a[1] + (b[1] - a[1]) * t),
-    Math.round(a[2] + (b[2] - a[2]) * t),
-  ]
-}
-
-function sampleStops(stops: Array<[number, Rgb]>, t: number): Rgb {
-  const clamped = Math.min(1, Math.max(0, t))
-  for (let i = 0; i < stops.length - 1; i += 1) {
-    const [at0, c0] = stops[i]!
-    const [at1, c1] = stops[i + 1]!
-    if (clamped >= at0 && clamped <= at1) return mix(c0, c1, (clamped - at0) / Math.max(0.0001, at1 - at0))
-  }
-  return stops[stops.length - 1]![1]
-}
-
-function dither(x: number, y: number, amount: number): boolean {
-  return BAYER4[(y & 3) * 4 + (x & 3)]! < amount * 16
-}
-
-// Quantized vertical gradient with a Bayer seam between neighbouring bands.
-function bands(g: CanvasRenderingContext2D, w: number, y0: number, h: number, stops: Array<[number, Rgb]>): void {
-  const count = Math.max(6, Math.floor(h / 2))
-  let prev: Rgb | null = null
-  for (let band = 0; band < count; band += 1) {
-    const c = sampleStops(stops, (band + 0.5) / count)
-    const y = y0 + Math.floor(band * h / count)
-    const height = Math.floor((band + 1) * h / count) - Math.floor(band * h / count)
-    g.fillStyle = rgb(c)
-    g.fillRect(0, y, w, height)
-    if (prev && (Math.abs(prev[0] - c[0]) + Math.abs(prev[1] - c[1]) + Math.abs(prev[2] - c[2]) > 4)) {
-      g.fillStyle = rgb(prev)
-      for (let px = 0; px < w; px += 1) {
-        if (dither(px, y, 0.5)) g.fillRect(px, y, 1, 1)
-      }
-    }
-    prev = c
-  }
-}
-
-const glowCache = new Map<string, HTMLCanvasElement>()
-
-function drawGlow(g: CanvasRenderingContext2D, x: number, y: number, radius: number, color: Rgb, alpha: number): void {
-  if (alpha <= 0.005 || radius <= 0) return
-  const key = color.join(',')
-  let sprite = glowCache.get(key)
-  if (!sprite) {
-    sprite = document.createElement('canvas')
-    sprite.width = 32
-    sprite.height = 32
-    const ctx = sprite.getContext('2d')!
-    const gradient = ctx.createRadialGradient(16, 16, 0, 16, 16, 16)
-    gradient.addColorStop(0, `rgba(${key},0.85)`)
-    gradient.addColorStop(0.4, `rgba(${key},0.32)`)
-    gradient.addColorStop(1, `rgba(${key},0)`)
-    ctx.fillStyle = gradient
-    ctx.fillRect(0, 0, 32, 32)
-    glowCache.set(key, sprite)
-  }
-  g.globalAlpha = Math.min(1, alpha)
-  g.drawImage(sprite, Math.floor(x - radius), Math.floor(y - radius), radius * 2, radius * 2)
-  g.globalAlpha = 1
-}
-
-function hash(n: number): number {
-  const s = Math.sin(n * 127.1 + 311.7) * 43758.5453
-  return s - Math.floor(s)
-}
-
-function noise(x: number): number {
-  const i = Math.floor(x)
-  const f = x - i
-  const u = f * f * (3 - 2 * f)
-  return hash(i) * (1 - u) + hash(i + 1) * u
-}
-
-function fbm(x: number): number {
-  return noise(x) * 0.58 + noise(x * 2.3 + 7.1) * 0.28 + noise(x * 5.3 + 19.4) * 0.14
-}
-
-function smoothstep(a: number, b: number, x: number): number {
-  const t = Math.min(1, Math.max(0, (x - a) / (b - a)))
-  return t * t * (3 - 2 * t)
+function bands(
+  g: CanvasRenderingContext2D,
+  w: number,
+  y0: number,
+  h: number,
+  stops: Array<[number, Rgb]>,
+): void {
+  pixelBands(g, w, y0, h, stops, { minBands: 6, seam: 'edge', threshold: 4, amount: 0.5 })
 }
 
 function layout(w: number, h: number) {
@@ -552,7 +495,7 @@ interface Bird {
 
 interface AuroraShoreState {
   frame: number
-  stars: Array<{ x: number; y: number; phase: number; speed: number; mag: number }>
+  stars: Star[]
   meteor: { active: boolean; x: number; y: number; vx: number; vy: number; age: number; next: number }
   curtains: Curtain[]
   aurora: HTMLCanvasElement
@@ -1072,13 +1015,7 @@ export const auroraShore: BackdropScene = {
     ])
     return {
       frame: 0,
-      stars: Array.from({ length: 170 }, () => ({
-        x: Math.floor(rng() * w),
-        y: Math.floor(rng() * h * 0.58),
-        phase: rng() * Math.PI * 2,
-        speed: 0.4 + rng() * 1.2,
-        mag: rng(),
-      })),
+      stars: makeStars(170, w, h * 0.58, rng),
       meteor: { active: false, x: 0, y: 0, vx: 0, vy: 0, age: 0, next: 9 },
       curtains: [
         { y0: h * 0.33, amp: h * 0.07, k: 4.4, drift: 1, height: h * 0.27, seed: 1.7, span: [0.05, 0.95], strip: greenStrip },
@@ -1152,19 +1089,7 @@ export const auroraShore: BackdropScene = {
     if (s.frame % 2 === 0) updateAurora(s, w, h, t)
     s.frame += 1
 
-    g.fillStyle = '#e4f4f0'
-    for (const star of s.stars) {
-      const bright = star.mag * (0.3 + 0.7 * (0.5 + 0.5 * Math.sin(t * star.speed + star.phase)))
-      if (bright < 0.25) continue
-      g.globalAlpha = Math.min(0.85, bright)
-      if (star.mag > 0.94) {
-        g.fillRect(star.x - 1, star.y, 3, 1)
-        g.fillRect(star.x, star.y - 1, 1, 3)
-      } else {
-        g.fillRect(star.x, star.y, 1, 1)
-      }
-    }
-    g.globalAlpha = 1
+    drawStars(g, s.stars, t, '#e4f4f0', { maxAlpha: 0.85, brightThreshold: 0.94 })
     drawMeteor(g, s, w, h, t, dt)
     g.drawImage(s.aurora, 0, 0)
     // Airglow pooling on the horizon under the brightest curtains.

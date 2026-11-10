@@ -1,3 +1,15 @@
+import {
+  BAYER4,
+  bands,
+  drawGlow,
+  drawStars,
+  fillDithered,
+  makeStars,
+  mix,
+  rgb,
+  type Rgb,
+  type Star,
+} from '../../atmosphere/pixel'
 import { auroraShore } from './auroraShore'
 
 export type BackdropSceneId = 'dune-night' | 'dune-day' | 'tide' | 'ember' | 'void' | 'aurora-shore'
@@ -25,108 +37,14 @@ export function mulberry(seed: number): () => number {
   }
 }
 
-type Rgb = [number, number, number]
-
-const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
-
-function rgb(c: Rgb): string {
-  return `rgb(${c[0]},${c[1]},${c[2]})`
-}
-
-function mix(a: Rgb, b: Rgb, t: number): Rgb {
-  return [
-    Math.round(a[0] + (b[0] - a[0]) * t),
-    Math.round(a[1] + (b[1] - a[1]) * t),
-    Math.round(a[2] + (b[2] - a[2]) * t),
-  ]
-}
-
-function sampleStops(stops: Array<[number, Rgb]>, t: number): Rgb {
-  const clamped = Math.min(1, Math.max(0, t))
-  for (let i = 0; i < stops.length - 1; i += 1) {
-    const [at0, c0] = stops[i]!
-    const [at1, c1] = stops[i + 1]!
-    if (clamped >= at0 && clamped <= at1) {
-      return mix(c0, c1, (clamped - at0) / Math.max(0.0001, at1 - at0))
-    }
-  }
-  return stops[stops.length - 1]![1]
-}
-
-function fillDithered(
+function skyBands(
   g: CanvasRenderingContext2D,
-  x: number,
-  y: number,
   w: number,
   h: number,
-  a: Rgb,
-  b: Rgb,
-  amount: number,
+  stops: Array<[number, Rgb]>,
+  y0 = 0,
 ): void {
-  g.fillStyle = rgb(a)
-  g.fillRect(x, y, w, h)
-  if (amount <= 0) return
-  if (amount >= 1) {
-    g.fillStyle = rgb(b)
-    g.fillRect(x, y, w, h)
-    return
-  }
-  g.fillStyle = rgb(b)
-  const threshold = amount * 16
-  for (let py = 0; py < h; py += 1) {
-    for (let px = 0; px < w; px += 1) {
-      if (BAYER4[(py % 4) * 4 + (px % 4)]! < threshold) {
-        g.fillRect(x + px, y + py, 1, 1)
-      }
-    }
-  }
-}
-
-// Dithered vertical gradient: quantized bands with Bayer seams between them.
-function skyBands(g: CanvasRenderingContext2D, w: number, h: number, stops: Array<[number, Rgb]>, y0 = 0): void {
-  const bands = Math.max(8, Math.floor(h / 2))
-  let prev: Rgb | null = null
-  for (let band = 0; band < bands; band += 1) {
-    const t = (band + 0.5) / bands
-    const c = sampleStops(stops, t)
-    const y = y0 + Math.floor(band * h / bands)
-    const height = Math.floor((band + 1) * h / bands) - Math.floor(band * h / bands)
-    if (prev && (Math.abs(prev[0] - c[0]) > 3 || Math.abs(prev[1] - c[1]) > 3 || Math.abs(prev[2] - c[2]) > 3)) {
-      fillDithered(g, 0, y, w, height, prev, c, 0.5)
-    } else {
-      g.fillStyle = rgb(c)
-      g.fillRect(0, y, w, height)
-    }
-    prev = c
-  }
-}
-
-const glowCache = new Map<string, HTMLCanvasElement>()
-
-function glowSprite(r: number, green: number, blue: number): HTMLCanvasElement {
-  const size = Math.max(4, Math.ceil(r / 4) * 4)
-  const key = `${size}:${r}:${green}:${blue}`
-  const cached = glowCache.get(key)
-  if (cached) return cached
-  const sprite = document.createElement('canvas')
-  sprite.width = size * 2
-  sprite.height = size * 2
-  const ctx = sprite.getContext('2d')!
-  const gradient = ctx.createRadialGradient(size, size, 0, size, size, size)
-  gradient.addColorStop(0, `rgba(${r},${green},${blue},0.85)`)
-  gradient.addColorStop(0.4, `rgba(${r},${green},${blue},0.32)`)
-  gradient.addColorStop(1, `rgba(${r},${green},${blue},0)`)
-  ctx.fillStyle = gradient
-  ctx.fillRect(0, 0, size * 2, size * 2)
-  glowCache.set(key, sprite)
-  return sprite
-}
-
-function drawGlow(g: CanvasRenderingContext2D, x: number, y: number, radius: number, color: [number, number, number], alpha: number): void {
-  const sprite = glowSprite(color[0], color[1], color[2])
-  g.globalAlpha = alpha
-  g.drawImage(sprite, Math.floor(x - radius), Math.floor(y - radius), radius * 2, radius * 2)
-  g.globalAlpha = 1
+  bands(g, w, y0, h, stops, { minBands: 8, seam: 'band', threshold: 3, amount: 0.5 })
 }
 
 function drawSphere(
@@ -174,45 +92,6 @@ function drawRimLight(g: CanvasRenderingContext2D, cx: number, cy: number, r: nu
     if (dx * lx + dy * ly > 0.15) continue
     g.fillRect(Math.floor(cx + dx * r), Math.floor(cy + dy * r), 1, 1)
   }
-}
-
-interface Star {
-  x: number
-  y: number
-  phase: number
-  speed: number
-  mag: number
-}
-
-function makeStars(count: number, w: number, maxY: number, rng: () => number): Star[] {
-  const stars: Star[] = []
-  for (let i = 0; i < count; i += 1) {
-    stars.push({
-      x: Math.floor(rng() * w),
-      y: Math.floor(rng() * maxY),
-      phase: rng() * Math.PI * 2,
-      speed: 0.4 + rng() * 1.2,
-      mag: rng(),
-    })
-  }
-  return stars
-}
-
-function drawStars(g: CanvasRenderingContext2D, stars: Star[], t: number, color: string): void {
-  g.fillStyle = color
-  for (const star of stars) {
-    const twinkle = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(t * star.speed + star.phase))
-    const bright = star.mag * twinkle
-    if (bright < 0.25) continue
-    g.globalAlpha = Math.min(0.9, bright)
-    if (star.mag > 0.9) {
-      g.fillRect(star.x - 1, star.y, 3, 1)
-      g.fillRect(star.x, star.y - 1, 1, 3)
-    } else {
-      g.fillRect(star.x, star.y, 1, 1)
-    }
-  }
-  g.globalAlpha = 1
 }
 
 // Milky Way: dense faint star dust with dithered nebular haze.
