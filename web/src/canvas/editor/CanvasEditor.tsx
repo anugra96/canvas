@@ -24,10 +24,8 @@ import {
   findEntityType,
   renderEntityMarkdown,
   type CanvasDocument,
-  type CanvasLink,
   type CanvasNode,
   type CanvasNodeSide,
-  type CanvasSummary,
   type CanvasProfileIssue,
 } from '@canvas/contract'
 
@@ -64,7 +62,7 @@ import { ConnectionPreview } from './graph/ConnectionPreview'
 import { makeEntityNode } from './graph/nodes'
 import { useCanvasGraph } from './graph/useCanvasGraph'
 import { useCanvasCapture } from './capture/useCanvasCapture'
-import { insertNodes } from '../model/insertNodes'
+import { useCanvasLinks } from './links/useCanvasLinks'
 import { useCanvasProfile } from './useCanvasProfile'
 import { useProfileValidation } from './useProfileValidation'
 import { prioritizeValidationIssues } from './prioritizeIssues'
@@ -78,7 +76,6 @@ import {
 import { validationIssueKey } from './validationIdentity'
 import { readViewport, writeViewport } from './viewport'
 import { CanvasEdge as CanvasEdgeComponent } from './edges/CanvasEdge'
-import { createCanvasLink, withCanvasLinks } from '../model/canvasLinks'
 import { edgeFromConnection } from '../model/edgeRelations'
 import { CodeNode } from './nodes/CodeNode'
 import { SchemaNode } from './nodes/SchemaNode'
@@ -179,10 +176,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       }, 0)
     },
   })
-  const [canvasLinkNodeId, setCanvasLinkNodeId] = useState<string | null>(null)
-  const [canvasOptions, setCanvasOptions] = useState<CanvasSummary[]>([])
-  const [canvasOptionsLoading, setCanvasOptionsLoading] = useState(false)
-  const [canvasOptionsError, setCanvasOptionsError] = useState('')
   const flowRef = useRef<HTMLDivElement>(null)
   const { fitView } = useReactFlow()
 
@@ -301,6 +294,42 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     onAreaPointerUp,
   } = capture
 
+  const links = useCanvasLinks({
+    client,
+    documentId: document.id,
+    profileId: profile.id,
+    trail,
+    dirty,
+    save,
+    onOpenLinkedCanvas,
+    onOpenTrail,
+    nodes,
+    setNodes,
+    markDirty,
+    setNotice,
+    setError,
+    ontology,
+    placementPosition,
+    revealPlacement,
+  })
+
+  const {
+    canvasLinkNode,
+    canvasLinkNodeName,
+    canvasOptions,
+    canvasOptionsLoading,
+    canvasOptionsError,
+    openCanvasLinks,
+    closeCanvasLinks,
+    linkExistingCanvas,
+    unlinkCanvas,
+    relabelCanvas,
+    createLinkedCanvas,
+    openLinkedCanvas,
+    openTrail,
+    addProcessWithCanvas,
+  } = links
+
   useEffect(() => observeHistory({ nodes, edges }), [edges, nodes, observeHistory])
 
   useEffect(() => {
@@ -407,86 +436,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     zoomSelection,
   ])
 
-  const openCanvasLinks = useCallback(async (nodeId: string) => {
-    setCanvasLinkNodeId(nodeId)
-    setCanvasOptionsError('')
-    setCanvasOptionsLoading(true)
-    try {
-      setCanvasOptions(await client.listCanvases())
-    } catch (cause) {
-      setCanvasOptionsError(cause instanceof Error ? cause.message : 'Could not load canvases.')
-    } finally {
-      setCanvasOptionsLoading(false)
-    }
-  }, [client, setCanvasLinkNodeId, setCanvasOptions, setCanvasOptionsError, setCanvasOptionsLoading])
-
-  const updateCanvasLinks = useCallback((nodeId: string, update: (links: CanvasLink[]) => CanvasLink[]) => {
-    setNodes((current) => current.map((node) => {
-      if (node.id !== nodeId) return node
-      return withCanvasLinks(node, update(getCanvasLinks(node.data.raw)))
-    }))
-    markDirty()
-  }, [markDirty])
-
-  const linkExistingCanvas = useCallback((canvasId: string) => {
-    if (!canvasLinkNodeId) return
-    updateCanvasLinks(canvasLinkNodeId, (links) => (
-      links.some((link) => link.canvasId === canvasId)
-        ? links
-        : [...links, createCanvasLink(canvasId)]
-    ))
-  }, [canvasLinkNodeId, updateCanvasLinks])
-
-  const unlinkCanvas = useCallback((linkId: string) => {
-    if (!canvasLinkNodeId) return
-    updateCanvasLinks(canvasLinkNodeId, (links) => links.filter((link) => link.id !== linkId))
-  }, [canvasLinkNodeId, updateCanvasLinks])
-
-  const relabelCanvas = useCallback((linkId: string, label: string) => {
-    if (!canvasLinkNodeId) return
-    updateCanvasLinks(canvasLinkNodeId, (links) => links.map((link) => (
-      link.id === linkId
-        ? { ...link, ...(label.trim() ? { label } : { label: undefined }) }
-        : link
-    )))
-  }, [canvasLinkNodeId, updateCanvasLinks])
-
-  async function createLinkedCanvas(title: string) {
-    if (!canvasLinkNodeId) return
-    const child = await client.createCanvas(title, profile.id)
-    updateCanvasLinks(canvasLinkNodeId, (links) => [...links, createCanvasLink(child.id)])
-    setCanvasOptions((current) => [...current, {
-      id: child.id,
-      title: child.title,
-      etag: child.etag,
-      updatedAt: child.updatedAt,
-      updatedBy: child.updatedBy,
-      nodeCount: child.nodeCount,
-      edgeCount: child.edgeCount,
-      profile: child.canvas.app?.profile ?? profile.id,
-    }])
-    setNotice(`Created and linked "${child.title}".`)
-  }
-
-  async function openLinkedCanvas(link: CanvasLink) {
-    if (trail.some((entry) => entry.id === link.canvasId)) {
-      throw new Error('That canvas is already open in the trail.')
-    }
-    if (dirty) {
-      const saved = await save()
-      if (!saved) throw new Error('Save the current canvas before opening a linked canvas.')
-    }
-    onOpenLinkedCanvas(link.canvasId, link.label ?? 'Linked canvas')
-  }
-
-  async function openTrail(index: number) {
-    if (dirty) {
-      const saved = await save()
-      if (!saved) return
-    }
-    onOpenTrail(index)
-  }
-
   const actions = useMemo<CanvasEditorActions>(
     () => ({
       updateText,
@@ -500,64 +449,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     }),
     [autoFitNode, openCanvasLinks, openEdgeLabelEditor, resizeNode, selectEdge, updateEntityField, updateLabel, updateText],
   )
-
-  async function addProcessWithCanvas() {
-    const processType = findEntityType(ontology, 'process')
-    const noteType = findEntityType(ontology, 'note')
-    if (!processType || !noteType) return
-    setError('')
-    try {
-      const child = await client.createCanvas('Process documentation', profile.id)
-      const notes: Array<[string, string]> = [
-        ['Purpose', 'Describe the process goal and trigger.'],
-        ['Stages', 'Document stages, hand-offs, and owners.'],
-        ['Approvals', 'Document manual approvals and gates.'],
-        ['Failure handling', 'Document retries, rollback, and escalation.'],
-      ]
-      const nodes = notes.map(([name, body], index) => {
-        const base = makeEntityNode('note', {
-          x: 80 + (index % 2) * 380,
-          y: 80 + Math.floor(index / 2) * 260,
-        }, ontology)
-        if (!base) throw new Error('Could not create process documentation notes.')
-        const fields = { ...emptyEntityFields(noteType), name, body }
-        return {
-          ...base,
-          app: { ...(base.app ?? {}), entityType: 'note', fields },
-          text: renderEntityMarkdown(noteType, fields),
-        } as CanvasNode
-      })
-      await client.saveCanvas(child.id, child.etag, { ...child.canvas, nodes, edges: [] })
-
-      const placement = placementPosition(processType.defaultSize.width, processType.defaultSize.height)
-      const base = makeEntityNode('process', placement, ontology)
-      if (!base) return
-      const fields = {
-        ...emptyEntityFields(processType),
-        name: 'Process',
-        purpose: 'Document the process stages and decisions in the linked canvas.',
-        mode: 'hybrid',
-        status: 'planned',
-      }
-      const link = createCanvasLink(child.id, 'Process documentation')
-      const raw = {
-        ...base,
-        app: {
-          ...(base.app ?? {}),
-          entityType: 'process',
-          fields,
-          canvasLinks: [link],
-        },
-        text: renderEntityMarkdown(processType, fields),
-      } as CanvasNode
-      setNodes((current) => insertNodes(current, [{ ...toFlowNode(raw), selected: true }]))
-      markDirty()
-      setNotice(`Created process card and linked "${child.title}".`)
-      revealPlacement(placement.visible)
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not create the linked process canvas.')
-    }
-  }
 
   const allValidationIssues = useProfileValidation({
     nodes,
@@ -792,21 +683,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     edgeIssues,
     openIssue: openValidationIssue,
   }
-
-  const canvasLinkNode = canvasLinkNodeId
-    ? nodes.find((node) => node.id === canvasLinkNodeId)
-    : undefined
-  const canvasLinkNodeName = (() => {
-    if (!canvasLinkNode) return 'Card'
-    const fields = canvasLinkNode.data.entity?.fields ?? {}
-    return String(
-      fields.name
-      ?? fields.title
-      ?? canvasLinkNode.data.label
-      ?? canvasLinkNode.data.text?.split('\n').find((line) => line.trim())
-      ?? 'Card',
-    ).replace(/^#+\s*/, '').slice(0, 120)
-  })()
 
   const commands = useCanvasCommands({
     backLabel: trail.length > 1 ? 'Back' : 'All canvases',
@@ -1121,7 +997,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
             canvases={canvasOptions}
             loading={canvasOptionsLoading}
             error={canvasOptionsError}
-            onClose={() => setCanvasLinkNodeId(null)}
+            onClose={closeCanvasLinks}
             onOpen={openLinkedCanvas}
             onLinkExisting={linkExistingCanvas}
             onUnlink={unlinkCanvas}
