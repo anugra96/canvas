@@ -1,5 +1,5 @@
 import type { AmbienceId } from '../ambience/ambience'
-import type { BackdropSceneId } from '../canvas/backdrop/scenes'
+import type { BackdropSceneId } from './scenes'
 
 export interface ThemeDefinition {
   id: string

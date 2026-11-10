@@ -4,7 +4,7 @@ import { useReactFlow } from '@xyflow/react'
 
 import { sceneForTheme } from '../../atmosphere/registry'
 import { useTheme } from '../../themes'
-import { SCENES, mulberry } from './scenes'
+import { SCENES, mulberry } from '../../atmosphere/scenes'
 
 const PREF_KEY = 'canvas-backdrop'
 const PIXEL = 3
