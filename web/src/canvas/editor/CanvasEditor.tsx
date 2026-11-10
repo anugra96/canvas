@@ -65,6 +65,7 @@ import {
 } from '../model/adapter'
 import { findSnap, type AlignmentGuide } from '../model/alignment'
 import { autoLayoutCanvas, dataFlowLayoutCanvas } from '../model/autoLayout'
+import { insertNodes } from '../model/insertNodes'
 import { getCanvasEdgePath } from '../model/edgePath'
 import { convertNodeType } from '../model/cardTypes'
 import {
@@ -441,10 +442,11 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       label: 'Group',
       app: { groupMembers: selected.map((node) => node.id) },
     } as CanvasNode
-    setNodes((current) => [
-      { ...toFlowNode(groupRaw), selected: true },
-      ...current.map((node) => ({ ...node, selected: false })),
-    ])
+    setNodes((current) => insertNodes(
+      current,
+      [{ ...toFlowNode(groupRaw), selected: true }],
+      'start',
+    ))
     setEdges((current) => current.map((edge) => ({ ...edge, selected: false })))
     setSelectedEdgeId(null)
     markDirty()
@@ -770,10 +772,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       })
     }
 
-    setNodes((current) => [
-      ...current.map((node) => ({ ...node, selected: false })),
-      ...nodeClones,
-    ])
+    setNodes((current) => insertNodes(current, nodeClones))
     setEdges((current) => [
       ...current.map((edge) => ({ ...edge, selected: false })),
       ...edgeClones,
@@ -1110,20 +1109,14 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
 
   const addCard = useCallback((position = { x: 120, y: 120 }) => {
     const raw = makeTextNode(position)
-    setNodes((current) => [
-      ...current.map((node) => ({ ...node, selected: false })),
-      { ...toFlowNode(raw), selected: true },
-    ])
+    setNodes((current) => insertNodes(current, [{ ...toFlowNode(raw), selected: true }]))
     markDirty()
   }, [markDirty])
 
   const addEntity = useCallback((entityTypeId: string, position = { x: 120, y: 120 }) => {
     const raw = makeEntityNode(entityTypeId, position, ontology)
     if (!raw) return
-    setNodes((current) => [
-      ...current.map((node) => ({ ...node, selected: false })),
-      { ...toFlowNode(raw), selected: true },
-    ])
+    setNodes((current) => insertNodes(current, [{ ...toFlowNode(raw), selected: true }]))
     markDirty()
   }, [markDirty, ontology])
 
@@ -1207,10 +1200,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     if (isSystems && !newRelationType) edge.label = 'Define relation'
 
     setPendingConnection(null)
-    setNodes((current) => [
-      ...current.map((node) => ({ ...node, selected: false })),
-      { ...toFlowNode(raw), selected: true },
-    ])
+    setNodes((current) => insertNodes(current, [{ ...toFlowNode(raw), selected: true }]))
     setEdges((current) => [...current, toFlowEdge(edge, ontology)])
     setSelectedEdgeId(null)
     markDirty()
@@ -1425,10 +1415,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       : makeEntityNode(templateId, topLeft, ontology)
     if (!raw) return
     setCardMenu(null)
-    setNodes((current) => [
-      ...current.map((node) => ({ ...node, selected: false })),
-      { ...toFlowNode(raw), selected: true },
-    ])
+    setNodes((current) => insertNodes(current, [{ ...toFlowNode(raw), selected: true }]))
     markDirty()
   }
 
@@ -1573,10 +1560,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
         },
         text: renderEntityMarkdown(processType, fields),
       } as CanvasNode
-      setNodes((current) => [
-        ...current.map((node) => ({ ...node, selected: false })),
-        { ...toFlowNode(raw), selected: true },
-      ])
+      setNodes((current) => insertNodes(current, [{ ...toFlowNode(raw), selected: true }]))
       markDirty()
       setNotice(`Created process card and linked "${child.title}".`)
       revealPlacement(placement.visible)

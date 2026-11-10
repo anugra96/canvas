@@ -2,14 +2,14 @@ import dagre from '@dagrejs/dagre'
 
 import type { DerivedCard, DerivedRelation, DerivedView } from './derivedViews'
 
-export interface DiagramNode extends DerivedCard {
+interface DiagramNode extends DerivedCard {
   x: number
   y: number
   width: number
   height: number
 }
 
-export interface DiagramEdge extends DerivedRelation {
+interface DiagramEdge extends DerivedRelation {
   path: string
   labelX: number
   labelY: number

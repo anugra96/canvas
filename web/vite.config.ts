@@ -21,6 +21,7 @@ export default defineConfig({
               name: 'editor',
               test: /node_modules[\\/](@tiptap|prosemirror)/,
               priority: 2,
+              maxSize: 495_000,
             },
             {
               name: 'vendor',

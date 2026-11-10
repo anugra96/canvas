@@ -7,7 +7,7 @@ export interface CanvasTrailEntry {
 
 const CANVAS_PATH = /^\/canvas\/([^/]+)\/?$/
 
-export function canvasIdFromPath(pathname: string): string | null {
+function canvasIdFromPath(pathname: string): string | null {
   const match = CANVAS_PATH.exec(pathname)
   if (!match?.[1]) return null
   try {
@@ -17,7 +17,7 @@ export function canvasIdFromPath(pathname: string): string | null {
   }
 }
 
-export function pathForTrail(trail: CanvasTrailEntry[]): string {
+function pathForTrail(trail: CanvasTrailEntry[]): string {
   const current = trail.at(-1)
   return current ? `/canvas/${encodeURIComponent(current.id)}` : '/'
 }

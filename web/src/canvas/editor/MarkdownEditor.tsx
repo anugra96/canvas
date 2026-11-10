@@ -16,15 +16,17 @@ import {
   type EditResult,
 } from './markdownEditing'
 
+export interface MarkdownEditorProps {
+  value: string
+  onChange: (value: string) => void
+  autoFocus?: boolean
+}
+
 export function MarkdownEditor({
   value,
   onChange,
   autoFocus = true,
-}: {
-  value: string
-  onChange: (value: string) => void
-  autoFocus?: boolean
-}) {
+}: MarkdownEditorProps) {
   const [mode, setMode] = useState<'raw' | 'preview'>('preview')
   const rawRef = useRef<HTMLTextAreaElement>(null)
   const lastEmitted = useRef(value)

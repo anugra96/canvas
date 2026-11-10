@@ -36,7 +36,7 @@ import { useCanvasEditorActions } from '../CanvasEditorContext'
 import { useIsMobile } from '../../../useMediaQuery'
 import { MarkdownContent } from '../MarkdownContent'
 import { FocusEditor } from '../FocusEditor'
-import { MarkdownEditor } from '../MarkdownEditor'
+import { MarkdownEditor } from '../MarkdownEditorLazy'
 import { NodeShell } from './NodeShell'
 
 const ICONS = {

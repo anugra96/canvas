@@ -24,7 +24,7 @@ import {
 } from '../codeEditing'
 import { useCanvasEditorActions } from '../CanvasEditorContext'
 import { FocusEditor } from '../FocusEditor'
-import { MarkdownEditor } from '../MarkdownEditor'
+import { MarkdownEditor } from '../MarkdownEditorLazy'
 import { NodeShell } from './NodeShell'
 
 export function CodeNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {

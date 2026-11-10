@@ -2,7 +2,7 @@ import type { CanvasProfileIssue, JsonCanvas } from '@canvas/contract'
 
 import { validationIssueKey, validationTargetId } from './validationIdentity'
 
-export const VALIDATION_SUPPRESSIONS_KEY = 'validationSuppressions'
+const VALIDATION_SUPPRESSIONS_KEY = 'validationSuppressions'
 
 export const IGNORE_REASONS = [
   'Accepted legacy item',
@@ -65,12 +65,4 @@ export function createSuppression(
     reason,
     createdAt,
   }
-}
-
-export function suppressionForIssue(
-  suppressions: ValidationSuppression[],
-  issue: CanvasProfileIssue,
-): ValidationSuppression | undefined {
-  const key = validationIssueKey(issue)
-  return suppressions.find((suppression) => suppression.fingerprint === key)
 }

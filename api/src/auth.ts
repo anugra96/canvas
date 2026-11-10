@@ -11,7 +11,7 @@ export interface CanvasPrincipal {
   tenantId: string
 }
 
-export const CANVAS_EDITOR_GROUP = 'canvas-editors'
+const CANVAS_EDITOR_GROUP = 'canvas-editors'
 
 export const LOCAL_DEV_TOKEN = 'local-dev'
 
@@ -25,27 +25,7 @@ export function localPrincipal(): CanvasPrincipal {
   }
 }
 
-export function principalFromClaims(claims: Record<string, unknown>): CanvasPrincipal | null {
-  const subject = typeof claims.sub === 'string' ? claims.sub : ''
-  if (!subject) return null
-  const groupsValue = claims['cognito:groups']
-  const groups = Array.isArray(groupsValue)
-    ? groupsValue.filter((value): value is string => typeof value === 'string')
-    : []
-  return {
-    subject: `cognito:${subject}`,
-    displayName: typeof claims.name === 'string' && claims.name
-      ? claims.name
-      : typeof claims.email === 'string' && claims.email
-        ? claims.email
-        : subject,
-    email: typeof claims.email === 'string' ? claims.email : '',
-    groups,
-    tenantId: 'local',
-  }
-}
-
-export function authenticate(authorization: string | undefined, mode: AuthMode): CanvasPrincipal | null {
+function authenticate(authorization: string | undefined, mode: AuthMode): CanvasPrincipal | null {
   if (mode === 'local') {
     return authorization === `Bearer ${LOCAL_DEV_TOKEN}` ? localPrincipal() : null
   }

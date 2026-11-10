@@ -14,7 +14,7 @@ import type { PrioritizedValidationIssue } from './prioritizeIssues'
 import { validationIssueKey } from './validationIdentity'
 import { semanticSuggestionForIssue, type SemanticSuggestion } from '../semantics/semanticSuggestion'
 
-export interface RelationChoice {
+interface RelationChoice {
   id: string
   label: string
 }
@@ -29,7 +29,7 @@ export interface SafeRelationFix {
   reason: string
 }
 
-export interface RelationRepair {
+interface RelationRepair {
   edgeId: string
   fromName: string
   toName: string
@@ -124,7 +124,7 @@ const ISSUE_COPY: Record<CanvasProfileIssue['code'], { label: string; why: strin
   },
 }
 
-export function issueCategory(code: CanvasProfileIssue['code']): string {
+function issueCategory(code: CanvasProfileIssue['code']): string {
   if (code.startsWith('schema_')) return 'Schema'
   if (code.includes('relation')) return 'Relation'
   if (code.includes('without')) return 'Semantics'
@@ -132,11 +132,11 @@ export function issueCategory(code: CanvasProfileIssue['code']): string {
   return 'Architecture'
 }
 
-export function issueGroupLabel(code: CanvasProfileIssue['code']): string {
+function issueGroupLabel(code: CanvasProfileIssue['code']): string {
   return ISSUE_COPY[code].label
 }
 
-export function issueWhy(code: CanvasProfileIssue['code']): string {
+function issueWhy(code: CanvasProfileIssue['code']): string {
   return ISSUE_COPY[code].why
 }
 
@@ -144,7 +144,7 @@ function nodeEntity(node: CanvasFlowNode | undefined) {
   return node ? getEntityMeta(node.data.raw) : undefined
 }
 
-export function nodeDisplayName(
+function nodeDisplayName(
   node: CanvasFlowNode | undefined,
   ontology: Ontology,
 ): string {
@@ -236,7 +236,7 @@ function contextForIssue(
   return { title: issue.message, meta: 'Canvas' }
 }
 
-export function relationRepairForIssue(
+function relationRepairForIssue(
   issue: CanvasProfileIssue,
   nodesById: Map<string, CanvasFlowNode>,
   edgesById: Map<string, CanvasFlowEdge>,

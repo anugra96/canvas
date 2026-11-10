@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
-export const THEME_STORAGE_KEY = 'canvas-theme'
+const THEME_STORAGE_KEY = 'canvas-theme'
 
 export const THEMES = [
   {
@@ -127,15 +127,15 @@ export const THEMES = [
 
 export type ThemeId = (typeof THEMES)[number]['id']
 
-export const DEFAULT_THEME: ThemeId = 'graphite'
+const DEFAULT_THEME: ThemeId = 'graphite'
 
 const themeListeners = new Set<() => void>()
 
-export function isThemeId(value: string): value is ThemeId {
+function isThemeId(value: string): value is ThemeId {
   return THEMES.some((theme) => theme.id === value)
 }
 
-export function readTheme(): ThemeId {
+function readTheme(): ThemeId {
   try {
     const value = localStorage.getItem(THEME_STORAGE_KEY)
     return value && isThemeId(value) ? value : DEFAULT_THEME
@@ -144,17 +144,17 @@ export function readTheme(): ThemeId {
   }
 }
 
-export function getTheme(): ThemeId {
+function getTheme(): ThemeId {
   const value = document.documentElement.dataset.theme
   return value && isThemeId(value) ? value : DEFAULT_THEME
 }
 
-export function subscribeTheme(listener: () => void): () => void {
+function subscribeTheme(listener: () => void): () => void {
   themeListeners.add(listener)
   return () => { themeListeners.delete(listener) }
 }
 
-export function applyTheme(theme: ThemeId): void {
+function applyTheme(theme: ThemeId): void {
   document.documentElement.dataset.theme = theme
   const definition = THEMES.find((candidate) => candidate.id === theme) ?? THEMES[0]
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', definition.themeColor)

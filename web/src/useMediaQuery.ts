@@ -4,7 +4,7 @@ function canMatchMedia(): boolean {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function'
 }
 
-export function useMediaQuery(query: string): boolean {
+function useMediaQuery(query: string): boolean {
   const subscribe = useCallback((listener: () => void) => {
     if (!canMatchMedia()) return () => {}
     const media = window.matchMedia(query)

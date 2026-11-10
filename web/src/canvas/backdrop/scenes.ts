@@ -2,7 +2,7 @@ import { auroraShore } from './auroraShore'
 
 export type BackdropSceneId = 'dune-night' | 'dune-day' | 'tide' | 'ember' | 'void' | 'aurora-shore'
 
-export interface SceneCam {
+interface SceneCam {
   x: number
   y: number
 }

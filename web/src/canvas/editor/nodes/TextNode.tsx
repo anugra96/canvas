@@ -6,7 +6,7 @@ import { useIsMobile } from '../../../useMediaQuery'
 import { useCanvasEditorActions } from '../CanvasEditorContext'
 import { FocusEditor } from '../FocusEditor'
 import { MarkdownContent } from '../MarkdownContent'
-import { MarkdownEditor } from '../MarkdownEditor'
+import { MarkdownEditor } from '../MarkdownEditorLazy'
 import { NodeShell } from './NodeShell'
 
 export function TextNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {

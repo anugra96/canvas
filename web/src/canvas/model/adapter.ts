@@ -16,7 +16,7 @@ import {
   type Ontology,
 } from '@canvas/contract'
 
-export type CanvasNodeData = {
+type CanvasNodeData = {
   raw: CanvasNode
   text?: string
   label?: string
@@ -25,7 +25,7 @@ export type CanvasNodeData = {
   entity?: CanvasEntityMeta
 } & Record<string, unknown>
 
-export type CanvasEdgeData = {
+type CanvasEdgeData = {
   raw: CanvasEdge
   label?: string
   relationType?: string

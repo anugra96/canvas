@@ -17,7 +17,7 @@ export interface SchemaOutlineNode {
   children: SchemaOutlineNode[]
 }
 
-export interface SchemaDiagnostic {
+interface SchemaDiagnostic {
   severity: 'error' | 'warning'
   message: string
   path?: string

@@ -4,16 +4,16 @@ import type { CanvasFlowEdge, CanvasFlowNode } from '../model/adapter'
 import { validationIssueKey } from '../editor/validationIdentity'
 import { semanticSuggestionForIssue } from '../semantics/semanticSuggestion'
 
-export interface AddCardFix {
+interface AddCardFix {
   targetId: string
   entityType: string
   relationType: string
   nameSuffix: string
 }
 
-export type SuggestionAction = { kind: 'add-cards'; fixes: AddCardFix[] }
+type SuggestionAction = { kind: 'add-cards'; fixes: AddCardFix[] }
 
-export interface CanvasSuggestionItem {
+interface CanvasSuggestionItem {
   id: string
   title: string
   action: SuggestionAction

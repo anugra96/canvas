@@ -66,7 +66,7 @@ export interface DerivedView {
   edges: DerivedRelation[]
 }
 
-export interface DerivedSequenceMessage extends DerivedRelation {
+interface DerivedSequenceMessage extends DerivedRelation {
   order: number
 }
 

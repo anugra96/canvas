@@ -6,7 +6,7 @@ export interface AlignmentItem {
   height: number
 }
 
-export interface AlignmentBox {
+interface AlignmentBox {
   id: string
   left: number
   top: number
@@ -29,7 +29,7 @@ export interface SnapResult {
   guides: AlignmentGuide[]
 }
 
-export function alignmentBox(item: AlignmentItem): AlignmentBox {
+function alignmentBox(item: AlignmentItem): AlignmentBox {
   return {
     id: item.id,
     left: item.x,

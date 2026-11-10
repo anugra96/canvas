@@ -67,7 +67,7 @@ export function isAmbienceId(value: string): value is AmbienceId {
   return AMBIENCES.some((ambience) => ambience.id === value)
 }
 
-export const AMBIENCE_VOLUME_KEY = 'canvas-ambience-volume'
+const AMBIENCE_VOLUME_KEY = 'canvas-ambience-volume'
 const MAX_PLAYBACK_GAIN = 0.18
 
 export function readVolume(): number {

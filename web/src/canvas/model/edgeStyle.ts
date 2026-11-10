@@ -9,8 +9,8 @@ export const EDGE_STYLES = [
 
 export type EdgeStyle = (typeof EDGE_STYLES)[number]['id']
 
-export const EDGE_STYLE_STORAGE_KEY = 'canvas-edge-style'
-export const DEFAULT_EDGE_STYLE: EdgeStyle = 'bezier'
+const EDGE_STYLE_STORAGE_KEY = 'canvas-edge-style'
+const DEFAULT_EDGE_STYLE: EdgeStyle = 'bezier'
 
 const listeners = new Set<() => void>()
 let current = read()
@@ -28,7 +28,7 @@ function read(): EdgeStyle {
   }
 }
 
-export function getEdgeStyle(): EdgeStyle {
+function getEdgeStyle(): EdgeStyle {
   return current
 }
 
