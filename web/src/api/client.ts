@@ -17,6 +17,7 @@ export interface CanvasClient {
   getCanvas(id: string): Promise<CanvasDocument>
   saveCanvas(id: string, etag: string, canvas: JsonCanvas): Promise<CanvasDocument>
   renameCanvas(id: string, title: string, etag: string): Promise<CanvasDocument>
+  deleteCanvas(id: string, etag: string): Promise<void>
   downloadCanvas(id: string, title: string): Promise<void>
 }
 
@@ -101,6 +102,14 @@ function createApiClient(session: CanvasSession): CanvasClient {
       })
       if (!response.ok) throw await errorFrom(response)
       return response.json() as Promise<CanvasDocument>
+    },
+
+    async deleteCanvas(id, etag) {
+      const response = await request(`/v1/canvases/${id}`, {
+        method: 'DELETE',
+        headers: headers({ 'if-match': `"${etag}"` }),
+      })
+      if (!response.ok) throw await errorFrom(response)
     },
 
     async downloadCanvas(id, title) {

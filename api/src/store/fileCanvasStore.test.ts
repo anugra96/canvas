@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -66,5 +66,19 @@ describe('FileCanvasStore', () => {
       store.save('app', created.id, { nodes: [], edges: [] }, created.etag, principal),
     ).rejects.toBeInstanceOf(CanvasConflictError)
     expect(first.etag).not.toBe(created.etag)
+  })
+
+  it('hides a removed canvas but keeps its file recoverable', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'app-canvas-'))
+    directories.push(directory)
+    const store = new FileCanvasStore(directory)
+    const created = await store.create('app', 'Removed', localPrincipal())
+
+    await store.remove('app', created.id, created.etag)
+
+    expect(await store.get('app', created.id)).toBeNull()
+    expect(await store.list('app')).toHaveLength(0)
+    const kept = JSON.parse(await readFile(join(directory, 'app', '.deleted', `${created.id}.json`), 'utf8'))
+    expect(kept.title).toBe('Removed')
   })
 })

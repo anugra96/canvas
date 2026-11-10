@@ -117,6 +117,7 @@ import { FileNode } from './nodes/FileNode'
 import { GroupNode } from './nodes/GroupNode'
 import { LinkNode } from './nodes/LinkNode'
 import { TextNode as TextNodeComponent } from './nodes/TextNode'
+import { autosaveDelay, isNetworkFailure, useLeaveGuard } from './saveSafety'
 
 const nodeTypes = {
   text: TextNodeComponent,
@@ -301,6 +302,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const [etag, setEtag] = useState(document.etag)
   const [dirty, setDirty] = useState(false)
   const [status, setStatus] = useState<SaveStatus>('saved')
+  const [saveFailures, setSaveFailures] = useState(0)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [conflicts, setConflicts] = useState<MergeConflict[]>([])
@@ -940,6 +942,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       setSuppressions(readValidationSuppressions(saved.canvas))
       setDirty(false)
       setStatus('saved')
+      setSaveFailures(0)
       setNotice('')
       setConflicts([])
       setPendingLocal(null)
@@ -968,6 +971,11 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
         }
         return null
       }
+      setSaveFailures((count) => count + 1)
+      if (isNetworkFailure(cause)) {
+        setStatus('offline')
+        return null
+      }
       setError(cause instanceof Error ? cause.message : 'Could not save the canvas.')
       setStatus('error')
       return null
@@ -978,9 +986,13 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     if (!dirty || status === 'saving' || conflicts.length > 0) return
     const timer = window.setTimeout(() => {
       void save()
-    }, 1200)
+    }, autosaveDelay(saveFailures))
     return () => window.clearTimeout(timer)
-  }, [baseCanvas, dirty, edges, nodes, save, status, conflicts.length])
+  }, [baseCanvas, dirty, edges, nodes, save, saveFailures, status, conflicts.length])
+
+  useLeaveGuard(dirty || status === 'saving' || conflicts.length > 0, () => {
+    if (dirty && status !== 'saving' && conflicts.length === 0) void save()
+  })
 
   const onNodesChange = useCallback((changes: NodeChange<CanvasFlowNode>[]) => {
     type PositionChange = Extract<NodeChange<CanvasFlowNode>, { type: 'position' }>

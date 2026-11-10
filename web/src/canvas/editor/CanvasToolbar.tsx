@@ -22,7 +22,7 @@ import { useState } from 'react'
 import { useIsMobile } from '../../useMediaQuery'
 import { EDGE_STYLES, setEdgeStyle, useEdgeStyle, type EdgeStyle } from '../model/edgeStyle'
 
-export type SaveStatus = 'saved' | 'dirty' | 'saving' | 'conflict' | 'error'
+export type SaveStatus = 'saved' | 'dirty' | 'saving' | 'conflict' | 'error' | 'offline'
 
 interface ToolbarOption {
   id: string
@@ -77,6 +77,7 @@ function statusLabel(status: SaveStatus): string {
   if (status === 'dirty') return 'Unsaved changes'
   if (status === 'conflict') return 'Conflict'
   if (status === 'error') return 'Save failed'
+  if (status === 'offline') return 'Offline, retrying'
   return 'Saved'
 }
 

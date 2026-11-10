@@ -453,6 +453,7 @@ p {
 .save-status.saving::before { background: var(--ui-accent); }
 .save-status.conflict::before { background: var(--ui-red); }
 .save-status.error::before { background: var(--ui-red); }
+.save-status.offline::before { background: var(--ui-amber); }
 
 .profile-badge {
   flex: 0 0 auto;
@@ -5728,10 +5729,15 @@ select {
   text-align: left;
 }
 
-.canvas-card-rename {
+.canvas-card-actions {
   position: absolute;
   top: 10px;
   right: 10px;
+  display: flex;
+  gap: 6px;
+}
+
+.canvas-card-action {
   display: grid;
   width: 32px;
   height: 32px;
@@ -5743,15 +5749,60 @@ select {
   opacity: 0.72;
 }
 
-.canvas-card-rename:hover,
-.canvas-card-rename:focus-visible {
+.canvas-card-action:hover,
+.canvas-card-action:focus-visible {
   color: var(--ui-strong);
   border-color: var(--ui-line-strong);
   opacity: 1;
 }
 
+.canvas-card-action.danger:hover,
+.canvas-card-action.danger:focus-visible {
+  color: var(--ui-red);
+  border-color: var(--ui-danger-border);
+}
+
 .canvas-card-top {
-  padding-right: 38px;
+  padding-right: 76px;
+}
+
+.canvas-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 360px;
+  margin-bottom: 14px;
+  padding: 0 11px;
+  border: 1px solid var(--ui-line-strong);
+  border-radius: var(--radius);
+  color: var(--ui-muted);
+  background: var(--ui-input-bg);
+}
+
+.canvas-search:focus-within {
+  border-color: var(--ui-accent);
+}
+
+.canvas-search input {
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
+  border: 0;
+  color: var(--ui-text);
+  background: transparent;
+  font-size: 13px;
+  outline: none;
+}
+
+.canvas-search-empty {
+  color: var(--ui-muted);
+  font-size: 13px;
+}
+
+.delete-dialog-body {
+  color: var(--ui-muted);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .canvas-node {

@@ -22,10 +22,31 @@ test('creates a canvas, edits a card, saves, and reopens it', async ({ page }) =
   await page.screenshot({ path: 'test-results/canvas-editor.png', fullPage: true })
 
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'Canvases', exact: true })).toBeVisible()
-  await page.locator('.canvas-card').first().click()
   await expect(page.getByRole('heading', { name: 'Untitled canvas', level: 1 })).toBeVisible()
   await expect(page.locator('.text-node')).toContainText('E2E card')
+})
+
+test('keeps the open canvas in the URL and deletes a canvas from the list', async ({ page }) => {
+  await page.goto('/')
+  await createCanvas(page, 'Routed board')
+  await expect(page).toHaveURL(/\/canvas\/[A-Za-z0-9_-]+$/)
+  const canvasUrl = page.url()
+
+  await page.goBack()
+  await expect(page.getByRole('heading', { name: 'Canvases', exact: true })).toBeVisible()
+  await page.goto(canvasUrl)
+  await expect(page.getByRole('heading', { name: 'Routed board', level: 1 })).toBeVisible()
+
+  await page.getByRole('button', { name: 'All canvases' }).click()
+  await page.getByLabel('Search canvases').fill('routed')
+  const card = page.locator('.canvas-card').filter({ hasText: 'Routed board' })
+  await expect(page.locator('.canvas-card')).toHaveCount(1)
+
+  await card.getByRole('button', { name: 'Delete Routed board' }).click()
+  await page.getByRole('alertdialog', { name: 'Delete canvas' }).getByRole('button', { name: 'Delete canvas' }).click()
+  await expect(card).toHaveCount(0)
+  await page.reload()
+  await expect(page.locator('.canvas-card').filter({ hasText: 'Routed board' })).toHaveCount(0)
 })
 
 test('names a new canvas and renames it from the editor and list', async ({ page }) => {

@@ -123,6 +123,15 @@ export function createMockCanvasClient(session: CanvasSession): CanvasClient {
       return structuredClone(next)
     },
 
+    async deleteCanvas(id, etag) {
+      const current = documents.get(id)
+      if (!current) throw new Error('Canvas not found.')
+      if (current.etag !== etag) {
+        throw new CanvasConflictError(structuredClone(current))
+      }
+      documents.delete(id)
+    },
+
     async downloadCanvas(id) {
       const document = documents.get(id)
       if (!document) throw new Error('Canvas not found.')

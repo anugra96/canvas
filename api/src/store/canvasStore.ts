@@ -29,6 +29,8 @@ export interface CanvasStore {
     ifMatch: string,
     principal: CanvasPrincipal,
   ): Promise<CanvasDocument>
+  /** Moves the canvas out of the active list. Stores keep it recoverable where they can. */
+  remove(tenantId: string, id: string, ifMatch: string): Promise<void>
 }
 
 export class CanvasNotFoundError extends Error {

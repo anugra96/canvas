@@ -269,4 +269,22 @@ describe('canvas API', () => {
     expect(stale.status).toBe(412)
   })
 
+  it('deletes a canvas only with a current if-match', async () => {
+    const app = createApp(new MemoryCanvasStore(), { authMode: 'local' })
+    const created = await createCanvas(app)
+    const remove = (etag?: string) => app.request(`/v1/canvases/${created.id}`, {
+      method: 'DELETE',
+      headers: etag ? { ...authHeaders, 'if-match': `"${etag}"` } : authHeaders,
+    })
+
+    expect((await remove()).status).toBe(428)
+    expect((await remove('stale')).status).toBe(412)
+    expect((await remove(created.etag)).status).toBe(204)
+
+    const read = await app.request(`/v1/canvases/${created.id}`, { headers: authHeaders })
+    expect(read.status).toBe(404)
+    const list = await app.request('/v1/canvases', { headers: authHeaders })
+    expect((await list.json() as { canvases: unknown[] }).canvases).toHaveLength(0)
+  })
+
 })

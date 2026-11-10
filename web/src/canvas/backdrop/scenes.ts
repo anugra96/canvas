@@ -1,4 +1,6 @@
-export type BackdropSceneId = 'dune-night' | 'dune-day' | 'tide' | 'ember' | 'void'
+import { auroraShore } from './auroraShore'
+
+export type BackdropSceneId = 'dune-night' | 'dune-day' | 'tide' | 'ember' | 'void' | 'aurora-shore'
 
 export interface SceneCam {
   x: number
@@ -1877,4 +1879,5 @@ export const SCENES: Record<BackdropSceneId, BackdropScene> = {
   tide,
   ember,
   void: gargantua,
+  'aurora-shore': auroraShore,
 }
