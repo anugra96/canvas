@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test'
-import { createCanvas } from './helpers'
+import { addCanvasItem, createCanvas } from './helpers'
 
 test('reconnects an edge endpoint to a different card', async ({ page }) => {
   await page.goto('/')
   await createCanvas(page)
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
 
   const handle = page.locator('.react-flow__handle-right').first()
   const handleBox = await handle.boundingBox()
@@ -16,7 +16,7 @@ test('reconnects an edge endpoint to a different card', async ({ page }) => {
   await page.mouse.up()
   await page.locator('.connection-option', { hasText: 'Code' }).click()
 
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
   const cards = page.locator('.text-node')
   await expect(cards).toHaveCount(2)
   const targetCard = cards.nth(1)

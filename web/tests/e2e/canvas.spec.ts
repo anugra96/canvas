@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url'
 
 import { expect, test } from '@playwright/test'
-import { createCanvas, waitForSaved } from './helpers'
+import { addCanvasItem, runCanvasCommand, createCanvas, waitForSaved } from './helpers'
 
 test('creates a canvas, edits a card, saves, and reopens it', async ({ page }) => {
   await page.goto('/')
@@ -10,7 +10,7 @@ test('creates a canvas, edits a card, saves, and reopens it', async ({ page }) =
   await createCanvas(page)
   await expect(page.getByRole('heading', { name: 'Untitled canvas', level: 1 })).toBeVisible()
 
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
   await expect(page.locator('.text-node')).toHaveCount(1)
   await page.locator('.node-text').dblclick()
   await page.locator('.rich-editor-content').fill('E2E card')
@@ -53,7 +53,7 @@ test('names a new canvas and renames it from the editor and list', async ({ page
   await createCanvas(page, 'Named board')
   await expect(page.getByRole('heading', { name: 'Named board', level: 1 })).toBeVisible()
 
-  await page.getByRole('button', { name: 'Edit canvas title' }).click()
+  await page.getByRole('button', { name: 'Rename canvas' }).click()
   let dialog = page.getByRole('dialog', { name: 'Rename canvas' })
   await dialog.getByLabel('Canvas name').fill('Renamed board')
   await dialog.getByRole('button', { name: 'Save name' }).click()
@@ -91,7 +91,7 @@ test('opens a card menu on empty-canvas double click', async ({ page }) => {
 test('adds a repository template and edits its fields', async ({ page }) => {
   await page.goto('/')
   await createCanvas(page)
-  await page.getByLabel('Add template').selectOption('repository')
+  await addCanvasItem(page, 'Repository')
   await expect(page.locator('.entity-node')).toHaveCount(1)
 
   await page.locator('.entity-node').dblclick()
@@ -110,13 +110,12 @@ test('creates a Systems canvas with typed cards and profile persistence', async 
   await createCanvas(page)
 
   await expect(page.locator('.profile-badge')).toHaveText('Systems')
-  await expect(page.getByRole('button', { name: 'Add card' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Add note' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Add', exact: true })).toBeVisible()
 
-  await page.getByLabel('Add template').selectOption('actor')
-  await page.getByLabel('Add template').selectOption('system')
-  await page.getByLabel('Add template').selectOption('system')
-  await page.getByRole('button', { name: 'Add note' }).click()
+  await addCanvasItem(page, 'Actor')
+  await addCanvasItem(page, 'System')
+  await addCanvasItem(page, 'System')
+  await addCanvasItem(page, 'Note')
   await expect(page.locator('.entity-node')).toHaveCount(4)
   await expect(page.locator('.entity-type')).toContainText(['Actor', 'System', 'Note'])
   await expect(page.locator('.canvas-warning-badge').first()).toBeVisible()
@@ -135,8 +134,8 @@ test('allows an untyped connection between arbitrary cards', async ({ page }) =>
   await page.goto('/')
   await page.getByLabel('Canvas type').selectOption('systems')
   await createCanvas(page)
-  await page.getByLabel('Add template').selectOption('repository')
-  await page.getByLabel('Add template').selectOption('system')
+  await addCanvasItem(page, 'Repository')
+  await addCanvasItem(page, 'System')
   await expect(page.locator('.entity-node')).toHaveCount(2)
   await page.waitForTimeout(300)
 
@@ -158,27 +157,31 @@ test('adds Process and Artifact cards in Systems mode', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Canvas type').selectOption('systems')
   await createCanvas(page)
-  await page.getByLabel('Add template').selectOption('process')
-  await page.getByLabel('Add template').selectOption('artifact')
+  await addCanvasItem(page, 'Process')
+  await addCanvasItem(page, 'Artifact')
   await expect(page.locator('.entity-type')).toContainText(['Process', 'Artifact'])
-  await expect(page.getByLabel('Add template').locator('option')).toContainText([
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  const addItems = await page.getByRole('menu', { name: 'Add commands' }).getByRole('menuitem').allInnerTexts()
+  expect(addItems).toEqual([
+    'Note',
     'System',
     'Repository',
     'Actor',
     'Process',
     'Artifact',
     'Schema',
-    'Note',
     'Decision',
     'Risk',
+    'Process with canvas',
   ])
+  await page.keyboard.press('Escape')
 })
 
 test('uses the note name in the card header', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Canvas type').selectOption('systems')
   await createCanvas(page)
-  await page.getByRole('button', { name: 'Add note' }).click()
+  await addCanvasItem(page, 'Note')
   await page.locator('.entity-node').dblclick()
   await page.locator('[data-field-key="name"]').fill('Review note')
   await page.locator('.entity-content-field .rich-editor-content').fill('This is the note body.')
@@ -190,7 +193,7 @@ test('uses the note name in the card header', async ({ page }) => {
 test('adds a highlighted code card', async ({ page }) => {
   await page.goto('/')
   await createCanvas(page)
-  await page.getByLabel('Add template').selectOption('code')
+  await addCanvasItem(page, 'Code')
   await expect(page.locator('.code-node')).toHaveCount(1)
 
   await page.locator('.code-node').dblclick()
@@ -208,7 +211,7 @@ test('supports undo, redo, duplicate, and the shortcuts dialog', async ({ page }
   const modifier = process.platform === 'darwin' ? 'Meta' : 'Control'
   await page.goto('/')
   await createCanvas(page)
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
   await expect(page.locator('.text-node')).toHaveCount(1)
 
   await page.waitForTimeout(400)
@@ -222,7 +225,7 @@ test('supports undo, redo, duplicate, and the shortcuts dialog', async ({ page }
   await page.keyboard.press(`${modifier}+d`)
   await expect(page.locator('.text-node')).toHaveCount(2)
 
-  await page.getByRole('button', { name: 'Keyboard shortcuts' }).click()
+  await runCanvasCommand(page, 'Keyboard shortcuts')
   await expect(page.getByRole('dialog')).toContainText('Undo')
   await expect(page.getByRole('dialog')).toContainText('Zoom to fit')
   await page.screenshot({ path: 'test-results/shortcuts-dialog.png', fullPage: true })
@@ -232,7 +235,7 @@ test('supports undo, redo, duplicate, and the shortcuts dialog', async ({ page }
 test('creates a card by dragging an edge to empty space and labels the edge', async ({ page }) => {
   await page.goto('/')
   await createCanvas(page)
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
   await expect(page.locator('.text-node')).toHaveCount(1)
 
   const handle = page.locator('.react-flow__handle-right').first()
@@ -301,7 +304,7 @@ test('uses the selection toolbar to duplicate, group, and delete', async ({ page
   const modifier = process.platform === 'darwin' ? 'Meta' : 'Control'
   await page.goto('/')
   await createCanvas(page)
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
   await expect(page.locator('.selection-toolbar')).toContainText('1 selected')
   await page.screenshot({ path: 'test-results/selection-toolbar.png', fullPage: true })
 
@@ -321,8 +324,8 @@ test('uses the selection toolbar to duplicate, group, and delete', async ({ page
 test('shows alignment guides while dragging a card', async ({ page }) => {
   await page.goto('/')
   await createCanvas(page)
-  await page.getByRole('button', { name: 'Add card' }).click()
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
+  await addCanvasItem(page, 'Text card')
   const cards = page.locator('.text-node')
   const second = await cards.nth(1).boundingBox()
   if (!second) throw new Error('Missing second card')
@@ -338,11 +341,11 @@ test('shows alignment guides while dragging a card', async ({ page }) => {
 test('aligns a card to a group edge', async ({ page }) => {
   await page.goto('/')
   await createCanvas(page)
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
   await page.locator('.selection-toolbar').getByRole('button', { name: 'Group' }).click()
   await expect(page.locator('.group-node')).toHaveCount(1)
 
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
   const cards = page.locator('.text-node')
   await expect(cards).toHaveCount(2)
 
@@ -369,7 +372,7 @@ test('colors a group without hiding its edges', async ({ page }) => {
   const modifier = process.platform === 'darwin' ? 'Meta' : 'Control'
   await page.goto('/')
   await createCanvas(page)
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
 
   const handle = page.locator('.react-flow__handle-right').first()
   const handleBox = await handle.boundingBox()
@@ -398,7 +401,7 @@ test('colors a group without hiding its edges', async ({ page }) => {
 test('continues markdown lists while editing a card', async ({ page }) => {
   await page.goto('/')
   await createCanvas(page)
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
   await page.locator('.node-text').dblclick()
   await page.getByRole('button', { name: 'Raw', exact: true }).click()
   const editor = page.locator('.markdown-source')
@@ -415,7 +418,7 @@ test('edits text cards directly in editable Markdown preview', async ({ page }) 
   const modifier = process.platform === 'darwin' ? 'Meta' : 'Control'
   await page.goto('/')
   await createCanvas(page)
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
   await page.locator('.node-text').dblclick()
   const editor = page.locator('.rich-editor-content')
   await expect(editor).toBeVisible()
@@ -430,7 +433,7 @@ test('edits text cards directly in editable Markdown preview', async ({ page }) 
 test('renders and edits a markdown table in preview mode', async ({ page }) => {
   await page.goto('/')
   await createCanvas(page)
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
   await page.locator('.node-text').dblclick()
   await page.getByRole('button', { name: 'Raw', exact: true }).click()
   const editor = page.locator('.markdown-source')
@@ -448,12 +451,12 @@ test('does not capture a card that merely overlaps a group', async ({ page }) =>
   const modifier = process.platform === 'darwin' ? 'Meta' : 'Control'
   await page.goto('/')
   await createCanvas(page)
-  await page.getByRole('button', { name: 'Add card' }).click()
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
+  await addCanvasItem(page, 'Text card')
   await page.keyboard.press(`${modifier}+a`)
   await page.locator('.selection-toolbar').getByRole('button', { name: 'Group' }).click()
 
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
   const cards = page.locator('.text-node')
   await expect(cards).toHaveCount(3)
   const overlapping = cards.nth(2)
@@ -496,7 +499,7 @@ test('imports an Obsidian canvas file as a native canvas', async ({ page }) => {
 test('finishes entity editing when clicking outside the card', async ({ page }) => {
   await page.goto('/')
   await createCanvas(page)
-  await page.getByLabel('Add template').selectOption('repository')
+  await addCanvasItem(page, 'Repository')
   await page.locator('.entity-node').dblclick()
   await page.locator('.entity-field input').first().fill('Click-outside repo')
   const pane = await page.locator('.canvas-flow').boundingBox()
@@ -509,7 +512,7 @@ test('finishes entity editing when clicking outside the card', async ({ page }) 
 test('changes a card type from the selection toolbar', async ({ page }) => {
   await page.goto('/')
   await createCanvas(page)
-  await page.getByLabel('Add template').selectOption('repository')
+  await addCanvasItem(page, 'Repository')
   await page.locator('.entity-node').dblclick()
   await page.locator('.entity-field input').first().fill('Shared model')
   const pane = await page.locator('.canvas-flow').boundingBox()
@@ -528,7 +531,7 @@ test('changes a card type from the selection toolbar', async ({ page }) => {
 test('drags a card on the first pointer gesture without entering edit mode', async ({ page }) => {
   await page.goto('/')
   await createCanvas(page)
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
   const card = page.locator('.text-node')
   const before = await card.boundingBox()
   const pane = await page.locator('.canvas-flow').boundingBox()
@@ -549,7 +552,7 @@ test('drags a card on the first pointer gesture without entering edit mode', asy
 test('does not move a card when dragging inside the text editor', async ({ page }) => {
   await page.goto('/')
   await createCanvas(page)
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
   const card = page.locator('.text-node')
   await page.locator('.node-text').dblclick()
   const before = await card.boundingBox()
@@ -571,7 +574,7 @@ test('supports code indentation, auto-closing, and comment toggling', async ({ p
   const modifier = process.platform === 'darwin' ? 'Meta' : 'Control'
   await page.goto('/')
   await createCanvas(page)
-  await page.getByLabel('Add template').selectOption('code')
+  await addCanvasItem(page, 'Code')
   await page.locator('.code-node').dblclick()
   const input = page.locator('.code-input')
 
@@ -590,7 +593,7 @@ test('supports code indentation, auto-closing, and comment toggling', async ({ p
 test('resizes a card from its resize handle', async ({ page }) => {
   await page.goto('/')
   await createCanvas(page)
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
   const card = page.locator('.text-node')
   const before = await card.boundingBox()
   const handle = page.locator('.canvas-resize-handle.bottom.right')
@@ -609,7 +612,7 @@ test('resizes a card from its resize handle', async ({ page }) => {
 test('fits a card to its content from the card edge', async ({ page }) => {
   await page.goto('/')
   await createCanvas(page)
-  await page.getByLabel('Add template').selectOption('system')
+  await addCanvasItem(page, 'System')
   const card = page.locator('.entity-node')
   await card.dblclick()
   await page.locator('.entity-field input').first().fill('Auto fit system')
@@ -657,7 +660,7 @@ test('fits a card to its content from the card edge', async ({ page }) => {
 test('opens entity editing with properties expanded and ready', async ({ page }) => {
   await page.goto('/')
   await createCanvas(page)
-  await page.getByLabel('Add template').selectOption('system')
+  await addCanvasItem(page, 'System')
   const entity = page.locator('.entity-node')
   const before = await entity.boundingBox()
   await page.locator('.entity-node').dblclick()
@@ -674,7 +677,7 @@ test('opens entity editing with properties expanded and ready', async ({ page })
 test('links a new canvas from any card and navigates back', async ({ page }) => {
   await page.goto('/')
   await createCanvas(page, 'Link parent')
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
 
   await page.getByRole('button', { name: 'Manage linked canvases' }).click()
   const dialog = page.getByRole('dialog', { name: 'Linked canvases' })
@@ -700,7 +703,7 @@ test('links an existing canvas from a card', async ({ page }) => {
   await createCanvas(page, 'Existing target')
   await page.getByRole('button', { name: 'All canvases' }).click()
   await createCanvas(page, 'Source parent')
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
 
   await page.getByRole('button', { name: 'Manage linked canvases' }).click()
   const dialog = page.getByRole('dialog', { name: 'Linked canvases' })
@@ -716,7 +719,7 @@ test('creates a process card with a linked documentation canvas', async ({ page 
   await page.goto('/')
   await page.getByLabel('Canvas type').selectOption('systems')
   await createCanvas(page, 'Process parent')
-  await page.getByLabel('Add template').selectOption('process-canvas')
+  await addCanvasItem(page, 'Process with canvas')
   await expect(page.locator('.entity-node')).toHaveCount(1)
   await expect(page.locator('.entity-type')).toHaveText('Process')
 
@@ -762,7 +765,7 @@ test('derives focused graph views and a process sequence', async ({ page }) => {
   await page.locator('.canvas-card').filter({ hasText: 'Derived views test' }).getByRole('button', { name: /^Open / }).click()
   await expect(page.locator('.entity-node')).toHaveCount(4)
 
-  await page.getByRole('button', { name: 'Derived views' }).click()
+  await page.getByRole('button', { name: 'Views' }).click()
   const dialog = page.getByRole('dialog', { name: 'Derived views' })
   await expect(dialog).toBeVisible()
   await expect(dialog.locator('.derived-card')).toHaveCount(4)

@@ -5961,3 +5961,146 @@ select {
     padding: 8px 14px;
   }
 }
+
+/* Command registry surfaces */
+.command-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.command-trigger {
+  gap: 6px;
+}
+
+.command-trigger.icon-only {
+  width: 36px;
+  padding: 0;
+}
+
+.command-menu-popup {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 120;
+  display: grid;
+  min-width: 220px;
+  padding: 5px;
+  border: 1px solid var(--ui-line-strong);
+  border-radius: var(--radius);
+  background: var(--ui-panel-solid);
+  box-shadow: var(--ui-shadow);
+}
+
+.command-menu-item,
+.command-sheet-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: calc(var(--radius) - 1px);
+  color: var(--ui-text);
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.command-menu-item:hover:not(:disabled),
+.command-sheet-item:hover:not(:disabled) {
+  background: var(--ui-highlight);
+}
+
+.command-menu-item:disabled,
+.command-sheet-item:disabled {
+  opacity: 0.4;
+}
+
+.command-menu-item span,
+.command-sheet-item span {
+  flex: 1;
+}
+
+.command-menu-item kbd,
+.command-sheet-item kbd {
+  color: var(--ui-faint);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.command-menu-separator {
+  height: 1px;
+  margin: 4px 5px;
+  background: var(--ui-line);
+}
+
+.command-review.valid {
+  border-color: color-mix(in srgb, var(--ui-green) 45%, transparent);
+  color: var(--ui-green);
+}
+
+.command-review.warn {
+  border-color: var(--ui-warning-border);
+  color: var(--ui-warning-text);
+  background: var(--ui-warning-bg);
+}
+
+.command-review.error {
+  border-color: var(--ui-danger-border);
+  color: var(--ui-danger-text);
+  background: var(--ui-danger-bg);
+}
+
+.command-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  display: flex;
+  align-items: flex-end;
+  background: var(--ui-overlay);
+  backdrop-filter: blur(4px);
+}
+
+.command-sheet {
+  display: flex;
+  width: 100%;
+  max-height: min(78vh, 680px);
+  flex-direction: column;
+  border-top: 1px solid var(--ui-line-strong);
+  border-radius: 2px 2px 0 0;
+  background: var(--ui-panel-solid);
+  box-shadow: var(--ui-shadow);
+}
+
+.command-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--ui-line);
+}
+
+.command-sheet-head h2 {
+  color: var(--ui-strong);
+  font-size: 15px;
+}
+
+.command-sheet-list {
+  display: grid;
+  gap: 2px;
+  overflow: auto;
+  padding: 7px max(10px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-bottom));
+}
+
+.command-sheet-item {
+  min-height: 44px;
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .app-shell.editing .topbar {
+    display: none;
+  }
+}

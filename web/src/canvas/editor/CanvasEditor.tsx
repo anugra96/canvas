@@ -82,6 +82,7 @@ import { CanvasEditorActionsContext, type CanvasEditorActions } from './CanvasEd
 import { CanvasBackdrop } from '../backdrop/CanvasBackdrop'
 import { CanvasValidationContext } from './CanvasValidationContext'
 import { CanvasToolbar, type SaveStatus } from './CanvasToolbar'
+import { useCanvasCommands } from './commands'
 import { ConnectionTemplateMenu } from './ConnectionTemplateMenu'
 import { ProfileValidationTray } from './ProfileValidationTray'
 import { CanvasIntelligencePanel } from './CanvasIntelligencePanel'
@@ -872,6 +873,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
         return
       }
       if (event.key === 'Escape') {
+        if (window.document.querySelector('.command-menu-popup, .command-sheet')) return
         event.preventDefault()
         event.stopPropagation()
         if (helpOpen) {
@@ -966,6 +968,17 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       return null
     }
   }, [baseCanvas, client, currentCanvas, document.id, etag, ontology, resetHistory])
+
+  useEffect(() => {
+    function onSaveKey(event: KeyboardEvent) {
+      if (event.key.toLowerCase() !== 's' || !(event.metaKey || event.ctrlKey)) return
+      event.preventDefault()
+      event.stopPropagation()
+      void save()
+    }
+    window.addEventListener('keydown', onSaveKey, true)
+    return () => window.removeEventListener('keydown', onSaveKey, true)
+  }, [save])
 
   useEffect(() => {
     if (!dirty || status === 'saving' || conflicts.length > 0) return
@@ -1871,6 +1884,33 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     ).replace(/^#+\s*/, '').slice(0, 120)
   })()
 
+  const commands = useCanvasCommands({
+    backLabel: trail.length > 1 ? 'Back' : 'All canvases',
+    isSystems,
+    issueCount: validationIssues.length,
+    errorCount: validationIssues.filter((issue) => issue.severity === 'error').length,
+    canUndo,
+    canRedo,
+    availableEntityTypes,
+    onBack: () => void back(),
+    onRename: () => setRenameOpen(true),
+    onAddNote: addNoteAtCenter,
+    onAddCard: addAtCenter,
+    onAddEntity: addEntityAtCenter,
+    onAddProcessCanvas: () => void addProcessWithCanvas(),
+    onViews: () => setViewsOpen(true),
+    onReview: () => setValidationPanel((current) => current === 'warnings' ? null : 'warnings'),
+    onUndo: undo,
+    onRedo: redo,
+    onSave: () => { void save() },
+    onTidy: autoLayout,
+    onFitCards: autoFitAll,
+    onFitView: fitCanvas,
+    onDownload: () => void download(),
+    onScreenshot: () => { setScreenshotError(''); setScreenshotOpen(true) },
+    onHelp: () => setHelpOpen(true),
+  })
+
   return (
     <CanvasEditorActionsContext.Provider value={actions}>
       <CanvasValidationContext.Provider value={validation}>
@@ -1890,25 +1930,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
           profileLabel={profile.label}
           isSystems={isSystems}
           status={status}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          availableEntityTypes={availableEntityTypes}
-          onBack={() => void back()}
-          backLabel={trail.length > 1 ? 'Back' : 'All canvases'}
-          onUndo={undo}
-          onRedo={redo}
-          onHelp={() => setHelpOpen(true)}
-          onRename={() => setRenameOpen(true)}
-          onAddNote={addNoteAtCenter}
-          onAddCard={addAtCenter}
-          onAddEntity={addEntityAtCenter}
-          onAddProcessCanvas={() => void addProcessWithCanvas()}
-          onDownload={() => void download()}
-          onScreenshot={() => { setScreenshotError(''); setScreenshotOpen(true) }}
-          onOpenViews={() => setViewsOpen(true)}
-          onFitView={fitCanvas}
-          onAutoLayout={autoLayout}
-          onAutoFitAll={autoFitAll}
+          commands={commands}
         />
 
         {notice && (
@@ -2156,7 +2178,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
           onClose={() => setScreenshotOpen(false)}
         />
 
-        <KeyboardShortcutsDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
+        <KeyboardShortcutsDialog open={helpOpen} onClose={() => setHelpOpen(false)} commands={commands} />
 
         {isSystems && (
           <DerivedViewsDialog

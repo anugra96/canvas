@@ -1,15 +1,24 @@
 import { X } from 'lucide-react'
 
+import type { CanvasCommand } from './commands'
 import { SHORTCUT_GROUPS } from './shortcuts'
 
 export function KeyboardShortcutsDialog({
   open,
   onClose,
+  commands,
 }: {
   open: boolean
   onClose: () => void
+  commands: CanvasCommand[]
 }) {
   if (!open) return null
+  const commandItems = commands
+    .filter((command) => command.shortcut?.length)
+    .map((command) => ({ keys: command.shortcut!, label: command.label }))
+  const groups = commandItems.length > 0
+    ? [{ title: 'Commands', items: commandItems }, ...SHORTCUT_GROUPS]
+    : SHORTCUT_GROUPS
 
   return (
     <div
@@ -35,7 +44,7 @@ export function KeyboardShortcutsDialog({
         </header>
 
         <div className="shortcut-groups">
-          {SHORTCUT_GROUPS.map((group) => (
+          {groups.map((group) => (
             <section className="shortcut-group" key={group.title}>
               <h3>{group.title}</h3>
               <div className="shortcut-list">

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { createCanvas } from './helpers'
+import { addCanvasItem, createCanvas } from './helpers'
 
 const validSchema = JSON.stringify({
   $schema: 'https://json-schema.org/draft/2020-12/schema',
@@ -16,7 +16,7 @@ test('designs and validates a JSON Schema contract', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Canvas type').selectOption('systems')
   await createCanvas(page)
-  await page.getByLabel('Add template').selectOption('schema')
+  await addCanvasItem(page, 'Schema')
 
   const card = page.locator('.schema-card')
   await expect(card).toContainText('Valid schema')
@@ -43,7 +43,7 @@ test('designs and validates a JSON Schema contract', async ({ page }) => {
   await expect(page.locator('.schema-outline-row')).toHaveCount(3)
   await page.getByRole('button', { name: 'Table' }).click()
 
-  await page.getByLabel('Name').fill('Order contract')
+  await page.getByLabel('Name', { exact: true }).fill('Order contract')
   await page.getByLabel('Owner').fill('Tower')
   await page.getByLabel('Review status').selectOption('approved')
   await page.getByLabel('Reviewed version').fill('1.0.0')

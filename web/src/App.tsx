@@ -16,7 +16,7 @@ export default function App() {
   const selectedCanvasId = canvasTrail.at(-1)?.id ?? null
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${selectedCanvasId ? ' editing' : ''}`}>
       <header className="topbar">
         <button className="brand" onClick={() => setCanvasTrail(() => [])}>
           <span className="brand-mark">C</span>

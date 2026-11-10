@@ -1,5 +1,5 @@
 import { devices, expect, test } from '@playwright/test'
-import { createCanvas, waitForSaved } from './helpers'
+import { addCanvasItem, createCanvas, waitForSaved } from './helpers'
 
 test.use({ ...devices['iPhone 13'], defaultBrowserType: 'chromium' })
 
@@ -16,7 +16,7 @@ test('keeps the mobile shell, editor, and card editing usable', async ({ page })
   expect(toolbar?.height ?? 999).toBeLessThan(80)
   expect(flow?.height ?? 0).toBeGreaterThan(400)
 
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
   const card = page.locator('.node-text')
   await expect(card).toBeVisible()
   await expect(page.locator('.react-flow__controls')).toBeHidden()
@@ -46,10 +46,11 @@ test('keeps the mobile shell, editor, and card editing usable', async ({ page })
   if (!done) throw new Error('Missing Done button geometry')
   await page.touchscreen.tap(done.x + done.width / 2, done.y + done.height / 2)
 
-  await page.getByRole('button', { name: 'More editor actions' }).click()
-  await expect(page.getByRole('dialog', { name: 'Editor actions' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Screenshot' })).toBeVisible()
-  await page.getByLabel('Add template').selectOption('repository')
+  await page.getByRole('button', { name: 'More canvas actions' }).click()
+  await expect(page.getByRole('dialog', { name: 'Canvas actions' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Screenshot' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await addCanvasItem(page, 'Repository')
   await expect(page.locator('.entity-node')).toBeVisible()
   await waitForSaved(page)
 

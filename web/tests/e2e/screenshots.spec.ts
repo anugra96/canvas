@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 
 import { expect, test, type Download } from '@playwright/test'
-import { createCanvas } from './helpers'
+import { addCanvasItem, runCanvasCommand, createCanvas } from './helpers'
 
 async function pngSize(download: Download): Promise<{ width: number; height: number; bytes: number }> {
   const path = await download.path()
@@ -19,10 +19,10 @@ test('exports full-canvas and selected-area PNG screenshots', async ({ page }) =
   await page.goto('/')
   await createCanvas(page)
   await page.locator('.canvas-flow').waitFor()
-  await page.getByRole('button', { name: 'Add card' }).click()
+  await addCanvasItem(page, 'Text card')
   await page.locator('.node-text').waitFor()
 
-  await page.getByRole('button', { name: 'Screenshot' }).click()
+  await runCanvasCommand(page, 'Screenshot')
   await expect(page.getByRole('dialog', { name: 'Screenshot canvas' })).toBeVisible()
   const fullDownloadPromise = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Full canvas' }).click()
@@ -35,7 +35,7 @@ test('exports full-canvas and selected-area PNG screenshots', async ({ page }) =
 
   const flow = await page.locator('.canvas-flow').boundingBox()
   if (!flow) throw new Error('Missing canvas geometry')
-  await page.getByRole('button', { name: 'Screenshot' }).click()
+  await runCanvasCommand(page, 'Screenshot')
   await page.getByRole('button', { name: 'Select area' }).click()
   await expect(page.locator('.screenshot-selection-layer')).toBeVisible()
   const selectionDownloadPromise = page.waitForEvent('download')

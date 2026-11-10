@@ -12,8 +12,6 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     title: 'Editing',
     items: [
-      { keys: ['⌘/Ctrl', 'Z'], label: 'Undo' },
-      { keys: ['⌘/Ctrl', 'Shift', 'Z'], label: 'Redo' },
       { keys: ['⌘/Ctrl', 'D'], label: 'Duplicate selection' },
       { keys: ['⌘/Ctrl', 'A'], label: 'Select all' },
       { keys: ['⌘/Ctrl', 'G'], label: 'Group selection' },
@@ -26,9 +24,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     items: [
       { keys: ['Space', 'Drag'], label: 'Pan canvas' },
       { keys: ['⌘/Ctrl', 'Scroll'], label: 'Zoom canvas' },
-      { keys: ['Shift', '1'], label: 'Zoom to fit' },
       { keys: ['Shift', '2'], label: 'Zoom to selection' },
-      { keys: ['?'], label: 'Show keyboard shortcuts' },
     ],
   },
   {
