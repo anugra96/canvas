@@ -152,26 +152,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
 
   useEffect(() => observeHistory({ nodes, edges }), [edges, nodes, observeHistory])
 
-  useEditorShortcuts({
-    helpOpen,
-    setHelpOpen,
-    pendingConnection: graph.pendingConnection,
-    setPendingConnection: graph.setPendingConnection,
-    cardMenu: graph.cardMenu,
-    setCardMenu: graph.setCardMenu,
-    edgeLabelEditor: graph.edgeLabelEditor,
-    setEdgeLabelEditor: graph.setEdgeLabelEditor,
-    clearSelection: graph.clearSelection,
-    duplicateSelection: graph.duplicateSelection,
-    selectAll: graph.selectAll,
-    groupSelected: graph.groupSelected,
-    fitCanvas: graph.fitCanvas,
-    zoomSelection: graph.zoomSelection,
-    nudgeSelection: graph.nudgeSelection,
-    redo: graph.redo,
-    undo: graph.undo,
-  })
-
   const actions = useMemo<CanvasEditorActions>(
     () => ({
       updateText: graph.updateText,
@@ -220,7 +200,21 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     onDownload: () => void download(),
     onScreenshot: capture.openScreenshot,
     onHelp: () => setHelpOpen(true),
+    onDuplicate: graph.duplicateSelection,
+    onSelectAll: graph.selectAll,
+    onGroup: graph.groupSelected,
+    onNudge: graph.nudgeSelection,
+    onZoomSelection: graph.zoomSelection,
+    onDismiss: () => {
+      if (helpOpen) setHelpOpen(false)
+      else if (graph.pendingConnection) graph.setPendingConnection(null)
+      else if (graph.cardMenu) graph.setCardMenu(null)
+      else if (graph.edgeLabelEditor) graph.setEdgeLabelEditor(null)
+      else graph.clearSelection()
+    },
   })
+
+  useEditorShortcuts(commands)
 
   return (
     <CanvasEditorActionsContext.Provider value={actions}>

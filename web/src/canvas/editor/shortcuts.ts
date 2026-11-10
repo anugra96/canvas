@@ -12,11 +12,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     title: 'Editing',
     items: [
-      { keys: ['⌘/Ctrl', 'D'], label: 'Duplicate selection' },
-      { keys: ['⌘/Ctrl', 'A'], label: 'Select all' },
-      { keys: ['⌘/Ctrl', 'G'], label: 'Group selection' },
       { keys: ['Delete'], label: 'Delete selection' },
-      { keys: ['Esc'], label: 'Clear selection or finish editing' },
     ],
   },
   {
@@ -24,7 +20,6 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     items: [
       { keys: ['Space', 'Drag'], label: 'Pan canvas' },
       { keys: ['⌘/Ctrl', 'Scroll'], label: 'Zoom canvas' },
-      { keys: ['Shift', '2'], label: 'Zoom to selection' },
     ],
   },
   {
@@ -57,8 +52,6 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: ['Drag endpoint'], label: 'Reconnect an edge' },
       { keys: ['Drag'], label: 'Move a card or selection' },
       { keys: ['Drag handle'], label: 'Resize a card' },
-      { keys: ['Arrow'], label: 'Nudge selection by 10 px' },
-      { keys: ['Shift', 'Arrow'], label: 'Nudge selection by 1 px' },
       { keys: ['Alt', 'Drag'], label: 'Disable alignment snapping' },
       { keys: ['⌘/Ctrl', 'Enter'], label: 'Finish text or code editing' },
     ],

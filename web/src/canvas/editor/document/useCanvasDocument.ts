@@ -132,17 +132,6 @@ export function useCanvasDocument({
   ])
 
   useEffect(() => {
-    function onSaveKey(event: KeyboardEvent) {
-      if (event.key.toLowerCase() !== 's' || !(event.metaKey || event.ctrlKey)) return
-      event.preventDefault()
-      event.stopPropagation()
-      void save()
-    }
-    window.addEventListener('keydown', onSaveKey, true)
-    return () => window.removeEventListener('keydown', onSaveKey, true)
-  }, [save])
-
-  useEffect(() => {
     if (!dirty || status === 'saving' || conflicts.length > 0) return
     const timer = window.setTimeout(() => {
       void save()

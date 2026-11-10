@@ -3,10 +3,14 @@ import {
   ArrowLeft,
   Box,
   Camera,
+  Copy,
   Download,
+  Group as GroupIcon,
   Keyboard,
   LayoutGrid,
   Maximize2,
+  MousePointer2,
+  Move,
   PanelsTopLeft,
   PenLine,
   Redo2,
@@ -16,8 +20,11 @@ import {
   Type,
   Undo2,
   Workflow,
+  X,
   type LucideIcon,
 } from 'lucide-react'
+
+import type { ShortcutBinding } from './commandShortcuts'
 
 type CommandSurface = 'bar' | 'add' | 'overflow' | 'shortcut'
 
@@ -27,11 +34,12 @@ export interface CanvasCommand {
   icon: LucideIcon
   surface: CommandSurface
   shortcut?: string[]
+  bindings?: ShortcutBinding[]
   available: boolean
   disabled?: boolean
   tone?: 'warning' | 'error' | 'valid'
   section?: 'layout' | 'export' | 'help'
-  run: () => void
+  run: (event?: { key?: string; shiftKey?: boolean }) => void
 }
 
 interface CanvasCommandInput {
@@ -59,6 +67,12 @@ interface CanvasCommandInput {
   onDownload: () => void
   onScreenshot: () => void
   onHelp: () => void
+  onDuplicate: () => void
+  onSelectAll: () => void
+  onGroup: () => void
+  onNudge: (dx: number, dy: number) => void
+  onZoomSelection: () => void
+  onDismiss: () => void
 }
 
 function reviewCommand(input: CanvasCommandInput): CanvasCommand {
@@ -151,6 +165,7 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       icon: Undo2,
       surface: 'bar',
       shortcut: ['⌘/Ctrl', 'Z'],
+      bindings: [{ key: 'z', primary: true, shift: false }],
       available: true,
       disabled: !input.canUndo,
       run: input.onUndo,
@@ -161,6 +176,10 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       icon: Redo2,
       surface: 'bar',
       shortcut: ['⌘/Ctrl', 'Shift', 'Z'],
+      bindings: [
+        { key: 'z', primary: true, shift: true },
+        { key: 'y', primary: true, shift: false },
+      ],
       available: true,
       disabled: !input.canRedo,
       run: input.onRedo,
@@ -171,6 +190,7 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       icon: Save,
       surface: 'shortcut',
       shortcut: ['⌘/Ctrl', 'S'],
+      bindings: [{ key: 's', primary: true, allowInEditable: true }],
       available: true,
       run: input.onSave,
     },
@@ -198,6 +218,7 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       icon: Maximize2,
       surface: 'overflow',
       shortcut: ['Shift', '1'],
+      bindings: [{ code: 'Digit1', shift: true }],
       available: true,
       run: input.onFitView,
     },
@@ -226,8 +247,75 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       surface: 'overflow',
       section: 'help',
       shortcut: ['?'],
+      bindings: [{ key: '?' }],
       available: true,
       run: input.onHelp,
+    },
+    {
+      id: 'selection.duplicate',
+      label: 'Duplicate selection',
+      icon: Copy,
+      surface: 'shortcut',
+      shortcut: ['⌘/Ctrl', 'D'],
+      bindings: [{ key: 'd', primary: true }],
+      available: true,
+      run: input.onDuplicate,
+    },
+    {
+      id: 'selection.all',
+      label: 'Select all',
+      icon: MousePointer2,
+      surface: 'shortcut',
+      shortcut: ['⌘/Ctrl', 'A'],
+      bindings: [{ key: 'a', primary: true }],
+      available: true,
+      run: input.onSelectAll,
+    },
+    {
+      id: 'selection.group',
+      label: 'Group selection',
+      icon: GroupIcon,
+      surface: 'shortcut',
+      shortcut: ['⌘/Ctrl', 'G'],
+      bindings: [{ key: 'g', primary: true }],
+      available: true,
+      run: input.onGroup,
+    },
+    {
+      id: 'selection.nudge',
+      label: 'Nudge selection (Shift = 1 px)',
+      icon: Move,
+      surface: 'shortcut',
+      shortcut: ['Arrow'],
+      bindings: [{ key: ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'] }],
+      available: true,
+      run: (event) => {
+        const step = event?.shiftKey ? 1 : 10
+        if (event?.key === 'ArrowLeft') input.onNudge(-step, 0)
+        if (event?.key === 'ArrowRight') input.onNudge(step, 0)
+        if (event?.key === 'ArrowUp') input.onNudge(0, -step)
+        if (event?.key === 'ArrowDown') input.onNudge(0, step)
+      },
+    },
+    {
+      id: 'view.selection',
+      label: 'Zoom to selection',
+      icon: Maximize2,
+      surface: 'shortcut',
+      shortcut: ['Shift', '2'],
+      bindings: [{ code: 'Digit2', shift: true }],
+      available: true,
+      run: input.onZoomSelection,
+    },
+    {
+      id: 'editor.dismiss',
+      label: 'Clear selection or close menu',
+      icon: X,
+      surface: 'shortcut',
+      shortcut: ['Esc'],
+      bindings: [{ key: 'Escape' }],
+      available: true,
+      run: input.onDismiss,
     },
   ]
 }
