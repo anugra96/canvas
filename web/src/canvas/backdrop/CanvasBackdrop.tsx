@@ -21,6 +21,8 @@ function sceneForTheme(theme: string): BackdropSceneId | null {
       return 'ember'
     case 'gargantua':
       return 'void'
+    case 'aurora-shore':
+      return 'aurora-shore'
     default:
       return null
   }
