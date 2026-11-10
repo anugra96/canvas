@@ -32,6 +32,17 @@ function fakeClient() {
         }
         return { Body: { transformToString: async () => body } }
       }
+      if (name === 'CopyObjectCommand') {
+        const source = String(command.input.CopySource).replace(/^[^/]+\//, '')
+        const body = objects.get(source)
+        if (body === undefined) throw new Error(`Missing copy source ${source}`)
+        objects.set(String(command.input.Key), body)
+        return {}
+      }
+      if (name === 'DeleteObjectCommand') {
+        objects.delete(String(command.input.Key))
+        return {}
+      }
       if (name === 'ListObjectsV2Command') {
         const prefix = String(command.input.Prefix ?? '')
         return {
@@ -80,5 +91,16 @@ describe('S3CanvasStore', () => {
     const created = await store.create('local', 'Conflict canvas', principal)
     await expect(store.save('local', created.id, { nodes: [], edges: [] }, 'stale', principal))
       .rejects.toBeInstanceOf(CanvasConflictError)
+  })
+
+  it('moves a removed canvas outside the listed prefix', async () => {
+    const { client, objects } = fakeClient()
+    const store = new S3CanvasStore({ bucket: 'canvas-test' }, client)
+    const created = await store.create('local', 'Removed canvas', principal)
+
+    await store.remove('local', created.id, created.etag)
+
+    expect(await store.list('local')).toHaveLength(0)
+    expect([...objects.keys()]).toEqual([`tenants/local/deleted/${created.id}.json`])
   })
 })

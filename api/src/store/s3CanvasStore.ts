@@ -1,5 +1,7 @@
 import {
+  CopyObjectCommand,
   CreateBucketCommand,
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadBucketCommand,
   ListObjectsV2Command,
@@ -50,6 +52,11 @@ function safeSegment(value: string): string {
 
 function objectKey(tenantId: string, id: string): string {
   return `tenants/${safeSegment(tenantId)}/canvases/${safeSegment(id)}.json`
+}
+
+// Outside tenantPrefix, so list() never returns deleted canvases.
+function deletedObjectKey(tenantId: string, id: string): string {
+  return `tenants/${safeSegment(tenantId)}/deleted/${safeSegment(id)}.json`
 }
 
 function tenantPrefix(tenantId: string): string {
@@ -223,4 +230,18 @@ export class S3CanvasStore implements CanvasStore {
     return next
   }
 
+  async remove(tenantId: string, id: string, ifMatch: string): Promise<void> {
+    const current = await this.readDocument(tenantId, id)
+    if (!current) throw new CanvasNotFoundError(id)
+    if (current.etag !== ifMatch) throw new CanvasConflictError(current)
+    await this.client.send(new CopyObjectCommand({
+      Bucket: this.bucket,
+      CopySource: `${this.bucket}/${objectKey(tenantId, id)}`,
+      Key: deletedObjectKey(tenantId, id),
+    }))
+    await this.client.send(new DeleteObjectCommand({
+      Bucket: this.bucket,
+      Key: objectKey(tenantId, id),
+    }))
+  }
 }

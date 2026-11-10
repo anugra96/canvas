@@ -109,4 +109,12 @@ export class MemoryCanvasStore implements CanvasStore {
     this.documents.set(key, next)
     return structuredClone(next)
   }
+
+  async remove(tenantId: string, id: string, ifMatch: string): Promise<void> {
+    const key = this.key(tenantId, id)
+    const current = this.documents.get(key)
+    if (!current) throw new CanvasNotFoundError(id)
+    if (current.etag !== ifMatch) throw new CanvasConflictError(structuredClone(current))
+    this.documents.delete(key)
+  }
 }

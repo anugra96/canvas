@@ -20,6 +20,7 @@ import {
 } from './canvasStore'
 
 const SAFE_SEGMENT = /^[A-Za-z0-9_-]{1,128}$/
+const DELETED_DIR = '.deleted'
 
 function now(): string {
   return new Date().toISOString()
@@ -195,4 +196,15 @@ export class FileCanvasStore implements CanvasStore {
     })
   }
 
+  async remove(tenantId: string, id: string, ifMatch: string): Promise<void> {
+    return this.enqueue(async () => {
+      const current = await this.readDocument(tenantId, id)
+      if (!current) throw new CanvasNotFoundError(id)
+      if (current.etag !== ifMatch) throw new CanvasConflictError(current)
+      // list() reads only files in the tenant directory, so the deleted folder stays hidden.
+      const deletedDir = join(this.tenantDir(tenantId), DELETED_DIR)
+      await mkdir(deletedDir, { recursive: true })
+      await rename(this.filePath(tenantId, id), join(deletedDir, `${safeSegment(id)}.json`))
+    })
+  }
 }

@@ -1,4 +1,4 @@
-import { PenLine, Plus, Upload } from 'lucide-react'
+import { PenLine, Plus, Search, Trash2, Upload } from 'lucide-react'
 import {
   useEffect,
   useRef,
@@ -15,8 +15,9 @@ import {
   type CanvasSummary,
 } from '@canvas/contract'
 
-import type { CanvasClient } from '../api/client'
+import { CanvasConflictError, type CanvasClient } from '../api/client'
 import { CanvasNameDialog } from '../CanvasNameDialog'
+import { DeleteCanvasDialog } from '../DeleteCanvasDialog'
 
 interface CanvasListPageProps {
   client: CanvasClient
@@ -42,6 +43,9 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
     { mode: 'create' } | { mode: 'rename'; canvas: CanvasSummary } | null
   >(null)
   const [nameBusy, setNameBusy] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<CanvasSummary | null>(null)
+  const [deleteBusy, setDeleteBusy] = useState(false)
+  const [query, setQuery] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -120,6 +124,28 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
     }
   }
 
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    setDeleteBusy(true)
+    setError('')
+    try {
+      await client.deleteCanvas(deleteTarget.id, deleteTarget.etag)
+      setCanvases((current) => current?.filter((canvas) => canvas.id !== deleteTarget.id) ?? current)
+    } catch (cause) {
+      setError(cause instanceof CanvasConflictError
+        ? `"${deleteTarget.title}" changed since this list loaded. Reload and try again.`
+        : cause instanceof Error ? cause.message : 'Could not delete the canvas.')
+    } finally {
+      setDeleteBusy(false)
+      setDeleteTarget(null)
+    }
+  }
+
+  const search = query.trim().toLowerCase()
+  const visibleCanvases = search
+    ? canvases?.filter((canvas) => canvas.title.toLowerCase().includes(search)) ?? null
+    : canvases
+
   return (
     <main className="content">
       <div className="page-head">
@@ -184,8 +210,25 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
       )}
 
       {canvases && canvases.length > 0 && (
+        <label className="canvas-search">
+          <Search size={15} aria-hidden="true" />
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search canvases"
+            aria-label="Search canvases"
+          />
+        </label>
+      )}
+
+      {canvases && canvases.length > 0 && visibleCanvases?.length === 0 && (
+        <p className="canvas-search-empty">No canvas title matches "{query.trim()}".</p>
+      )}
+
+      {visibleCanvases && visibleCanvases.length > 0 && (
         <div className="canvas-grid">
-          {canvases.map((canvas) => (
+          {visibleCanvases.map((canvas) => (
             <div className="canvas-card" key={canvas.id}>
               <button
                 className="canvas-card-open"
@@ -206,14 +249,24 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
                   {formatDate(canvas.updatedAt)} by {canvas.updatedBy}
                 </p>
               </button>
-              <button
-                className="canvas-card-rename"
-                onClick={() => setNameDialog({ mode: 'rename', canvas })}
-                aria-label={`Edit title for ${canvas.title}`}
-                title="Edit canvas title"
-              >
-                <PenLine size={15} />
-              </button>
+              <div className="canvas-card-actions">
+                <button
+                  className="canvas-card-action"
+                  onClick={() => setNameDialog({ mode: 'rename', canvas })}
+                  aria-label={`Edit title for ${canvas.title}`}
+                  title="Edit canvas title"
+                >
+                  <PenLine size={15} />
+                </button>
+                <button
+                  className="canvas-card-action danger"
+                  onClick={() => setDeleteTarget(canvas)}
+                  aria-label={`Delete ${canvas.title}`}
+                  title="Delete canvas"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -227,6 +280,15 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
           busy={nameBusy}
           onConfirm={(title) => void submitCanvasName(title)}
           onCancel={() => setNameDialog(null)}
+        />
+      )}
+
+      {deleteTarget && (
+        <DeleteCanvasDialog
+          title={deleteTarget.title}
+          busy={deleteBusy}
+          onConfirm={() => void confirmDelete()}
+          onCancel={() => setDeleteTarget(null)}
         />
       )}
     </main>

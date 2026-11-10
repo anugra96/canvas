@@ -72,7 +72,7 @@ export function createApp(store: CanvasStore, options: CanvasAppOptions): Hono {
     '*',
     cors({
       origin: options.corsOrigin ?? '*',
-      allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'OPTIONS'],
+      allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowHeaders: ['Authorization', 'Content-Type', 'If-Match'],
       exposeHeaders: ['ETag'],
       maxAge: 600,
@@ -224,6 +224,31 @@ export function createApp(store: CanvasStore, options: CanvasAppOptions): Hono {
         principal,
       )
       return withEtag(c, document)
+    } catch (error) {
+      if (error instanceof CanvasConflictError) {
+        return c.json({
+          detail: {
+            code: 'canvas_conflict',
+            latest: error.latest,
+          },
+        }, 412)
+      }
+      if (error instanceof CanvasNotFoundError) {
+        return c.json({ detail: 'Canvas not found.' }, 404)
+      }
+      throw error
+    }
+  })
+
+  app.delete('/v1/canvases/:id', async (c) => {
+    const principal = requireCanvasPrincipal(c, options.authMode)
+    const ifMatch = ifMatchValue(c.req.header('if-match'))
+    if (!ifMatch) {
+      return c.json({ detail: 'If-Match is required.' }, 428)
+    }
+    try {
+      await store.remove(principal.tenantId, c.req.param('id'), ifMatch)
+      return c.body(null, 204)
     } catch (error) {
       if (error instanceof CanvasConflictError) {
         return c.json({

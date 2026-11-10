@@ -1,5 +1,5 @@
 import { LogOut } from 'lucide-react'
-import { lazy, Suspense, useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo } from 'react'
 
 import { createCanvasClient } from './api/client'
 import { useAuth } from './auth/AuthContext'
@@ -7,6 +7,7 @@ import { mockAuthEnabled } from './auth/auth'
 import { CanvasListPage } from './pages/CanvasListPage'
 import { ThemePicker } from './ThemePicker'
 import { AmbiencePicker } from './AmbiencePicker'
+import { useCanvasTrail } from './navigation'
 
 const CanvasEditorPage = lazy(() => import('./pages/CanvasEditorPage').then((module) => ({
   default: module.CanvasEditorPage,
@@ -15,13 +16,13 @@ const CanvasEditorPage = lazy(() => import('./pages/CanvasEditorPage').then((mod
 export default function App() {
   const { session, signOut } = useAuth()
   const client = useMemo(() => createCanvasClient(session), [session])
-  const [canvasTrail, setCanvasTrail] = useState<Array<{ id: string; label: string }>>([])
+  const [canvasTrail, setCanvasTrail] = useCanvasTrail()
   const selectedCanvasId = canvasTrail.at(-1)?.id ?? null
 
   return (
     <div className="app-shell">
       <header className="topbar">
-        <button className="brand" onClick={() => setCanvasTrail([])}>
+        <button className="brand" onClick={() => setCanvasTrail(() => [])}>
           <span className="brand-mark">C</span>
           <span>
             <strong>Canvas</strong>
@@ -58,7 +59,7 @@ export default function App() {
           />
         </Suspense>
       ) : (
-        <CanvasListPage client={client} onOpen={(id, title) => setCanvasTrail([{ id, label: title }])} />
+        <CanvasListPage client={client} onOpen={(id, title) => setCanvasTrail(() => [{ id, label: title }])} />
       )}
     </div>
   )
