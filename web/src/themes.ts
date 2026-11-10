@@ -117,6 +117,12 @@ export const THEMES = [
     description: 'Black-hole dark',
     themeColor: '#050608',
   },
+  {
+    id: 'aurora-shore',
+    label: 'Aurora Shore',
+    description: 'Black sand beach under northern lights',
+    themeColor: '#06090b',
+  },
 ] as const
 
 export type ThemeId = (typeof THEMES)[number]['id']
