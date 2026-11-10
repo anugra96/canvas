@@ -1,38 +1,19 @@
 import { expect, test, type Locator } from '@playwright/test'
 
+import { THEMES } from '../../src/atmosphere/registry'
 import { createCanvas } from './helpers'
 
-const themes = [
-  { id: 'graphite', background: 'rgb(11, 13, 16)' },
-  { id: 'paper', background: 'rgb(244, 241, 234)' },
-  { id: 'dune', background: 'rgb(14, 10, 6)' },
-  { id: 'dune-light', background: 'rgb(243, 226, 189)' },
-  { id: 'abyss', background: 'rgb(6, 16, 20)' },
-  { id: 'ember', background: 'rgb(18, 14, 11)' },
-  { id: 'kelp', background: 'rgb(12, 18, 14)' },
-  { id: 'glacier', background: 'rgb(233, 238, 242)' },
-  { id: 'plum', background: 'rgb(16, 13, 19)' },
-  { id: 'lagoon', background: 'rgb(228, 240, 238)' },
-  { id: 'cinder', background: 'rgb(20, 12, 10)' },
-  { id: 'dusk', background: 'rgb(12, 14, 24)' },
-  { id: 'fern', background: 'rgb(233, 242, 226)' },
-  { id: 'marigold', background: 'rgb(247, 232, 201)' },
-  { id: 'clay', background: 'rgb(242, 221, 208)' },
-  { id: 'blossom', background: 'rgb(247, 236, 236)' },
-  { id: 'tide', background: 'rgb(10, 22, 34)' },
-  { id: 'sunset', background: 'rgb(26, 16, 36)' },
-  { id: 'gargantua', background: 'rgb(5, 6, 8)' },
-  { id: 'aurora-shore', background: 'rgb(6, 9, 11)' },
-]
+const scenicThemes = THEMES.flatMap((theme) => (
+  'scene' in theme && theme.scene ? [{ id: theme.id, scene: theme.scene }] : []
+))
 
-const scenicThemes = [
-  { id: 'dune', scene: 'dune-night' },
-  { id: 'dune-light', scene: 'dune-day' },
-  { id: 'tide', scene: 'tide' },
-  { id: 'ember', scene: 'ember' },
-  { id: 'gargantua', scene: 'void' },
-  { id: 'aurora-shore', scene: 'aurora-shore' },
-] as const
+function backgroundRgb(hex: string): string {
+  const value = hex.replace('#', '')
+  const red = Number.parseInt(value.slice(0, 2), 16)
+  const green = Number.parseInt(value.slice(2, 4), 16)
+  const blue = Number.parseInt(value.slice(4, 6), 16)
+  return `rgb(${red}, ${green}, ${blue})`
+}
 
 async function canvasStats(canvas: Locator) {
   return canvas.evaluate((element) => {
@@ -72,10 +53,10 @@ test('applies and persists color themes', async ({ page }) => {
   const picker = page.getByLabel('Color theme')
   await expect(picker).toBeVisible()
 
-  for (const theme of themes) {
+  for (const theme of THEMES) {
     await picker.selectOption(theme.id)
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme.id)
-    await expect(page.locator('body')).toHaveCSS('background-color', theme.background)
+    await expect(page.locator('body')).toHaveCSS('background-color', backgroundRgb(theme.themeColor))
   }
 
   await picker.selectOption('dune')

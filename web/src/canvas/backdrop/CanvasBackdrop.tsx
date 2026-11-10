@@ -2,31 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { Image } from 'lucide-react'
 import { useReactFlow } from '@xyflow/react'
 
+import { sceneForTheme } from '../../atmosphere/registry'
 import { useTheme } from '../../themes'
-import { SCENES, mulberry, type BackdropSceneId } from './scenes'
+import { SCENES, mulberry } from './scenes'
 
 const PREF_KEY = 'canvas-backdrop'
 const PIXEL = 3
 const OVERSCAN = 48
-
-function sceneForTheme(theme: string): BackdropSceneId | null {
-  switch (theme) {
-    case 'dune':
-      return 'dune-night'
-    case 'dune-light':
-      return 'dune-day'
-    case 'tide':
-      return 'tide'
-    case 'ember':
-      return 'ember'
-    case 'gargantua':
-      return 'void'
-    case 'aurora-shore':
-      return 'aurora-shore'
-    default:
-      return null
-  }
-}
 
 function readPref(): boolean {
   try {
