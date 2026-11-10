@@ -25,11 +25,155 @@ export function mulberry(seed: number): () => number {
   }
 }
 
-function sky(g: CanvasRenderingContext2D, w: number, h: number, stops: Array<[number, string]>): void {
-  const gradient = g.createLinearGradient(0, 0, 0, h)
-  for (const [at, color] of stops) gradient.addColorStop(at, color)
-  g.fillStyle = gradient
-  g.fillRect(0, 0, w, h)
+type Rgb = [number, number, number]
+
+const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]
+
+function rgb(c: Rgb): string {
+  return `rgb(${c[0]},${c[1]},${c[2]})`
+}
+
+function mix(a: Rgb, b: Rgb, t: number): Rgb {
+  return [
+    Math.round(a[0] + (b[0] - a[0]) * t),
+    Math.round(a[1] + (b[1] - a[1]) * t),
+    Math.round(a[2] + (b[2] - a[2]) * t),
+  ]
+}
+
+function sampleStops(stops: Array<[number, Rgb]>, t: number): Rgb {
+  const clamped = Math.min(1, Math.max(0, t))
+  for (let i = 0; i < stops.length - 1; i += 1) {
+    const [at0, c0] = stops[i]!
+    const [at1, c1] = stops[i + 1]!
+    if (clamped >= at0 && clamped <= at1) {
+      return mix(c0, c1, (clamped - at0) / Math.max(0.0001, at1 - at0))
+    }
+  }
+  return stops[stops.length - 1]![1]
+}
+
+function fillDithered(
+  g: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  a: Rgb,
+  b: Rgb,
+  amount: number,
+): void {
+  g.fillStyle = rgb(a)
+  g.fillRect(x, y, w, h)
+  if (amount <= 0) return
+  if (amount >= 1) {
+    g.fillStyle = rgb(b)
+    g.fillRect(x, y, w, h)
+    return
+  }
+  g.fillStyle = rgb(b)
+  const threshold = amount * 16
+  for (let py = 0; py < h; py += 1) {
+    for (let px = 0; px < w; px += 1) {
+      if (BAYER4[(py % 4) * 4 + (px % 4)]! < threshold) {
+        g.fillRect(x + px, y + py, 1, 1)
+      }
+    }
+  }
+}
+
+// Dithered vertical gradient: quantized bands with Bayer seams between them.
+function skyBands(g: CanvasRenderingContext2D, w: number, h: number, stops: Array<[number, Rgb]>, y0 = 0): void {
+  const bands = Math.max(8, Math.floor(h / 2))
+  let prev: Rgb | null = null
+  for (let band = 0; band < bands; band += 1) {
+    const t = (band + 0.5) / bands
+    const c = sampleStops(stops, t)
+    const y = y0 + Math.floor(band * h / bands)
+    const height = Math.floor((band + 1) * h / bands) - Math.floor(band * h / bands)
+    if (prev && (Math.abs(prev[0] - c[0]) > 3 || Math.abs(prev[1] - c[1]) > 3 || Math.abs(prev[2] - c[2]) > 3)) {
+      fillDithered(g, 0, y, w, height, prev, c, 0.5)
+    } else {
+      g.fillStyle = rgb(c)
+      g.fillRect(0, y, w, height)
+    }
+    prev = c
+  }
+}
+
+const glowCache = new Map<string, HTMLCanvasElement>()
+
+function glowSprite(r: number, green: number, blue: number): HTMLCanvasElement {
+  const size = Math.max(4, Math.ceil(r / 4) * 4)
+  const key = `${size}:${r}:${green}:${blue}`
+  const cached = glowCache.get(key)
+  if (cached) return cached
+  const sprite = document.createElement('canvas')
+  sprite.width = size * 2
+  sprite.height = size * 2
+  const ctx = sprite.getContext('2d')!
+  const gradient = ctx.createRadialGradient(size, size, 0, size, size, size)
+  gradient.addColorStop(0, `rgba(${r},${green},${blue},0.85)`)
+  gradient.addColorStop(0.4, `rgba(${r},${green},${blue},0.32)`)
+  gradient.addColorStop(1, `rgba(${r},${green},${blue},0)`)
+  ctx.fillStyle = gradient
+  ctx.fillRect(0, 0, size * 2, size * 2)
+  glowCache.set(key, sprite)
+  return sprite
+}
+
+function drawGlow(g: CanvasRenderingContext2D, x: number, y: number, radius: number, color: [number, number, number], alpha: number): void {
+  const sprite = glowSprite(color[0], color[1], color[2])
+  g.globalAlpha = alpha
+  g.drawImage(sprite, Math.floor(x - radius), Math.floor(y - radius), radius * 2, radius * 2)
+  g.globalAlpha = 1
+}
+
+function drawSphere(
+  g: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r: number,
+  lightX: number,
+  lightY: number,
+  base: Rgb,
+  dark: Rgb,
+  bright: Rgb,
+): void {
+  const len = Math.hypot(lightX, lightY) || 1
+  const lx = lightX / len
+  const ly = lightY / len
+  for (let py = -r; py <= r; py += 1) {
+    for (let px = -r; px <= r; px += 1) {
+      const d2 = px * px + py * py
+      if (d2 > r * r) continue
+      const nx = px / r
+      const ny = py / r
+      const lambert = (nx * lx + ny * ly) * 0.5 + 0.5
+      const bayer = BAYER4[((cy + py) % 4) * 4 + ((cx + px) % 4)]! / 16
+      const v = lambert * 0.82 + bayer * 0.18
+      let c: Rgb
+      if (v < 0.42) c = dark
+      else if (v < 0.78) c = base
+      else c = bright
+      g.fillStyle = rgb(c)
+      g.fillRect(cx + px, cy + py, 1, 1)
+    }
+  }
+}
+
+function drawRimLight(g: CanvasRenderingContext2D, cx: number, cy: number, r: number, lightX: number, lightY: number, color: string): void {
+  const len = Math.hypot(lightX, lightY) || 1
+  const lx = lightX / len
+  const ly = lightY / len
+  g.fillStyle = color
+  for (let i = 0; i < 26; i += 1) {
+    const a = -Math.PI / 3 + (i / 26) * (Math.PI * 2 / 3) + Math.PI
+    const dx = Math.cos(a)
+    const dy = Math.sin(a)
+    if (dx * lx + dy * ly > 0.15) continue
+    g.fillRect(Math.floor(cx + dx * r), Math.floor(cy + dy * r), 1, 1)
+  }
 }
 
 interface Star {
@@ -37,9 +181,10 @@ interface Star {
   y: number
   phase: number
   speed: number
+  mag: number
 }
 
-function makeStars(count: number, w: number, h: number, maxY: number, rng: () => number): Star[] {
+function makeStars(count: number, w: number, maxY: number, rng: () => number): Star[] {
   const stars: Star[] = []
   for (let i = 0; i < count; i += 1) {
     stars.push({
@@ -47,6 +192,7 @@ function makeStars(count: number, w: number, h: number, maxY: number, rng: () =>
       y: Math.floor(rng() * maxY),
       phase: rng() * Math.PI * 2,
       speed: 0.4 + rng() * 1.2,
+      mag: rng(),
     })
   }
   return stars
@@ -55,44 +201,48 @@ function makeStars(count: number, w: number, h: number, maxY: number, rng: () =>
 function drawStars(g: CanvasRenderingContext2D, stars: Star[], t: number, color: string): void {
   g.fillStyle = color
   for (const star of stars) {
-    const twinkle = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * star.speed + star.phase))
-    g.globalAlpha = twinkle * 0.8
-    g.fillRect(star.x, star.y, 1, 1)
+    const twinkle = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(t * star.speed + star.phase))
+    const bright = star.mag * twinkle
+    if (bright < 0.25) continue
+    g.globalAlpha = Math.min(0.9, bright)
+    if (star.mag > 0.9) {
+      g.fillRect(star.x - 1, star.y, 3, 1)
+      g.fillRect(star.x, star.y - 1, 1, 3)
+    } else {
+      g.fillRect(star.x, star.y, 1, 1)
+    }
   }
   g.globalAlpha = 1
 }
 
-function moon(g: CanvasRenderingContext2D, x: number, y: number, r: number, color: string, glow: string): void {
-  const gradient = g.createRadialGradient(x, y, r * 0.4, x, y, r * 2.2)
-  gradient.addColorStop(0, glow)
-  gradient.addColorStop(1, 'rgba(0,0,0,0)')
-  g.fillStyle = gradient
-  g.fillRect(Math.floor(x - r * 2.2), Math.floor(y - r * 2.2), Math.ceil(r * 4.4), Math.ceil(r * 4.4))
-  g.fillStyle = color
-  g.beginPath()
-  g.arc(x, y, r, 0, Math.PI * 2)
-  g.fill()
-}
-
-interface Mesa {
-  x: number
-  w: number
-  h: number
-}
-
-function drawMesas(g: CanvasRenderingContext2D, w: number, baseY: number, color: string, mesas: Mesa[]): void {
-  g.fillStyle = color
-  for (const mesa of mesas) {
-    const topW = Math.max(2, Math.floor(mesa.w * 0.55))
-    const x0 = mesa.x
-    g.beginPath()
-    g.moveTo(x0, baseY)
-    g.lineTo(x0 + Math.floor((mesa.w - topW) / 2), baseY - mesa.h)
-    g.lineTo(x0 + Math.floor((mesa.w - topW) / 2) + topW, baseY - mesa.h)
-    g.lineTo(x0 + mesa.w, baseY)
-    g.closePath()
-    g.fill()
+// Milky Way: dense faint star dust with dithered nebular haze.
+function drawMilkyWay(g: CanvasRenderingContext2D, w: number, h: number, rng: () => number, tint: Rgb): void {
+  const bandY = h * 0.22
+  const bandH = Math.max(6, h * 0.16)
+  for (let i = 0; i < 240; i += 1) {
+    const x = Math.floor(rng() * w)
+    const gauss = (rng() + rng() + rng()) / 3
+    const y = Math.floor(bandY + (gauss - 0.5) * bandH * 2)
+    g.fillStyle = rgb(mix([200, 205, 220], tint, rng() * 0.5))
+    g.globalAlpha = 0.12 + rng() * 0.5
+    g.fillRect(x, y, 1, 1)
   }
+  for (let i = 0; i < 26; i += 1) {
+    const x = Math.floor(rng() * w)
+    const y = Math.floor(bandY + (rng() - 0.5) * bandH)
+    const size = 3 + Math.floor(rng() * 5)
+    drawGlow(g, x, y, size, [120, 130, 170], 0.05 + rng() * 0.05)
+  }
+  g.globalAlpha = 1
+}
+
+function moon(g: CanvasRenderingContext2D, x: number, y: number, r: number, base: Rgb, glowColor: [number, number, number]): void {
+  drawGlow(g, x, y, r * 3, glowColor, 0.2)
+  drawSphere(g, x, y, r, -0.6, -0.4, base, mix(base, [8, 8, 12], 0.82), mix(base, [255, 255, 255], 0.5))
+  // Craters.
+  g.fillStyle = rgb(mix(base, [0, 0, 0], 0.25))
+  g.fillRect(x - Math.floor(r * 0.4), y - Math.floor(r * 0.1), Math.max(1, Math.floor(r * 0.28)), Math.max(1, Math.floor(r * 0.28)))
+  g.fillRect(x + Math.floor(r * 0.1), y + Math.floor(r * 0.3), Math.max(1, Math.floor(r * 0.2)), Math.max(1, Math.floor(r * 0.2)))
 }
 
 interface LitWindow {
@@ -107,6 +257,7 @@ interface Beacon {
   period: number
   phase: number
   color: string
+  glow: [number, number, number]
 }
 
 type BlockKind = 'tower' | 'dome' | 'spire' | 'wall' | 'pad'
@@ -127,16 +278,6 @@ interface City {
   flicker: number[]
   stacks: Array<{ x: number; topY: number }>
   baseY: number
-}
-
-function pushBeacon(beacons: Beacon[], x: number, y: number, rng: () => number, color?: string): void {
-  beacons.push({
-    x,
-    y,
-    period: 2 + rng() * 4,
-    phase: rng() * Math.PI * 2,
-    color: color ?? (rng() < 0.6 ? '#ff5a4a' : '#ffe9c4'),
-  })
 }
 
 function makeCity(rng: () => number, w: number, baseY: number, maxH: number, litRatio: number): City {
@@ -184,14 +325,28 @@ function makeCity(rng: () => number, w: number, baseY: number, maxH: number, lit
     for (let dx = x + 1; dx < x + bw - 1; dx += 3) {
       if (rng() < 0.5) doors.push(dx)
     }
-    if (kind === 'spire') {
-      if (rng() < 0.7) pushBeacon(beacons, x + Math.floor(bw / 2), baseY - bh - 4, rng)
-    } else if (antenna) {
-      if (rng() < 0.7) pushBeacon(beacons, x + Math.floor(bw / 2), baseY - bh - 4, rng)
+    if (kind === 'spire' || antenna) {
+      if (rng() < 0.7) {
+        beacons.push({
+          x: x + Math.floor(bw / 2),
+          y: baseY - bh - 4,
+          period: 2 + rng() * 4,
+          phase: rng() * Math.PI * 2,
+          color: rng() < 0.6 ? '#ff5a4a' : '#ffe9c4',
+          glow: rng() < 0.6 ? [255, 90, 74] : [255, 233, 196],
+        })
+      }
     } else if (kind === 'pad') {
       const lights = 2 + Math.floor(rng() * 3)
       for (let i = 0; i < lights; i += 1) {
-        pushBeacon(beacons, x + 1 + i * 2, baseY - bh - 1, rng, '#ffb45e')
+        beacons.push({
+          x: x + 1 + i * 2,
+          y: baseY - bh - 1,
+          period: 1 + rng() * 2,
+          phase: rng() * Math.PI * 2,
+          color: '#ffb45e',
+          glow: [255, 180, 94],
+        })
       }
     }
     if (kind === 'tower' && bw >= 7 && stacks.length < 2 && rng() < 0.5) {
@@ -207,10 +362,10 @@ function makeCity(rng: () => number, w: number, baseY: number, maxH: number, lit
   return { silhouette, windows, beacons, doors, flicker, stacks, baseY }
 }
 
-function drawCity(g: CanvasRenderingContext2D, city: City, body: string, lit: string, dim: string): void {
+function drawCity(g: CanvasRenderingContext2D, city: City, body: Rgb, lit: string, dim: string, edge: string): void {
   for (const block of city.silhouette) {
     const top = city.baseY - block.h
-    g.fillStyle = body
+    g.fillStyle = rgb(body)
     if (block.kind === 'dome') {
       g.fillRect(block.x, top + 2, block.w, block.h - 2)
       g.beginPath()
@@ -219,10 +374,12 @@ function drawCity(g: CanvasRenderingContext2D, city: City, body: string, lit: st
     } else {
       g.fillRect(block.x, top, block.w, block.h)
     }
-    if (block.kind === 'spire') {
-      g.fillRect(block.x + Math.floor(block.w / 2), top - 3, 1, 3)
+    // Lit edge on the moon-facing side so silhouettes get volume.
+    g.fillStyle = edge
+    if (block.kind !== 'dome') {
+      g.fillRect(block.x + block.w - 1, top, 1, block.h - 1)
     }
-    if (block.antenna) {
+    if (block.kind === 'spire' || block.antenna) {
       g.fillRect(block.x + Math.floor(block.w / 2), top - 3, 1, 3)
     }
     if (block.kind === 'pad') {
@@ -242,12 +399,12 @@ function drawCity(g: CanvasRenderingContext2D, city: City, body: string, lit: st
   }
 }
 
-function drawFlicker(g: CanvasRenderingContext2D, city: City, body: string, lit: string, cool: string, t: number): void {
+function drawFlicker(g: CanvasRenderingContext2D, city: City, body: Rgb, lit: string, cool: string, t: number): void {
   for (const idx of city.flicker) {
     const window = city.windows[idx]
     if (!window) continue
     const on = (Math.floor(t * 0.7 + idx * 13.7) % 4) !== 0
-    g.fillStyle = on ? (window.warm ? lit : cool) : body
+    g.fillStyle = on ? (window.warm ? lit : cool) : rgb(body)
     g.fillRect(window.x, window.y, 1, 1)
   }
 }
@@ -256,11 +413,27 @@ function drawBeacons(g: CanvasRenderingContext2D, beacons: Beacon[], t: number):
   for (const beacon of beacons) {
     const on = 0.5 + 0.5 * Math.sin((t / beacon.period) * Math.PI * 2 + beacon.phase)
     if (on > 0.55) {
+      const alpha = Math.min(1, (on - 0.55) * 2.5)
+      drawGlow(g, beacon.x, beacon.y, 3, beacon.glow, alpha * 0.55)
       g.fillStyle = beacon.color
-      g.globalAlpha = Math.min(1, (on - 0.55) * 2.5)
+      g.globalAlpha = alpha
       g.fillRect(beacon.x, beacon.y, 1, 1)
       g.globalAlpha = 1
     }
+  }
+}
+
+function drawFarSkyline(g: CanvasRenderingContext2D, w: number, baseY: number, maxH: number, color: Rgb, rng: () => number): void {
+  let x = 0
+  while (x < w) {
+    const bw = 3 + Math.floor(rng() * 6)
+    const bh = 2 + Math.floor(rng() * maxH)
+    g.fillStyle = rgb(color)
+    g.fillRect(x, baseY - bh, bw, bh)
+    if (rng() < 0.3) {
+      g.fillRect(x + Math.floor(bw / 2), baseY - bh - 2, 1, 2)
+    }
+    x += bw + Math.floor(rng() * 3)
   }
 }
 
@@ -272,7 +445,7 @@ interface Drift {
   alpha: number
 }
 
-function makeDrift(count: number, w: number, h: number, y0: number, y1: number, rng: () => number): Drift[] {
+function makeDrift(count: number, w: number, y0: number, y1: number, rng: () => number): Drift[] {
   const parts: Drift[] = []
   for (let i = 0; i < count; i += 1) {
     parts.push({
@@ -315,16 +488,184 @@ function makeCrawlers(count: number, w: number, rng: () => number): Crawler[] {
   return crawlers
 }
 
+interface SprayParticle {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  age: number
+  life: number
+}
+
+interface SandWorm {
+  active: boolean
+  x: number
+  dir: 1 | -1
+  speed: number
+  humps: number
+  spacing: number
+  base: number
+  width: number
+  phase: number
+  breach: number
+  spray: SprayParticle[]
+  nextSpawn: number
+  ridgeIdx: number
+}
+
+function makeWorm(rng: () => number): SandWorm {
+  return {
+    active: false,
+    x: 0,
+    dir: 1,
+    speed: 0,
+    humps: 0,
+    spacing: 0,
+    base: 0,
+    width: 0,
+    phase: 0,
+    breach: 0,
+    spray: [],
+    nextSpawn: 3 + rng() * 5,
+    ridgeIdx: 0,
+  }
+}
+
+function drawWorm(
+  g: CanvasRenderingContext2D,
+  worm: SandWorm,
+  ridges: DuneRidge[],
+  w: number,
+  t: number,
+  dt: number,
+  body: Rgb,
+  lit: Rgb,
+  sprayColor: Rgb,
+): void {
+  if (!worm.active) {
+    if (t < worm.nextSpawn) return
+    worm.active = true
+    worm.ridgeIdx = Math.random() < 0.7 ? 0 : 1
+    worm.dir = Math.random() < 0.5 ? 1 : -1
+    worm.x = worm.dir > 0 ? -50 : w + 50
+    worm.speed = 18 + Math.random() * 8
+    worm.humps = 12 + Math.floor(Math.random() * 5)
+    worm.spacing = 9 + Math.random() * 4
+    worm.base = 7 + Math.random() * 4
+    worm.width = 6 + Math.random() * 3
+    worm.phase = Math.random() * Math.PI * 2
+    worm.breach = 0
+    worm.spray = []
+  }
+  worm.x += worm.dir * worm.speed * dt
+  if (worm.x < -70 || worm.x > w + 70) {
+    worm.active = false
+    worm.nextSpawn = t + 40 + Math.random() * 55
+    return
+  }
+  if (worm.breach <= 0 && Math.random() < dt * 0.05) worm.breach = 1
+  worm.breach = Math.max(0, worm.breach - dt * 0.4)
+
+  const ridge = ridges[worm.ridgeIdx] ?? ridges[0]!
+  const surfColor = rgb(body)
+  const litColor = rgb(lit)
+  const humps: Array<{ x: number; surf: number; top: number; rw: number; isHead: boolean }> = []
+  for (let i = 0; i < worm.humps; i += 1) {
+    const sx = worm.x - worm.dir * i * worm.spacing
+    if (sx < -12 || sx > w + 12) continue
+    const wave = Math.max(0, Math.sin(t * 1.6 + worm.phase - i * 0.85))
+    const rise = worm.base * Math.pow(wave, 1.5) * (1 + worm.breach * 1.8) * (1 - i / (worm.humps + 6))
+    const surf = duneY(ridge, w, sx)
+    const rw = (i === 0 ? 1.3 : 1) * worm.width * (1 - i / (worm.humps + 3))
+    const top = rise < 0.6 ? surf + 0.5 : surf - rise * 0.9
+    humps.push({ x: sx, surf, top, rw: Math.max(2, rw), isHead: i === 0 })
+  }
+  if (humps.length > 0) {
+    let x0 = Math.floor(Math.min(...humps.map((hump) => hump.x - hump.rw)))
+    let x1 = Math.ceil(Math.max(...humps.map((hump) => hump.x + hump.rw)))
+    x0 = Math.max(0, x0)
+    x1 = Math.min(w - 1, x1)
+    for (let x = x0; x <= x1; x += 1) {
+      let top: number | null = null
+      for (const hump of humps) {
+        const dx = (x - hump.x) / hump.rw
+        if (dx < -1 || dx > 1) continue
+        const bump = hump.surf - hump.top
+        if (bump <= 0.5) continue
+        const yy = hump.surf - bump * Math.sqrt(Math.max(0, 1 - dx * dx))
+        if (top === null || yy < top) top = yy
+      }
+      if (top === null) continue
+      const surf = duneY(ridge, w, x)
+      const bottom = Math.round(surf) + 1
+      const ty = Math.round(top)
+      if (ty >= bottom) continue
+      // Contact shadow under the body.
+      g.fillStyle = 'rgba(0,0,0,0.45)'
+      g.fillRect(x, bottom, 1, 1)
+      // Body column.
+      g.fillStyle = surfColor
+      g.fillRect(x, ty, 1, bottom - ty)
+      // Lit spine only on real hump peaks; troughs stay plain.
+      if (surf - top > 1.5) {
+        g.fillStyle = litColor
+        g.fillRect(x, ty, 1, 1)
+      }
+    }
+    const head = humps[0]
+    if (head?.isHead) {
+      // Bow wave flicks plus breach glow and spray.
+      g.fillStyle = litColor
+      g.globalAlpha = 0.7
+      g.fillRect(Math.floor(head.x + worm.dir * (head.rw + 1)), Math.floor(head.surf - 1), 1, 1)
+      g.fillRect(Math.floor(head.x + worm.dir * (head.rw + 2)), Math.floor(head.surf), 1, 1)
+      g.globalAlpha = 1
+      if (worm.breach > 0.25) {
+        drawGlow(g, head.x, head.top, Math.floor(Math.max(4, (head.surf - head.top) * 2.4)), [232, 160, 84], worm.breach * 0.5)
+        for (let s = 0; s < 3; s += 1) {
+          worm.spray.push({
+            x: head.x + (Math.random() - 0.5) * 4,
+            y: head.top,
+            vx: (Math.random() - 0.5) * 26 - worm.dir * 8,
+            vy: -10 - Math.random() * 18,
+            age: 0,
+            life: 0.9 + Math.random() * 0.6,
+          })
+        }
+      }
+    }
+  }
+  // Spray falls as sand.
+  g.fillStyle = rgb(sprayColor)
+  for (let i = worm.spray.length - 1; i >= 0; i -= 1) {
+    const p = worm.spray[i]!
+    p.age += dt
+    if (p.age > p.life || worm.spray.length > 90) {
+      worm.spray.splice(i, 1)
+      continue
+    }
+    p.vy += 42 * dt
+    p.x += p.vx * dt
+    p.y += p.vy * dt
+    g.globalAlpha = 0.7 * (1 - p.age / p.life)
+    g.fillRect(Math.floor(p.x), Math.floor(p.y), 1, 1)
+  }
+  g.globalAlpha = 1
+}
+
 function drawCrawlersOnDune(g: CanvasRenderingContext2D, crawlers: Crawler[], ridge: DuneRidge, w: number, dt: number): void {
   for (const crawler of crawlers) {
     crawler.x += crawler.dir * crawler.speed * dt
     if (crawler.x > w + 2) crawler.x = -2
     if (crawler.x < -2) crawler.x = w + 2
     const y = Math.floor(duneY(ridge, w, crawler.x)) + 2
+    drawGlow(g, crawler.x, y, 2, [255, 217, 160], 0.5)
     g.fillStyle = '#ffd9a0'
     g.fillRect(Math.floor(crawler.x), y, 1, 1)
     g.fillStyle = crawler.rear ? '#ff5a4a' : '#ffb45e'
     g.fillRect(Math.floor(crawler.x - crawler.dir), y, 1, 1)
+    g.fillStyle = 'rgba(255,217,160,0.18)'
+    g.fillRect(Math.floor(crawler.x - crawler.dir * 3), y, 2, 1)
   }
 }
 
@@ -405,8 +746,9 @@ function drawThopter(g: CanvasRenderingContext2D, thopter: Thopter, w: number, h
     return
   }
   const flap = Math.sin(t * 28) > 0
+  const bob = Math.sin(t * 2.1) * 0.8
   const x = Math.floor(thopter.x)
-  const y = Math.floor(thopter.y)
+  const y = Math.floor(thopter.y + bob)
   g.fillStyle = body
   g.fillRect(x - 1, y, 3, 1)
   g.fillRect(x - 2, y + (flap ? -1 : 1), 1, 1)
@@ -414,6 +756,7 @@ function drawThopter(g: CanvasRenderingContext2D, thopter: Thopter, w: number, h
   if ((t * 2) % 1 < 0.25) {
     g.fillStyle = '#ffffff'
     g.fillRect(x + 1, y, 1, 1)
+    drawGlow(g, x + 1, y, 2, [255, 255, 255], 0.5)
   }
 }
 
@@ -463,15 +806,295 @@ function drawGlints(g: CanvasRenderingContext2D, windows: LitWindow[], t: number
   g.globalAlpha = 1
 }
 
-function drawBeam(g: CanvasRenderingContext2D, x: number, y: number, angle: number, len: number, color: string): void {
-  for (let d = 4; d < len; d += 2) {
-    const spread = 1 + Math.floor(d / 10)
-    const alpha = 0.09 * (1 - d / len)
-    g.fillStyle = color
-    g.globalAlpha = alpha
-    g.fillRect(Math.floor(x + Math.cos(angle) * d) - Math.floor(spread / 2), Math.floor(y + Math.sin(angle) * d), spread, 1)
+interface DuneRidge {
+  baseY: number
+  amp: number
+  waves: number
+  phase: number
+  color: Rgb
+  crest: string
+  shadow: Rgb
+}
+
+function duneY(ridge: DuneRidge, w: number, x: number): number {
+  const k = (x / w) * Math.PI * 2 * ridge.waves + ridge.phase
+  return ridge.baseY + Math.sin(k) * ridge.amp + Math.sin(k * 2.3 + 1.7) * ridge.amp * 0.35
+}
+
+function duneRidgesNight(w: number, h: number): DuneRidge[] {
+  return [
+    { baseY: h * 0.8, amp: Math.max(2, h * 0.02), waves: 2.5, phase: 0.6, color: [21, 12, 6], crest: '#6b4423', shadow: [10, 6, 3] },
+    { baseY: h * 0.87, amp: Math.max(3, h * 0.03), waves: 1.75, phase: 2.1, color: [13, 7, 4], crest: '#8a5427', shadow: [6, 3, 2] },
+    { baseY: h * 0.96, amp: Math.max(4, h * 0.045), waves: 1.25, phase: 4.4, color: [6, 3, 2], crest: '#a86a2e', shadow: [2, 2, 2] },
+  ]
+}
+
+function duneRidgesDay(w: number, h: number): DuneRidge[] {
+  void w
+  return [
+    { baseY: h * 0.79, amp: Math.max(2, h * 0.02), waves: 2.5, phase: 0.6, color: [201, 154, 94], crest: '#ffe9bf', shadow: [168, 122, 62] },
+    { baseY: h * 0.87, amp: Math.max(3, h * 0.03), waves: 1.75, phase: 2.1, color: [179, 129, 71], crest: '#ffedc9', shadow: [138, 95, 48] },
+    { baseY: h * 0.97, amp: Math.max(4, h * 0.045), waves: 1.25, phase: 4.4, color: [150, 98, 47], crest: '#fff3d9', shadow: [110, 69, 31] },
+  ]
+}
+
+function drawRidge(g: CanvasRenderingContext2D, w: number, h: number, ridge: DuneRidge, ripples: number): void {
+  // Body.
+  g.fillStyle = rgb(ridge.color)
+  g.beginPath()
+  g.moveTo(0, h)
+  for (let x = 0; x <= w; x += 1) {
+    g.lineTo(x, duneY(ridge, w, x))
+  }
+  g.lineTo(w, h)
+  g.closePath()
+  g.fill()
+  // Lit crest line, brighter on windward rise.
+  for (let x = 0; x < w; x += 2) {
+    const slope = duneY(ridge, w, x) - duneY(ridge, w, x + 2)
+    g.fillStyle = slope > 0.25 ? ridge.crest : 'rgba(255,255,255,0.05)'
+    g.fillRect(x, Math.floor(duneY(ridge, w, x)), 2, 1)
+  }
+  // Slip-face shadow with dithered band.
+  g.fillStyle = rgb(ridge.shadow)
+  for (let x = 0; x < w; x += 2) {
+    const slope = duneY(ridge, w, x + 2) - duneY(ridge, w, x - 2)
+    if (slope > 0.4) {
+      g.fillRect(x, Math.floor(duneY(ridge, w, x)) + 1, 2, 3)
+    }
+  }
+  // Wind ripples: short dashes on the lee slope.
+  const rng = mulberry(Math.floor(ridge.phase * 1000) + w)
+  for (let i = 0; i < ripples; i += 1) {
+    const x = Math.floor(rng() * w)
+    const y = duneY(ridge, w, x) + 3 + rng() * 7
+    g.globalAlpha = 0.25
+    g.fillStyle = ridge.crest
+    g.fillRect(x, Math.floor(y), 2 + Math.floor(rng() * 3), 1)
   }
   g.globalAlpha = 1
+}
+
+function drawDuneField(g: CanvasRenderingContext2D, w: number, h: number, ridges: DuneRidge[], _rng: () => number): void {
+  void _rng
+  for (const ridge of ridges) {
+    drawRidge(g, w, h, ridge, 24)
+  }
+}
+
+interface CrestFlow {
+  x: number
+  ridge: number
+  speed: number
+}
+
+function makeCrestFlow(count: number, w: number, rng: () => number): CrestFlow[] {
+  const parts: CrestFlow[] = []
+  for (let i = 0; i < count; i += 1) {
+    parts.push({ x: rng() * w, ridge: Math.floor(rng() * 3), speed: 4 + rng() * 7 })
+  }
+  return parts
+}
+
+function drawCrestFlow(
+  g: CanvasRenderingContext2D,
+  flow: CrestFlow[],
+  ridges: DuneRidge[],
+  w: number,
+  dt: number,
+  color: string,
+  allowed: number[],
+): void {
+  g.fillStyle = color
+  for (const part of flow) {
+    if (!allowed.includes(part.ridge)) continue
+    part.x += part.speed * dt
+    if (part.x > w + 2) part.x = -2
+    const ridge = ridges[part.ridge]!
+    g.globalAlpha = 0.25 + 0.35 * (0.5 + 0.5 * Math.sin(part.x * 0.3))
+    g.fillRect(Math.floor(part.x), Math.floor(duneY(ridge, w, part.x)), 2, 1)
+  }
+  g.globalAlpha = 1
+}
+
+function drawMesas(g: CanvasRenderingContext2D, w: number, baseY: number, mesas: Mesa[], body: Rgb, lit: string, shadow: Rgb): void {
+  for (const mesa of mesas) {
+    const topW = Math.max(2, Math.floor(mesa.w * 0.55))
+    const inset = Math.floor((mesa.w - topW) / 2)
+    // Silhouette.
+    g.fillStyle = rgb(body)
+    g.beginPath()
+    g.moveTo(mesa.x, baseY)
+    g.lineTo(mesa.x + inset, baseY - mesa.h)
+    g.lineTo(mesa.x + inset + topW, baseY - mesa.h)
+    g.lineTo(mesa.x + mesa.w, baseY)
+    g.closePath()
+    g.fill()
+    // Sunlit rim along top edge.
+    g.fillStyle = lit
+    g.fillRect(mesa.x + inset, baseY - mesa.h, topW, 1)
+    // Dithered shadow flank.
+    g.fillStyle = rgb(shadow)
+    for (let y = 0; y < mesa.h; y += 2) {
+      const t = y / mesa.h
+      const leftEdge = mesa.x + inset * t
+      for (let px = 0; px < 3; px += 1) {
+        if (BAYER4[(y % 4) * 4 + (px % 4)]! < 6) {
+          g.fillRect(Math.floor(leftEdge + px), baseY - mesa.h + y, 1, 2)
+        }
+      }
+    }
+  }
+}
+
+interface Mesa {
+  x: number
+  w: number
+  h: number
+}
+
+interface DuneNightState {
+  stars: Star[]
+  city: City
+  mesas: Mesa[]
+  sand: Drift[]
+  blowX: number
+  ridges: DuneRidge[]
+  flow: CrestFlow[]
+  crawlers: Crawler[]
+  smoke: Smoke
+  thopter: Thopter
+  worm: SandWorm
+}
+
+const duneNight: BackdropScene = {
+  id: 'dune-night',
+  init(w, h, rng) {
+    return {
+      stars: makeStars(130, w, Math.floor(h * 0.45), rng),
+      city: makeCity(rng, w, Math.floor(h * 0.76), Math.floor(h * 0.16), 0.16),
+      mesas: [
+        { x: Math.floor(w * 0.06), w: Math.floor(w * 0.2), h: Math.floor(h * 0.07) },
+        { x: Math.floor(w * 0.62), w: Math.floor(w * 0.26), h: Math.floor(h * 0.05) },
+      ],
+      sand: makeDrift(46, w, h * 0.55, h, rng),
+      blowX: w * (0.25 + rng() * 0.5),
+      ridges: duneRidgesNight(w, h),
+      flow: makeCrestFlow(26, w, rng),
+      crawlers: makeCrawlers(3, w, rng),
+      smoke: makeSmoke(),
+      thopter: makeThopter(),
+      worm: makeWorm(rng),
+    } satisfies DuneNightState as DuneNightState
+  },
+  paintStatic(g, w, h, rng) {
+    skyBands(g, w, h, [
+      [0, [4, 3, 8]],
+      [0.45, [12, 8, 12]],
+      [0.72, [46, 24, 10]],
+      [0.9, [74, 36, 8]],
+      [1, [18, 9, 3]],
+    ])
+    drawMilkyWay(g, w, h, rng, [255, 200, 140])
+    moon(g, Math.floor(w * 0.78), Math.floor(h * 0.16), Math.max(4, Math.floor(w / 42)), [244, 227, 194], [244, 227, 194])
+    moon(g, Math.floor(w * 0.2), Math.floor(h * 0.3), Math.max(2, Math.floor(w / 90)), [217, 201, 168], [217, 201, 168])
+    drawMesas(g, w, Math.floor(h * 0.78), [
+      { x: Math.floor(w * 0.06), w: Math.floor(w * 0.2), h: Math.floor(h * 0.07) },
+      { x: Math.floor(w * 0.62), w: Math.floor(w * 0.26), h: Math.floor(h * 0.05) },
+    ], [13, 8, 5], 'rgba(170,120,70,0.5)', [24, 14, 8])
+    drawFarSkyline(g, w, Math.floor(h * 0.755), Math.floor(h * 0.05), [20, 14, 10], rng)
+    // City glow dome.
+    drawGlow(g, Math.floor(w * 0.5), Math.floor(h * 0.74), Math.floor(w * 0.16), [255, 150, 70], 0.08)
+    drawDuneField(g, w, h, duneRidgesNight(w, h).slice(0, 2), rng)
+  },
+  paintDynamic(g, w, h, t, cam, state) {
+    const s = state as DuneNightState
+    void cam
+    drawStars(g, s.stars, t, '#ffe9c4')
+    // Rare spice blow: a slow ember glow behind the far dune.
+    const cycle = (t % 47) / 47
+    if (cycle > 0.7) {
+      const glow = Math.sin(((cycle - 0.7) / 0.3) * Math.PI)
+      drawGlow(g, s.blowX, h * 0.76, Math.floor(w * 0.09), [255, 140, 60], glow * 0.4)
+    }
+    drawCity(g, s.city, [15, 11, 7], '#ffb45e', '#5a3a1c', 'rgba(255,200,140,0.35)')
+    drawBeacons(g, s.city.beacons, t)
+    drawFlicker(g, s.city, [15, 11, 7], '#ffb45e', '#cfe0ee', t)
+    drawCrestFlow(g, s.flow, s.ridges, w, 1 / 60, 'rgb(255,200,130)', [0, 1])
+    drawSmoke(g, s.smoke, s.city.stacks, 1 / 60, 'rgb(150,130,110)')
+    drawCrawlersOnDune(g, s.crawlers, s.ridges[1]!, w, 1 / 60)
+    drawWorm(g, s.worm, s.ridges, w, t, 1 / 60, [64, 40, 20], [255, 184, 110], [150, 100, 60])
+    // Foreground dune passes in front of the worm for depth.
+    drawRidge(g, w, h, s.ridges[2]!, 0)
+    drawCrestFlow(g, s.flow, s.ridges, w, 1 / 60, 'rgb(210,160,100)', [2])
+    drawThopter(g, s.thopter, w, h, t, 1 / 60, '#0a0805')
+    drawDrift(g, s.sand, w, 1 / 60, 'rgb(232,180,120)')
+  },
+}
+
+interface DuneDayState {
+  city: City
+  dust: Drift[]
+  ridges: DuneRidge[]
+  flow: CrestFlow[]
+  birds: Bird[]
+  thopter: Thopter
+  worm: SandWorm
+}
+
+const duneDay: BackdropScene = {
+  id: 'dune-day',
+  init(w, h, rng) {
+    return {
+      city: makeCity(rng, w, Math.floor(h * 0.74), Math.floor(h * 0.14), 0.05),
+      dust: makeDrift(34, w, h * 0.4, h, rng),
+      ridges: duneRidgesDay(w, h),
+      flow: makeCrestFlow(22, w, rng),
+      birds: makeBirds(4, w, h, rng),
+      thopter: makeThopter(),
+      worm: makeWorm(rng),
+    } satisfies DuneDayState as DuneDayState
+  },
+  paintStatic(g, w, h, rng) {
+    skyBands(g, w, h, [
+      [0, [242, 216, 158]],
+      [0.5, [236, 194, 120]],
+      [0.8, [222, 158, 82]],
+      [1, [201, 138, 62]],
+    ])
+    // Sun disc with wide glare.
+    const sunX = Math.floor(w * 0.72)
+    const sunY = Math.floor(h * 0.18)
+    drawGlow(g, sunX, sunY, Math.floor(w * 0.1), [255, 250, 235], 0.5)
+    g.fillStyle = '#fffdf2'
+    g.fillRect(sunX - 2, sunY - 2, 4, 4)
+    // Atmospheric depth: far dunes progressively lighter.
+    drawMesas(g, w, Math.floor(h * 0.74), [
+      { x: Math.floor(w * 0.1), w: Math.floor(w * 0.22), h: Math.floor(h * 0.08) },
+      { x: Math.floor(w * 0.6), w: Math.floor(w * 0.28), h: Math.floor(h * 0.06) },
+    ], [180, 140, 96], 'rgba(255,240,205,0.8)', [150, 108, 60])
+    drawFarSkyline(g, w, Math.floor(h * 0.72), Math.floor(h * 0.04), [150, 108, 66], rng)
+    drawDuneField(g, w, h, duneRidgesDay(w, h).slice(0, 2), rng)
+  },
+  paintDynamic(g, w, h, t, cam, state) {
+    const s = state as DuneDayState
+    void cam
+    // Heat shimmer: faint drifting highlight bands near the horizon.
+    g.fillStyle = 'rgba(255,250,235,0.06)'
+    for (let band = 0; band < 3; band += 1) {
+      const y = Math.floor(h * (0.62 + band * 0.03) + Math.sin(t * 1.3 + band * 2) * 1.2)
+      g.fillRect(0, y, w, 1)
+    }
+    drawCity(g, s.city, [90, 58, 28], '#2c1c0c', '#3a2410', 'rgba(255,240,205,0.5)')
+    drawGlints(g, s.city.windows, t)
+    drawBirds(g, s.birds, w, h, t, 1 / 60, '#3a2a16')
+    drawThopter(g, s.thopter, w, h, t, 1 / 60, '#2c1c0c')
+    drawCrestFlow(g, s.flow, s.ridges, w, 1 / 60, 'rgb(255,244,214)', [0, 1])
+    drawWorm(g, s.worm, s.ridges, w, t, 1 / 60, [92, 58, 26], [255, 244, 214], [220, 180, 120])
+    drawRidge(g, w, h, s.ridges[2]!, 0)
+    drawCrestFlow(g, s.flow, s.ridges, w, 1 / 60, 'rgb(255,230,180)', [2])
+    drawDrift(g, s.dust, w, 1 / 60, 'rgb(120,70,20)')
+  },
 }
 
 interface Ship {
@@ -501,245 +1124,15 @@ function drawShip(g: CanvasRenderingContext2D, ship: Ship, w: number, seaY: numb
   const x = Math.floor(ship.x)
   g.fillStyle = '#050a10'
   g.fillRect(x - 3, seaY - 2, 7, 2)
+  g.fillRect(x - 1, seaY - 4, 2, 2)
   g.fillStyle = '#ffe9c4'
   g.fillRect(x - 1, seaY - 3, 1, 1)
+  drawGlow(g, x - 1, seaY - 3, 2, [255, 233, 196], 0.5)
   g.fillStyle = '#ff5a4a'
   g.fillRect(x + (ship.dir > 0 ? 3 : -3), seaY - 2, 1, 1)
-}
-
-interface DuneRidge {
-  baseY: number
-  amp: number
-  waves: number
-  phase: number
-  color: string
-  crest: string
-  shadow: string
-}
-
-function duneY(ridge: DuneRidge, w: number, x: number): number {
-  const k = (x / w) * Math.PI * 2 * ridge.waves + ridge.phase
-  return ridge.baseY + Math.sin(k) * ridge.amp + Math.sin(k * 2.3 + 1.7) * ridge.amp * 0.35
-}
-
-function duneRidgesNight(w: number, h: number): DuneRidge[] {
-  return [
-    { baseY: h * 0.8, amp: Math.max(2, h * 0.02), waves: 2.5, phase: 0.6, color: '#150c06', crest: '#6b4423', shadow: '#0a0603' },
-    { baseY: h * 0.87, amp: Math.max(3, h * 0.03), waves: 1.75, phase: 2.1, color: '#0d0704', crest: '#8a5427', shadow: '#060302' },
-    { baseY: h * 0.96, amp: Math.max(4, h * 0.045), waves: 1.25, phase: 4.4, color: '#060302', crest: '#a86a2e', shadow: '#020202' },
-  ]
-}
-
-function duneRidgesDay(w: number, h: number): DuneRidge[] {
-  void w
-  return [
-    { baseY: h * 0.79, amp: Math.max(2, h * 0.02), waves: 2.5, phase: 0.6, color: '#c99a5e', crest: '#ffe9bf', shadow: '#a87a3e' },
-    { baseY: h * 0.87, amp: Math.max(3, h * 0.03), waves: 1.75, phase: 2.1, color: '#b38147', crest: '#ffedc9', shadow: '#8a5f30' },
-    { baseY: h * 0.97, amp: Math.max(4, h * 0.045), waves: 1.25, phase: 4.4, color: '#96622f', crest: '#fff3d9', shadow: '#6e451f' },
-  ]
-}
-
-function drawDuneField(g: CanvasRenderingContext2D, w: number, h: number, ridges: DuneRidge[]): void {
-  for (const ridge of ridges) {
-    g.fillStyle = ridge.color
-    g.beginPath()
-    g.moveTo(0, h)
-    for (let x = 0; x <= w; x += 1) {
-      g.lineTo(x, duneY(ridge, w, x))
-    }
-    g.lineTo(w, h)
-    g.closePath()
-    g.fill()
-    // Moonlit crest line.
-    g.fillStyle = ridge.crest
-    for (let x = 0; x < w; x += 2) {
-      g.fillRect(x, Math.floor(duneY(ridge, w, x)), 2, 1)
-    }
-    // Slip-face shadow on the descending slopes.
-    g.fillStyle = ridge.shadow
-    for (let x = 0; x < w; x += 2) {
-      const slope = duneY(ridge, w, x + 2) - duneY(ridge, w, x - 2)
-      if (slope > 0.4) {
-        g.fillRect(x, Math.floor(duneY(ridge, w, x)) + 1, 2, 2)
-      }
-    }
-  }
-}
-
-interface CrestFlow {
-  x: number
-  ridge: number
-  speed: number
-}
-
-function makeCrestFlow(count: number, w: number, rng: () => number): CrestFlow[] {
-  const parts: CrestFlow[] = []
-  for (let i = 0; i < count; i += 1) {
-    parts.push({ x: rng() * w, ridge: Math.floor(rng() * 3), speed: 4 + rng() * 7 })
-  }
-  return parts
-}
-
-function drawCrestFlow(g: CanvasRenderingContext2D, flow: CrestFlow[], ridges: DuneRidge[], w: number, dt: number, color: string): void {
-  g.fillStyle = color
-  for (const part of flow) {
-    part.x += part.speed * dt
-    if (part.x > w + 2) part.x = -2
-    const ridge = ridges[part.ridge]!
-    g.globalAlpha = 0.25 + 0.35 * (0.5 + 0.5 * Math.sin(part.x * 0.3))
-    g.fillRect(Math.floor(part.x), Math.floor(duneY(ridge, w, part.x)), 2, 1)
-  }
-  g.globalAlpha = 1
-}
-
-interface DuneNightState {
-  stars: Star[]
-  city: City
-  mesas: Mesa[]
-  sand: Drift[]
-  blowX: number
-  ridges: DuneRidge[]
-  flow: CrestFlow[]
-  crawlers: Crawler[]
-  smoke: Smoke
-  thopter: Thopter
-}
-
-const duneNight: BackdropScene = {
-  id: 'dune-night',
-  init(w, h, rng) {
-    return {
-      stars: makeStars(90, w, h, Math.floor(h * 0.45), rng),
-      city: makeCity(rng, w, Math.floor(h * 0.76), Math.floor(h * 0.16), 0.16),
-      mesas: [
-        { x: Math.floor(w * 0.06), w: Math.floor(w * 0.2), h: Math.floor(h * 0.07) },
-        { x: Math.floor(w * 0.62), w: Math.floor(w * 0.26), h: Math.floor(h * 0.05) },
-      ],
-      sand: makeDrift(46, w, h, h * 0.55, h, rng),
-      blowX: w * (0.25 + rng() * 0.5),
-      ridges: duneRidgesNight(w, h),
-      flow: makeCrestFlow(26, w, rng),
-      crawlers: makeCrawlers(3, w, rng),
-      smoke: makeSmoke(),
-      thopter: makeThopter(),
-    } satisfies DuneNightState as DuneNightState
-  },
-  paintStatic(g, w, h, rng) {
-    void rng
-    sky(g, w, h, [[0, '#060503'], [0.55, '#1a0f06'], [0.78, '#4a2408'], [1, '#120903']])
-    moon(g, Math.floor(w * 0.78), Math.floor(h * 0.16), Math.max(4, Math.floor(w / 42)), '#f4e3c2', 'rgba(244,227,194,0.22)')
-    moon(g, Math.floor(w * 0.2), Math.floor(h * 0.3), Math.max(2, Math.floor(w / 90)), '#d9c9a8', 'rgba(217,201,168,0.14)')
-    drawMesas(g, w, Math.floor(h * 0.78), '#0d0805', [
-      { x: Math.floor(w * 0.06), w: Math.floor(w * 0.2), h: Math.floor(h * 0.07) },
-      { x: Math.floor(w * 0.62), w: Math.floor(w * 0.26), h: Math.floor(h * 0.05) },
-    ])
-  },
-  paintDynamic(g, w, h, t, cam, state) {
-    const s = state as DuneNightState
-    void cam
-    drawStars(g, s.stars, t, '#ffe9c4')
-    // Rare spice blow: a slow ember glow behind the far dune.
-    const cycle = (t % 47) / 47
-    if (cycle > 0.7) {
-      const glow = Math.sin(((cycle - 0.7) / 0.3) * Math.PI)
-      const gradient = g.createRadialGradient(s.blowX, h * 0.76, 1, s.blowX, h * 0.76, Math.floor(w * 0.09))
-      gradient.addColorStop(0, `rgba(255,140,60,${(0.28 * glow).toFixed(3)})`)
-      gradient.addColorStop(1, 'rgba(255,140,60,0)')
-      g.fillStyle = gradient
-      g.fillRect(0, Math.floor(h * 0.5), w, Math.ceil(h * 0.4))
-    }
-    drawCity(g, s.city, '#0f0b07', '#ffb45e', '#5a3a1c')
-    drawBeacons(g, s.city.beacons, t)
-    drawFlicker(g, s.city, '#0f0b07', '#ffb45e', '#cfe0ee', t)
-    // Layered dune field in front of the city.
-    drawDuneField(g, w, h, s.ridges)
-    drawCrestFlow(g, s.flow, s.ridges, w, 1 / 60, 'rgb(255,200,130)')
-    drawSmoke(g, s.smoke, s.city.stacks, 1 / 60, 'rgb(150,130,110)')
-    drawCrawlersOnDune(g, s.crawlers, s.ridges[1]!, w, 1 / 60)
-    drawThopter(g, s.thopter, w, h, t, 1 / 60, '#0a0805')
-    drawDrift(g, s.sand, w, 1 / 60, 'rgb(232,180,120)')
-  },
-}
-
-interface Ripple {
-  x: number
-  y: number
-}
-
-interface DuneDayState {
-  city: City
-  dust: Drift[]
-  ridges: DuneRidge[]
-  flow: CrestFlow[]
-  ripples: Ripple[]
-  birds: Bird[]
-  thopter: Thopter
-}
-
-const duneDay: BackdropScene = {
-  id: 'dune-day',
-  init(w, h, rng) {
-    const ridges = duneRidgesDay(w, h)
-    const ripples: Ripple[] = []
-    for (let i = 0; i < 44; i += 1) {
-      const x = rng() * w
-      const ridge = ridges[Math.floor(rng() * ridges.length)]!
-      ripples.push({ x, y: duneY(ridge, w, x) + 2 + rng() * 6 })
-    }
-    return {
-      city: makeCity(rng, w, Math.floor(h * 0.74), Math.floor(h * 0.14), 0.05),
-      dust: makeDrift(34, w, h, h * 0.4, h, rng),
-      ridges,
-      flow: makeCrestFlow(22, w, rng),
-      ripples,
-      birds: makeBirds(4, w, h, rng),
-      thopter: makeThopter(),
-    } satisfies DuneDayState as DuneDayState
-  },
-  paintStatic(g, w, h, rng) {
-    void rng
-    sky(g, w, h, [[0, '#f7e3b0'], [0.6, '#eec687'], [0.8, '#df9f52'], [1, '#c98a3e']])
-    // Sun glare.
-    const sunX = Math.floor(w * 0.7)
-    const sunY = Math.floor(h * 0.2)
-    const glare = g.createRadialGradient(sunX, sunY, 1, sunX, sunY, Math.floor(w * 0.12))
-    glare.addColorStop(0, 'rgba(255,250,235,0.9)')
-    glare.addColorStop(1, 'rgba(255,250,235,0)')
-    g.fillStyle = glare
-    g.fillRect(0, 0, w, Math.ceil(h * 0.5))
-    g.fillStyle = '#fff8e6'
-    g.fillRect(sunX - 2, sunY - 2, 4, 4)
-    drawMesas(g, w, Math.floor(h * 0.76), '#b98d54', [
-      { x: Math.floor(w * 0.1), w: Math.floor(w * 0.22), h: Math.floor(h * 0.08) },
-      { x: Math.floor(w * 0.6), w: Math.floor(w * 0.28), h: Math.floor(h * 0.06) },
-    ])
-  },
-  paintDynamic(g, w, h, t, cam, state) {
-    const s = state as DuneDayState
-    void t
-    void cam
-    drawCity(g, s.city, '#5a3a1c', '#2c1c0c', '#3a2410')
-    drawGlints(g, s.city.windows, t)
-    drawBirds(g, s.birds, w, h, t, 1 / 60, '#3a2a16')
-    drawThopter(g, s.thopter, w, h, t, 1 / 60, '#2c1c0c')
-    // Sunlit dune field in front of the city.
-    drawDuneField(g, w, h, s.ridges)
-    drawCrestFlow(g, s.flow, s.ridges, w, 1 / 60, 'rgb(255,244,214)')
-    // Wind ripple texture on the slip faces.
-    g.fillStyle = '#fff8e2'
-    g.globalAlpha = 0.5
-    for (const ripple of s.ripples) {
-      g.fillRect(Math.floor(ripple.x), Math.floor(ripple.y), 2, 1)
-    }
-    g.globalAlpha = 1
-    drawDrift(g, s.dust, w, 1 / 60, 'rgb(120,70,20)')
-  },
-}
-
-interface TideState {
-  stars: Star[]
-  buoyPhase: number
-  ship: Ship
+  // Wake.
+  g.fillStyle = 'rgba(159,196,222,0.15)'
+  g.fillRect(x - ship.dir * 5, seaY - 1, 4, 1)
 }
 
 function drawLighthouse(g: CanvasRenderingContext2D, w: number, seaY: number): { x: number; y: number } {
@@ -755,32 +1148,69 @@ function drawLighthouse(g: CanvasRenderingContext2D, w: number, seaY: number): {
     g.fillStyle = row % 2 === 0 ? '#0d1826' : '#c8d4de'
     g.fillRect(x - 2, seaY - 5 - (row + 1) * 2, 4, 2)
   }
-  g.fillStyle = '#ffe9c4'
-  g.fillRect(x - 1, seaY - 17, 2, 2)
   return { x, y: seaY - 16 }
+}
+
+function drawBeam(g: CanvasRenderingContext2D, x: number, y: number, angle: number, len: number, color: string): void {
+  for (let d = 4; d < len; d += 2) {
+    const spread = 1 + Math.floor(d / 10)
+    g.fillStyle = color
+    g.globalAlpha = 0.09 * (1 - d / len)
+    g.fillRect(Math.floor(x + Math.cos(angle) * d) - Math.floor(spread / 2), Math.floor(y + Math.sin(angle) * d), spread, 1)
+  }
+  g.globalAlpha = 1
+}
+
+interface TideState {
+  stars: Star[]
+  buoyPhase: number
+  ship: Ship
 }
 
 const tide: BackdropScene = {
   id: 'tide',
   init(w, h, rng) {
-    void w
-    void h
-    return { stars: makeStars(80, w, h, Math.floor(h * 0.4), rng), buoyPhase: rng() * Math.PI * 2, ship: makeShip() } satisfies TideState as TideState
+    return { stars: makeStars(110, w, Math.floor(h * 0.4), rng), buoyPhase: rng() * Math.PI * 2, ship: makeShip() } satisfies TideState as TideState
   },
   paintStatic(g, w, h, rng) {
+    skyBands(g, w, h, [
+      [0, [4, 7, 13]],
+      [0.5, [10, 22, 38]],
+      [1, [14, 34, 51]],
+    ])
+    moon(g, Math.floor(w * 0.68), Math.floor(h * 0.18), Math.max(4, Math.floor(w / 44)), [232, 240, 246], [232, 240, 246])
+    const seaY = Math.floor(h * 0.52)
+    // Sea depth bands.
+    skyBands(g, w, h - seaY, [
+      [0, [8, 22, 36]],
+      [0.6, [5, 14, 24]],
+      [1, [3, 9, 17]],
+    ], seaY)
+    // Distant headland.
+    g.fillStyle = '#050b12'
+    g.beginPath()
+    g.moveTo(0, seaY)
+    g.lineTo(0, seaY - Math.floor(h * 0.05))
+    for (let x = 0; x <= Math.floor(w * 0.24); x += 4) {
+      g.lineTo(x, seaY - Math.floor(h * 0.05) - Math.sin((x / w) * Math.PI) * Math.floor(h * 0.03))
+    }
+    g.lineTo(Math.floor(w * 0.24), seaY)
+    g.closePath()
+    g.fill()
+    drawLighthouse(g, w, seaY)
+    // Rocks in the foreground.
+    g.fillStyle = '#03080e'
+    for (const [fx, fw, fh] of [[0.06, 10, 3], [0.14, 7, 2], [0.32, 12, 3], [0.78, 8, 2]] as Array<[number, number, number]>) {
+      g.fillRect(Math.floor(w * fx), Math.floor(h * 0.9) - fh, fw, fh)
+    }
     void rng
-    sky(g, w, h, [[0, '#04070d'], [0.5, '#0a1626'], [1, '#0e2233']])
-    moon(g, Math.floor(w * 0.68), Math.floor(h * 0.18), Math.max(4, Math.floor(w / 44)), '#e8f0f6', 'rgba(232,240,246,0.2)')
   },
   paintDynamic(g, w, h, t, cam, state) {
     const s = state as TideState
     void cam
     drawStars(g, s.stars, t, '#cfe0ee')
     const seaY = Math.floor(h * 0.52)
-    g.fillStyle = '#071523'
-    g.fillRect(0, seaY, w, h - seaY)
-    const lamp = drawLighthouse(g, w, seaY)
-    // Moon glitter: a shimmering reflection column.
+    // Moon glitter column.
     const cx = Math.floor(w * 0.68)
     for (let row = 0; row < h - seaY; row += 2) {
       const spread = 1 + Math.floor(((row / 2) % 4) * (0.6 + 0.4 * Math.sin(t * 1.7 + row)))
@@ -790,10 +1220,10 @@ const tide: BackdropScene = {
       g.fillRect(cx - Math.floor(spread / 2), seaY + row, spread, 1)
     }
     g.globalAlpha = 1
-    // Slow wave lines drifting sideways.
+    // Wave crest lines drifting.
     g.fillStyle = '#9fc4de'
-    for (let band = 0; band < 4; band += 1) {
-      const y = seaY + 4 + band * Math.max(3, Math.floor((h - seaY) / 5))
+    for (let band = 0; band < 5; band += 1) {
+      const y = seaY + 3 + band * Math.max(3, Math.floor((h - seaY) / 6))
       const offset = Math.floor(((t * (2 + band)) % w + w) % w)
       g.globalAlpha = 0.1 + band * 0.02
       for (let x = -8; x < w + 8; x += 12) {
@@ -801,42 +1231,68 @@ const tide: BackdropScene = {
       }
     }
     g.globalAlpha = 1
-    // Distant buoy blinking red.
+    // Lighthouse: lamp glow + rotating beams.
+    const lamp = { x: Math.floor(w * 0.9), y: seaY - 16 }
+    drawGlow(g, lamp.x, lamp.y, 4, [255, 233, 196], 0.7)
+    const angle = t * 0.22
+    drawBeam(g, lamp.x, lamp.y, angle, Math.floor(w * 0.22), '#ffe9c4')
+    drawBeam(g, lamp.x, lamp.y, angle + Math.PI, Math.floor(w * 0.18), '#ffe9c4')
+    // Buoy blinking with a glint on the water.
     const on = 0.5 + 0.5 * Math.sin((t / 3.2) * Math.PI * 2 + s.buoyPhase)
     if (on > 0.6) {
       g.fillStyle = '#ff5a4a'
       g.fillRect(Math.floor(w * 0.22), seaY - 3, 1, 1)
+      drawGlow(g, Math.floor(w * 0.22), seaY - 3, 2, [255, 90, 74], 0.6)
+      g.fillStyle = '#ff5a4a'
+      g.globalAlpha = 0.3 * (1 - Math.abs(Math.sin(t * 0.9)))
+      g.fillRect(Math.floor(w * 0.22), seaY + 2, 1, 3)
+      g.globalAlpha = 1
     }
-    // Rotating lighthouse beam sweeping the water.
-    const angle = t * 0.22
-    drawBeam(g, lamp.x, lamp.y, angle, Math.floor(w * 0.35), '#ffe9c4')
-    drawBeam(g, lamp.x, lamp.y, angle + Math.PI, Math.floor(w * 0.3), '#ffe9c4')
     drawShip(g, s.ship, w, seaY, t, 1 / 60)
   },
 }
 
 interface EmberState {
   embers: Array<{ x: number; y: number; vy: number; sway: number; phase: number; size: number }>
-  derricks: Array<{ x: number; h: number }>
   blinkers: Beacon[]
   smoke: Smoke
   flare: { x: number; topY: number }
 }
 
-function drawDerrick(g: CanvasRenderingContext2D, x: number, baseY: number, h: number, body: string): void {
+function drawTank(g: CanvasRenderingContext2D, x: number, baseY: number, w: number, h: number, body: string): void {
+  g.fillStyle = body
+  g.fillRect(x, baseY - h, w, h)
+  g.beginPath()
+  g.arc(x + w / 2, baseY - h, w / 2, Math.PI, 0)
+  g.fill()
+  // Walkway ring.
+  g.fillRect(x - 1, baseY - Math.floor(h * 0.55), w + 2, 1)
+}
+
+function drawPylon(g: CanvasRenderingContext2D, x: number, baseY: number, h: number, body: string): void {
   g.strokeStyle = body
   g.lineWidth = 1
   g.beginPath()
   g.moveTo(x - 3, baseY)
-  g.lineTo(x, baseY - h)
-  g.moveTo(x + 3, baseY)
-  g.lineTo(x, baseY - h)
-  g.moveTo(x, baseY)
-  g.lineTo(x, baseY - h)
+  g.lineTo(x - 1, baseY - h)
+  g.lineTo(x + 1, baseY - h)
+  g.lineTo(x + 3, baseY)
+  g.moveTo(x - 2, baseY - Math.floor(h * 0.45))
+  g.lineTo(x + 2, baseY - Math.floor(h * 0.45))
   g.stroke()
   g.fillStyle = body
-  g.fillRect(x - 2, baseY - Math.floor(h * 0.5), 4, 1)
-  g.fillRect(x - 1, baseY - h, 2, 1)
+  g.fillRect(x - 2, baseY - h - 1, 4, 1)
+}
+
+function drawFlareStack(g: CanvasRenderingContext2D, x: number, baseY: number, h: number, body: string): void {
+  g.fillStyle = body
+  g.fillRect(x - 1, baseY - h, 2, h)
+  // Ladder rungs.
+  g.globalAlpha = 0.5
+  for (let y = baseY - h + 2; y < baseY; y += 3) {
+    g.fillRect(x - 2, y, 1, 1)
+  }
+  g.globalAlpha = 1
 }
 
 const ember: BackdropScene = {
@@ -853,76 +1309,84 @@ const ember: BackdropScene = {
         size: rng() < 0.85 ? 1 : 2,
       })
     }
-    const derricks = [
-      { x: Math.floor(w * 0.15), h: Math.floor(h * 0.11) },
-      { x: Math.floor(w * 0.72), h: Math.floor(h * 0.13) },
+    const blinkers: Beacon[] = [
+      { x: Math.floor(w * 0.12), y: Math.floor(h * 0.74) - Math.floor(h * 0.16) - 2, period: 1.7, phase: 0.3, color: '#ff3b30', glow: [255, 59, 48] },
+      { x: Math.floor(w * 0.84), y: Math.floor(h * 0.74) - Math.floor(h * 0.13) - 2, period: 2.3, phase: 2.4, color: '#ff3b30', glow: [255, 59, 48] },
+      { x: Math.floor(w * 0.58), y: Math.floor(h * 0.74) - 4, period: 1.2, phase: 1.1, color: '#ffe9c4', glow: [255, 233, 196] },
     ]
-    const blinkers: Beacon[] = derricks.map((derrick, i) => ({
-      x: derrick.x,
-      y: Math.floor(h * 0.85) - derrick.h - 1,
-      period: 1.4 + i * 0.5,
-      phase: i * 2.1,
-      color: '#ff3b30',
-    }))
     return {
       embers,
-      derricks,
       blinkers,
       smoke: makeSmoke(),
-      flare: { x: Math.floor(w * 0.45), topY: Math.floor(h * 0.78) },
+      flare: { x: Math.floor(w * 0.45), topY: Math.floor(h * 0.74) - Math.floor(h * 0.22) },
     } satisfies EmberState as EmberState
   },
   paintStatic(g, w, h, rng) {
-    void rng
-    sky(g, w, h, [[0, '#080403'], [0.6, '#160a06'], [0.85, '#2a0f08'], [1, '#0a0605']])
-    g.fillStyle = '#060403'
-    g.beginPath()
-    g.moveTo(0, h)
-    g.lineTo(0, Math.floor(h * 0.82))
-    for (let x = 0; x <= w; x += 8) {
-      g.lineTo(x, Math.floor(h * 0.82) - ((x * 7919) % 7))
+    skyBands(g, w, h, [
+      [0, [8, 4, 3]],
+      [0.5, [22, 10, 6]],
+      [0.8, [42, 15, 8]],
+      [1, [10, 6, 5]],
+    ])
+    // Cloud band lit from below by the works.
+    const cloudY = Math.floor(h * 0.3)
+    for (let i = 0; i < 30; i += 1) {
+      const x = Math.floor(rng() * w)
+      const y = cloudY + Math.floor((rng() + rng()) * h * 0.12)
+      const width = 6 + Math.floor(rng() * 14)
+      fillDithered(g, x, y, width, 2, [38, 20, 12], [58, 30, 16], 0.5)
     }
-    g.lineTo(w, h)
-    g.closePath()
-    g.fill()
-    drawDerrick(g, Math.floor(w * 0.15), Math.floor(h * 0.85), Math.floor(h * 0.11), '#0d0805')
-    drawDerrick(g, Math.floor(w * 0.72), Math.floor(h * 0.85), Math.floor(h * 0.13), '#0d0805')
-    // Flare stack.
-    g.fillStyle = '#0d0805'
-    g.fillRect(Math.floor(w * 0.45) - 1, Math.floor(h * 0.78), 2, Math.floor(h * 0.1))
+    const base = Math.floor(h * 0.74)
+    const body = '#0a0605'
+    // Refinery silhouette: tanks, stacks, towers, pipe rack.
+    drawFlareStack(g, Math.floor(w * 0.45), base, Math.floor(h * 0.22), body)
+    drawTank(g, Math.floor(w * 0.08), base, 8, Math.floor(h * 0.08), body)
+    drawTank(g, Math.floor(w * 0.16), base, 6, Math.floor(h * 0.06), body)
+    drawTank(g, Math.floor(w * 0.78), base, 7, Math.floor(h * 0.07), body)
+    drawPylon(g, Math.floor(w * 0.62), base, Math.floor(h * 0.12), body)
+    drawPylon(g, Math.floor(w * 0.9), base, Math.floor(h * 0.1), body)
+    for (let x = Math.floor(w * 0.24); x < Math.floor(w * 0.4); x += 3) {
+      g.fillStyle = body
+      g.fillRect(x, base - 4, 3, 1)
+      if (x % 6 === 0) g.fillRect(x, base - 4, 1, 4)
+    }
+    // Ground with dithered ember wash.
+    fillDithered(g, 0, base, w, h - base, [6, 4, 3], [26, 10, 5], 0.35)
+    void rng
   },
   paintDynamic(g, w, h, t, cam, state) {
     const s = state as EmberState
     void cam
-    void t
     const dt = 1 / 60
-    for (const ember of s.embers) {
-      ember.y -= ember.vy * dt
-      if (ember.y < -2) {
-        ember.y = h + 2
-        ember.x = Math.random() * w
+    for (const emberPart of s.embers) {
+      emberPart.y -= emberPart.vy * dt
+      if (emberPart.y < -2) {
+        emberPart.y = h + 2
+        emberPart.x = Math.random() * w
       }
-      const flicker = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * 6 + ember.phase))
-      const swayX = Math.sin(t * 1.3 + ember.phase) * ember.sway * 0.15
-      g.fillStyle = ember.size === 2 ? '#ffb45e' : '#ff7a2e'
+      const flicker = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * 6 + emberPart.phase))
+      const swayX = Math.sin(t * 1.3 + emberPart.phase) * emberPart.sway * 0.15
+      g.fillStyle = emberPart.size === 2 ? '#ffb45e' : '#ff7a2e'
       g.globalAlpha = Math.min(1, flicker)
-      g.fillRect(Math.floor(ember.x + swayX), Math.floor(ember.y), ember.size, ember.size)
+      g.fillRect(Math.floor(emberPart.x + swayX), Math.floor(emberPart.y), emberPart.size, emberPart.size)
+      if (emberPart.size === 2) {
+        drawGlow(g, emberPart.x + swayX, emberPart.y, 2, [255, 180, 94], flicker * 0.3)
+      }
     }
     g.globalAlpha = 1
     drawBeacons(g, s.blinkers, t)
-    // Flare stack flame with heat glow.
+    // Flare flame with heat glow.
     const burn = 0.6 + 0.4 * Math.sin(t * 13) * Math.sin(t * 7.3 + 1)
-    const flameH = 2 + Math.floor(burn * 2)
-    const glow = g.createRadialGradient(s.flare.x, s.flare.topY - 2, 1, s.flare.x, s.flare.topY - 2, 9)
-    glow.addColorStop(0, `rgba(255,150,60,${(0.22 * burn).toFixed(3)})`)
-    glow.addColorStop(1, 'rgba(255,150,60,0)')
-    g.fillStyle = glow
-    g.fillRect(s.flare.x - 9, s.flare.topY - 11, 18, 13)
+    const flameH = 2 + Math.floor(burn * 3)
+    drawGlow(g, s.flare.x, s.flare.topY - 2, 10, [255, 150, 60], 0.45 * burn)
     g.fillStyle = '#ff7a2e'
     g.fillRect(s.flare.x - 1, s.flare.topY - flameH, 2, flameH)
     g.fillStyle = '#ffd9a0'
     g.fillRect(s.flare.x, s.flare.topY - Math.max(1, flameH - 1), 1, Math.max(1, flameH - 1))
     drawSmoke(g, s.smoke, [{ x: s.flare.x, topY: s.flare.topY - flameH }], 1 / 60, 'rgb(90,80,75)')
+    // Ground glow flicker from the flare.
+    g.fillStyle = 'rgba(255,120,50,0.05)'
+    g.fillRect(Math.floor(s.flare.x - w * 0.1), Math.floor(h * 0.74), Math.floor(w * 0.2), h)
   },
 }
 
@@ -930,82 +1394,112 @@ interface VoidState {
   stars: Star[]
   meteors: Array<{ x: number; y: number; vx: number; vy: number; life: number; age: number }>
   nextMeteor: number
+  hole: { cx: number; cy: number; r: number }
 }
 
 const gargantua: BackdropScene = {
   id: 'void',
   init(w, h, rng) {
     return {
-      stars: makeStars(150, w, h, h, rng),
+      stars: makeStars(200, w, h, rng),
       meteors: [],
       nextMeteor: 6 + rng() * 8,
+      hole: { cx: Math.floor(w * 0.62), cy: Math.floor(h * 0.42), r: Math.max(6, Math.floor(Math.min(w, h) * 0.11)) },
     } satisfies VoidState as VoidState
   },
   paintStatic(g, w, h, rng) {
-    void rng
-    sky(g, w, h, [[0, '#020306'], [0.55, '#05070e'], [1, '#0a0f1e']])
+    skyBands(g, w, h, [
+      [0, [2, 3, 6]],
+      [0.55, [5, 7, 14]],
+      [1, [10, 15, 30]],
+    ])
+    // Nebula clouds.
+    for (let i = 0; i < 5; i += 1) {
+      const x = Math.floor(rng() * w)
+      const y = Math.floor(rng() * h * 0.7)
+      const r = Math.floor(8 + rng() * 22)
+      drawGlow(g, x, y, r, rng() < 0.5 ? [70, 110, 170] : [150, 90, 50], 0.05 + rng() * 0.05)
+    }
     const cx = Math.floor(w * 0.62)
     const cy = Math.floor(h * 0.42)
     const r = Math.max(6, Math.floor(Math.min(w, h) * 0.11))
-    // Lensed halo arcs above and below the shadow.
-    g.fillStyle = 'rgba(255,220,170,0.16)'
-    g.beginPath()
-    g.ellipse(cx, cy, Math.floor(r * 1.5), Math.floor(r * 2.1), 0, Math.PI * 1.15, Math.PI * 1.85)
-    g.lineWidth = Math.max(1, Math.floor(r / 7))
-    g.strokeStyle = 'rgba(255,220,170,0.16)'
-    g.stroke()
-    g.beginPath()
-    g.ellipse(cx, cy, Math.floor(r * 1.5), Math.floor(r * 2.1), 0, Math.PI * 0.15, Math.PI * 0.85)
-    g.stroke()
-    // Accretion disk: thin bright band, brighter on the approaching side.
+    // Lensed halo: bright Einstein ring arcs, top strong, bottom weak.
+    for (let i = 0; i < 90; i += 1) {
+      const a = Math.PI * 1.1 + (i / 90) * Math.PI * 0.8
+      const dx = Math.cos(a)
+      const dy = Math.sin(a)
+      const fade = 1 - Math.abs(a - Math.PI * 1.5) / (Math.PI * 0.4)
+      if (fade <= 0) continue
+      g.fillStyle = 'rgba(255,225,180,0.5)'
+      g.globalAlpha = fade * 0.5
+      g.fillRect(Math.floor(cx + dx * r * 1.45), Math.floor(cy + dy * r * 2.05), 2, 1)
+    }
+    for (let i = 0; i < 70; i += 1) {
+      const a = Math.PI * 0.05 + (i / 70) * Math.PI * 0.9
+      const dx = Math.cos(a)
+      const dy = Math.sin(a)
+      const fade = 1 - Math.abs(a - Math.PI * 0.5) / (Math.PI * 0.45)
+      if (fade <= 0) continue
+      g.fillStyle = 'rgba(255,200,150,0.35)'
+      g.globalAlpha = fade * 0.3
+      g.fillRect(Math.floor(cx + dx * r * 1.35), Math.floor(cy + dy * r * 1.7), 2, 1)
+    }
+    g.globalAlpha = 1
+    // Accretion disk: gradient ellipse with relativistic beaming (left brighter).
     const rx = Math.floor(r * 2.6)
-    const ry = Math.max(2, Math.floor(r * 0.45))
-    g.fillStyle = '#3a2415'
+    const ry = Math.max(2, Math.floor(r * 0.42))
+    const disk = g.createLinearGradient(cx - rx, 0, cx + rx, 0)
+    disk.addColorStop(0, '#ffe9c4')
+    disk.addColorStop(0.25, '#f0b564')
+    disk.addColorStop(0.5, '#7a4a1e')
+    disk.addColorStop(0.75, '#3a2412')
+    disk.addColorStop(1, '#241408')
+    g.fillStyle = 'rgba(255,200,140,0.16)'
     g.beginPath()
-    g.ellipse(cx, cy, rx, ry + 2, 0, 0, Math.PI * 2)
+    g.ellipse(cx, cy, rx, ry + 4, 0, 0, Math.PI * 2)
     g.fill()
-    g.strokeStyle = '#e8a34e'
-    g.lineWidth = 2
+    g.fillStyle = disk
     g.beginPath()
     g.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2)
-    g.stroke()
-    g.strokeStyle = '#ffe9c4'
+    g.fill()
+    // Hot inner rim.
+    g.strokeStyle = '#fff3dd'
     g.lineWidth = 1
     g.beginPath()
-    g.ellipse(cx, cy, rx, ry, 0, Math.PI * 0.5, Math.PI * 1.5)
+    g.ellipse(cx, cy, Math.floor(rx * 0.55), Math.floor(ry * 0.55), 0, 0, Math.PI * 2)
     g.stroke()
-    // The shadow itself.
+    // Shadow.
     g.fillStyle = '#000000'
     g.beginPath()
     g.arc(cx, cy, r, 0, Math.PI * 2)
     g.fill()
-    // Photon ring.
+    // Photon ring with slight glow.
+    drawGlow(g, cx, cy, r + 4, [255, 235, 200], 0.18)
     g.strokeStyle = '#fff3dd'
-    g.lineWidth = 1
     g.beginPath()
     g.arc(cx, cy, r + 1, 0, Math.PI * 2)
     g.stroke()
-    // Ringed planet hanging in the corner.
+    // Ringed planet with shaded sphere and tilted ring.
     const px = Math.floor(w * 0.16)
-    const py = Math.floor(h * 0.68)
-    const pr = Math.max(3, Math.floor(w / 60))
-    g.fillStyle = '#7f96b5'
+    const py = Math.floor(h * 0.66)
+    const pr = Math.max(4, Math.floor(w / 52))
+    g.strokeStyle = 'rgba(200,212,226,0.5)'
     g.beginPath()
-    g.arc(px, py, pr, 0, Math.PI * 2)
-    g.fill()
-    g.fillStyle = '#4a5d78'
-    g.fillRect(px - pr, py - 1, pr, 2)
-    g.strokeStyle = '#c8d4e2'
-    g.lineWidth = 1
-    g.beginPath()
-    g.ellipse(px, py, pr + 3, Math.max(1, Math.floor(pr / 3)), -0.3, 0, Math.PI * 2)
+    g.ellipse(px, py, pr + 4, Math.max(2, Math.floor(pr / 3)), -0.3, Math.PI, Math.PI * 2)
     g.stroke()
+    drawSphere(g, px, py, pr, -0.5, -0.5, [127, 150, 181], [30, 40, 60], [190, 205, 225])
+    drawRimLight(g, px, py, pr, -0.5, -0.5, 'rgba(220,235,250,0.5)')
+    g.strokeStyle = 'rgba(200,212,226,0.7)'
+    g.beginPath()
+    g.ellipse(px, py, pr + 4, Math.max(2, Math.floor(pr / 3)), -0.3, 0, Math.PI)
+    g.stroke()
+    g.fillStyle = 'rgba(255,235,190,0.1)'
+    g.fillRect(px - pr, py - 1, Math.floor(pr * 0.6), 2)
   },
   paintDynamic(g, w, h, t, cam, state) {
     const s = state as VoidState
     void cam
     drawStars(g, s.stars, t, '#cfe0f4')
-    // Occasional meteor streaking past.
     if (t > s.nextMeteor) {
       const fromLeft = Math.random() < 0.5
       s.meteors.push({
@@ -1032,11 +1526,15 @@ const gargantua: BackdropScene = {
       g.fillStyle = '#ffffff'
       g.globalAlpha = 0.8 * fade
       g.fillRect(Math.floor(meteor.x), Math.floor(meteor.y), 1, 1)
+      drawGlow(g, meteor.x, meteor.y, 3, [200, 220, 255], fade * 0.5)
       g.fillStyle = '#8fb8d6'
       g.globalAlpha = 0.4 * fade
       g.fillRect(Math.floor(meteor.x - Math.sign(meteor.vx) * 2), Math.floor(meteor.y - 1), 2, 1)
     }
     g.globalAlpha = 1
+    // Disk beaming pulse on the near side.
+    const pulse = 0.12 + 0.05 * Math.sin(t * 0.6)
+    drawGlow(g, s.hole.cx - s.hole.r * 1.4, s.hole.cy, Math.floor(s.hole.r * 0.5), [255, 220, 170], pulse)
   },
 }
 

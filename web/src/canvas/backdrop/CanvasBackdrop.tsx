@@ -6,7 +6,7 @@ import { useTheme } from '../../themes'
 import { SCENES, mulberry, type BackdropSceneId } from './scenes'
 
 const PREF_KEY = 'canvas-backdrop'
-const PIXEL = 4
+const PIXEL = 3
 const OVERSCAN = 48
 
 function sceneForTheme(theme: string): BackdropSceneId | null {
@@ -121,7 +121,9 @@ export function CanvasBackdrop() {
   return (
     <>
       {sceneId && (
-        <canvas ref={canvasRef} className="canvas-backdrop" data-scene={sceneId} aria-hidden="true" />
+        <div className="canvas-backdrop" data-scene={sceneId} aria-hidden="true">
+          <canvas ref={canvasRef} />
+        </div>
       )}
       {available && (
         <button
