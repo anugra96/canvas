@@ -28,7 +28,6 @@ test('designs and validates a JSON Schema contract', async ({ page }) => {
   await source.fill('{"type":')
   await expect(page.locator('.schema-diagnostics')).toContainText('Invalid JSON')
   await page.getByRole('button', { name: 'Done' }).click()
-  await expect(page.locator('.validation-button')).toContainText('error')
   await expect(page.locator('.canvas-warning-badge').first()).toBeVisible()
   await page.locator('.canvas-warning-badge').first().click()
   await expect(page.locator('.validation-panel')).toBeVisible()

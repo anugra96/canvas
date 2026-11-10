@@ -1,26 +1,19 @@
 import {
-  AlertTriangle,
   ArrowLeft,
   Camera,
   Download,
   Keyboard,
-  LayoutGrid,
   Maximize2,
-  Workflow,
   MoreHorizontal,
   PanelsTopLeft,
   PenLine,
   Plus,
   Redo2,
-  Sparkles,
-  Save,
-  ShieldCheck,
   Undo2,
 } from 'lucide-react'
 import { useState } from 'react'
 
 import { useIsMobile } from '../../useMediaQuery'
-import { EDGE_STYLES, setEdgeStyle, useEdgeStyle, type EdgeStyle } from '../model/edgeStyle'
 
 export type SaveStatus = 'saved' | 'dirty' | 'saving' | 'conflict' | 'error' | 'offline'
 
@@ -36,40 +29,23 @@ interface CanvasToolbarProps {
   status: SaveStatus
   canUndo: boolean
   canRedo: boolean
-  selectedEdge: boolean
-  relationValue: string
-  relationTypes: ToolbarOption[]
   availableEntityTypes: ToolbarOption[]
-  issueCount: number
-  errorCount: number
-  suggestionCount: number
   onBack: () => void
   backLabel: string
   onUndo: () => void
   onRedo: () => void
   onHelp: () => void
   onRename: () => void
-  onRelationChange: (value: string) => void
-  onToggleValidation: () => void
-  onToggleIntelligence: () => void
   onAddNote: () => void
   onAddCard: () => void
   onAddEntity: (entityTypeId: string) => void
   onAddProcessCanvas: () => void
-  onSave: () => void
   onDownload: () => void
   onScreenshot: () => void
   onOpenViews: () => void
   onFitView: () => void
   onAutoLayout: () => void
-  onDataFlowLayout: () => void
   onAutoFitAll: () => void
-}
-
-function validationLabel(issueCount: number, errorCount: number): string {
-  const warningCount = Math.max(0, issueCount - errorCount)
-  if (errorCount > 0) return `${errorCount} error${errorCount === 1 ? '' : 's'}`
-  return `${warningCount} warning${warningCount === 1 ? '' : 's'}`
 }
 
 function statusLabel(status: SaveStatus): string {
@@ -83,11 +59,10 @@ function statusLabel(status: SaveStatus): string {
 
 export function CanvasToolbar(props: CanvasToolbarProps) {
   const isMobile = useIsMobile()
-  const edgeStyle = useEdgeStyle()
 
-  if (isMobile) return <MobileToolbar {...props} edgeStyle={edgeStyle} />
+  if (isMobile) return <MobileToolbar {...props} />
 
-  return <DesktopToolbar {...props} edgeStyle={edgeStyle} />
+  return <DesktopToolbar {...props} />
 }
 
 function DesktopToolbar({
@@ -97,35 +72,21 @@ function DesktopToolbar({
   status,
   canUndo,
   canRedo,
-  selectedEdge,
-  relationValue,
-  relationTypes,
   availableEntityTypes,
-  issueCount,
-  errorCount,
-  suggestionCount,
   onBack,
   backLabel,
   onUndo,
   onRedo,
   onHelp,
   onRename,
-  onRelationChange,
-  onToggleValidation,
-  onToggleIntelligence,
   onAddNote,
   onAddCard,
   onAddEntity,
   onAddProcessCanvas,
-  onSave,
   onDownload,
   onScreenshot,
   onOpenViews,
-  onAutoLayout,
-  onDataFlowLayout,
-  onAutoFitAll,
-  edgeStyle,
-}: CanvasToolbarProps & { edgeStyle: EdgeStyle }) {
+}: CanvasToolbarProps) {
   return (
     <div className="editor-toolbar">
       <button className="button ghost" onClick={onBack}>
@@ -191,72 +152,6 @@ function DesktopToolbar({
             Views
           </button>
         )}
-        <select
-          className="template-select"
-          aria-label="Canvas layout"
-          defaultValue=""
-          onChange={(event) => {
-            const value = event.target.value
-            if (value === 'architecture') onAutoLayout()
-            if (value === 'data-flow') onDataFlowLayout()
-            if (value === 'fit-cards') onAutoFitAll()
-            event.target.value = ''
-          }}
-        >
-          <option value="">Layout</option>
-          <option value="architecture">Architecture</option>
-          <option value="data-flow">Data flow</option>
-          <option value="fit-cards">Fit all cards</option>
-        </select>
-        <label className="toolbar-field">
-          <span>Edges</span>
-          <select
-            className="template-select"
-            aria-label="Edge path style"
-            value={edgeStyle}
-            onChange={(event) => setEdgeStyle(event.target.value as EdgeStyle)}
-          >
-            {EDGE_STYLES.map((style) => (
-              <option key={style.id} value={style.id}>{style.label}</option>
-            ))}
-          </select>
-        </label>
-        <label className="toolbar-field">
-          <span>{selectedEdge ? 'Edge relation' : 'New edge'}</span>
-          <select
-            className="template-select"
-            aria-label="Edge relation"
-            value={relationValue}
-            onChange={(event) => onRelationChange(event.target.value)}
-          >
-            {isSystems && <option value="">Unspecified</option>}
-            {relationTypes.map((relationType) => (
-              <option key={relationType.id} value={relationType.id}>{relationType.label}</option>
-            ))}
-          </select>
-        </label>
-        {isSystems && (
-          <>
-            <button
-              className="button intelligence-button"
-              onClick={onToggleIntelligence}
-              aria-label="Canvas intelligence"
-              title="Canvas intelligence"
-            >
-              <Sparkles size={15} />
-              {suggestionCount > 0 && <span className="toolbar-count">{suggestionCount}</span>}
-            </button>
-            <button
-              className={`button validation-button${errorCount > 0 ? ' error' : issueCount > 0 ? ' warn' : ''}`}
-              onClick={onToggleValidation}
-              aria-label="Systems validation"
-              title="Systems validation"
-            >
-              {issueCount > 0 ? <AlertTriangle size={15} /> : <ShieldCheck size={15} />}
-              {issueCount > 0 ? validationLabel(issueCount, errorCount) : 'Valid'}
-            </button>
-          </>
-        )}
         {isSystems ? (
           <button className="button" onClick={onAddNote}>
             <Plus size={16} />
@@ -285,10 +180,6 @@ function DesktopToolbar({
             <option key={entityType.id} value={entityType.id}>{entityType.label}</option>
           ))}
         </select>
-        <button className="button" onClick={onSave} disabled={status === 'saving'}>
-          <Save size={16} />
-          {status === 'saving' ? 'Saving' : 'Save'}
-        </button>
         <button className="button" onClick={onDownload}>
           <Download size={16} />
           .canvas
@@ -298,7 +189,6 @@ function DesktopToolbar({
   )
 }
 
-
 function MobileToolbar({
   title,
   profileLabel,
@@ -306,36 +196,24 @@ function MobileToolbar({
   status,
   canUndo,
   canRedo,
-  selectedEdge,
-  relationValue,
-  relationTypes,
   availableEntityTypes,
-  issueCount,
-  errorCount,
-  suggestionCount,
   onBack,
   backLabel,
   onUndo,
   onRedo,
   onHelp,
   onRename,
-  onRelationChange,
-  onToggleValidation,
-  onToggleIntelligence,
   onAddNote,
   onAddCard,
   onAddEntity,
   onAddProcessCanvas,
-  onSave,
   onDownload,
   onScreenshot,
   onOpenViews,
   onFitView,
   onAutoLayout,
-  onDataFlowLayout,
   onAutoFitAll,
-  edgeStyle,
-}: CanvasToolbarProps & { edgeStyle: EdgeStyle }) {
+}: CanvasToolbarProps) {
   const [moreOpen, setMoreOpen] = useState(false)
   const addLabel = isSystems ? 'Add note' : 'Add card'
 
@@ -365,14 +243,6 @@ function MobileToolbar({
       <div className="mobile-toolbar-actions">
         <button className="icon-button" onClick={isSystems ? onAddNote : onAddCard} aria-label={addLabel}>
           <Plus size={18} />
-        </button>
-        <button
-          className="icon-button"
-          onClick={onSave}
-          disabled={status === 'saving'}
-          aria-label="Save"
-        >
-          <Save size={18} />
         </button>
         <button
           className="icon-button"
@@ -411,38 +281,6 @@ function MobileToolbar({
               </button>
             </div>
             <label className="editor-more-field">
-              <span>{selectedEdge ? 'Edge relation' : 'New edge'}</span>
-              <select
-                className="template-select"
-                aria-label="Edge relation"
-                value={relationValue}
-                onChange={(event) => onRelationChange(event.target.value)}
-              >
-                {isSystems && <option value="">Unspecified</option>}
-                {relationTypes.map((relationType) => (
-                  <option key={relationType.id} value={relationType.id}>{relationType.label}</option>
-                ))}
-              </select>
-            </label>
-            {isSystems && (
-              <>
-                <button
-                  className="button intelligence-button"
-                  onClick={() => { onToggleIntelligence(); setMoreOpen(false) }}
-                >
-                  <Sparkles size={15} />
-                  {suggestionCount > 0 ? `${suggestionCount} suggestions` : 'Canvas intelligence'}
-                </button>
-                <button
-                  className={`button validation-button${errorCount > 0 ? ' error' : issueCount > 0 ? ' warn' : ''}`}
-                  onClick={() => { onToggleValidation(); setMoreOpen(false) }}
-                >
-                  {issueCount > 0 ? <AlertTriangle size={15} /> : <ShieldCheck size={15} />}
-                  {issueCount > 0 ? validationLabel(issueCount, errorCount) : 'Valid'}
-                </button>
-              </>
-            )}
-            <label className="editor-more-field">
               <span>{isSystems ? 'Add architecture card' : 'Add template'}</span>
               <select
                 className="template-select"
@@ -476,31 +314,14 @@ function MobileToolbar({
             )}
             <div className="editor-more-row">
               <button className="button" onClick={() => { onAutoLayout(); setMoreOpen(false) }}>
-                <LayoutGrid size={15} />
+                <Maximize2 size={15} />
                 Architecture
               </button>
-              <button className="button" onClick={() => { onDataFlowLayout(); setMoreOpen(false) }}>
-                <Workflow size={15} />
-                Data flow
+              <button className="button" onClick={() => { onAutoFitAll(); setMoreOpen(false) }}>
+                <Maximize2 size={15} />
+                Fit all cards
               </button>
             </div>
-            <button className="button" onClick={() => { onAutoFitAll(); setMoreOpen(false) }}>
-              <Maximize2 size={15} />
-              Fit all cards
-            </button>
-            <label className="editor-more-field">
-              <span>Edge paths</span>
-              <select
-                className="template-select"
-                aria-label="Edge path style"
-                value={edgeStyle}
-                onChange={(event) => setEdgeStyle(event.target.value as EdgeStyle)}
-              >
-                {EDGE_STYLES.map((style) => (
-                  <option key={style.id} value={style.id}>{style.label}</option>
-                ))}
-              </select>
-            </label>
             <div className="editor-more-row">
               <button className="button" onClick={() => { onFitView(); setMoreOpen(false) }}>
                 <Maximize2 size={15} />

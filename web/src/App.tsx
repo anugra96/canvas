@@ -1,12 +1,8 @@
-import { LogOut } from 'lucide-react'
 import { lazy, Suspense, useMemo } from 'react'
 
 import { createCanvasClient } from './api/client'
 import { useAuth } from './auth/AuthContext'
-import { mockAuthEnabled } from './auth/auth'
 import { CanvasListPage } from './pages/CanvasListPage'
-import { ThemePicker } from './ThemePicker'
-import { AmbiencePicker } from './AmbiencePicker'
 import { useCanvasTrail } from './navigation'
 
 const CanvasEditorPage = lazy(() => import('./pages/CanvasEditorPage').then((module) => ({
@@ -14,7 +10,7 @@ const CanvasEditorPage = lazy(() => import('./pages/CanvasEditorPage').then((mod
 })))
 
 export default function App() {
-  const { session, signOut } = useAuth()
+  const { session } = useAuth()
   const client = useMemo(() => createCanvasClient(session), [session])
   const [canvasTrail, setCanvasTrail] = useCanvasTrail()
   const selectedCanvasId = canvasTrail.at(-1)?.id ?? null
@@ -29,18 +25,7 @@ export default function App() {
             <small>Workspace</small>
           </span>
         </button>
-        <div className="topbar-actions">
-          <ThemePicker />
-          <AmbiencePicker />
-          {mockAuthEnabled() && <span className="local-badge">Local mode</span>}
-          <span className="user-chip">
-            <span>{session.displayName}</span>
-            <small>{session.email}</small>
-          </span>
-          <button className="icon-button" onClick={signOut} aria-label="Sign out">
-            <LogOut size={16} />
-          </button>
-        </div>
+        <div className="topbar-actions" />
       </header>
 
       {selectedCanvasId ? (

@@ -1,5 +1,5 @@
 import { devices, expect, test } from '@playwright/test'
-import { createCanvas } from './helpers'
+import { createCanvas, waitForSaved } from './helpers'
 
 test.use({ ...devices['iPhone 13'], defaultBrowserType: 'chromium' })
 
@@ -51,8 +51,7 @@ test('keeps the mobile shell, editor, and card editing usable', async ({ page })
   await expect(page.getByRole('button', { name: 'Screenshot' })).toBeVisible()
   await page.getByLabel('Add template').selectOption('repository')
   await expect(page.locator('.entity-node')).toBeVisible()
-  await page.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText('Saved', { exact: true })).toBeVisible()
+  await waitForSaved(page)
 
   const beforePan = await page.locator('.react-flow__viewport').getAttribute('style')
   await page.mouse.move((flow?.x ?? 0) + 240, (flow?.y ?? 0) + 120)

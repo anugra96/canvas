@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import { Image } from 'lucide-react'
 import { useReactFlow } from '@xyflow/react'
 
 import { sceneForTheme } from '../../atmosphere/registry'
@@ -23,8 +22,7 @@ export function CanvasBackdrop() {
   const theme = useTheme()
   const { getViewport } = useReactFlow()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const [enabled, setEnabled] = useState(readPref)
-  const available = sceneForTheme(theme) !== null
+  const [enabled] = useState(readPref)
   const sceneId = enabled ? sceneForTheme(theme) : null
 
   useEffect(() => {
@@ -114,18 +112,6 @@ export function CanvasBackdrop() {
         <div className="canvas-backdrop" data-scene={sceneId} aria-hidden="true">
           <canvas ref={canvasRef} />
         </div>
-      )}
-      {available && (
-        <button
-          type="button"
-          className="button ghost canvas-backdrop-toggle"
-          aria-label="Toggle animated backdrop"
-          aria-pressed={enabled}
-          title="Toggle animated backdrop"
-          onClick={() => setEnabled((value) => !value)}
-        >
-          <Image size={14} />
-        </button>
       )}
     </>
   )

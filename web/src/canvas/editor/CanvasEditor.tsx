@@ -64,14 +64,13 @@ import {
   type CanvasFlowNode,
 } from '../model/adapter'
 import { findSnap, type AlignmentGuide } from '../model/alignment'
-import { autoLayoutCanvas, dataFlowLayoutCanvas } from '../model/autoLayout'
+import { autoLayoutCanvas } from '../model/autoLayout'
 import { insertNodes } from '../model/insertNodes'
 import { getCanvasEdgePath } from '../model/edgePath'
 import { convertNodeType } from '../model/cardTypes'
 import {
   applyColorToFlowEdge,
   applyLabelToFlowEdge,
-  applyRelationToFlowEdge,
   edgeFromConnection,
   reconnectFlowEdge,
   reverseFlowEdge,
@@ -273,7 +272,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const ontology = useOntology()
   const isMobile = useIsMobile()
   const coarsePointer = useCoarsePointer()
-  const { profile, isSystems, availableEntityTypes, profileRelationTypes } = useCanvasProfile(ontology, document)
+  const { profile, isSystems, availableEntityTypes } = useCanvasProfile(ontology, document)
   const initial = useMemo(() => toFlowCanvas(document.canvas, ontology), [document, ontology])
   const viewportLayout = isMobile ? 'mobile' as const : 'desktop' as const
   const savedViewport = useMemo(() => readViewport(document.id, viewportLayout), [document.id, viewportLayout])
@@ -308,8 +307,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const [notice, setNotice] = useState('')
   const [conflicts, setConflicts] = useState<MergeConflict[]>([])
   const [pendingLocal, setPendingLocal] = useState<JsonCanvas | null>(null)
-  const [newRelationType, setNewRelationType] = useState(isSystems ? '' : 'relates_to')
-  const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null)
+  const [, setSelectedEdgeId] = useState<string | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
   const [viewsOpen, setViewsOpen] = useState(false)
   const [validationPanel, setValidationPanel] = useState<'warnings' | 'intelligence' | null>(null)
@@ -557,18 +555,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     setNotice(fitted > 0 ? `Auto-fitted ${fitted} cards.` : 'All cards already fit their content.')
     markDirty()
   }, [markDirty, nodes])
-
-  const dataFlowLayout = useCallback(() => {
-    const layout = dataFlowLayoutCanvas(nodes, edges)
-    setNodes(layout.nodes)
-    setEdges(layout.edges)
-    setAlignmentGuides([])
-    setNotice('Data-flow layout applied. Schemas moved to the contract rail.')
-    markDirty()
-    window.setTimeout(() => {
-      void fitView({ padding: 0.2, maxZoom: 1.2, duration: 300 })
-    }, 0)
-  }, [edges, fitView, markDirty, nodes])
 
   const screenshotDimensions = useCallback((bounds: { width: number; height: number }) => {
     const longEdge = 1600
@@ -1121,12 +1107,12 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   }, [markDirty, ontology])
 
   const onConnect = useCallback((connection: Connection) => {
-    const raw = edgeFromConnection(connection, newRelationType, ontology)
-    if (isSystems && !newRelationType) raw.label = 'Define relation'
+    const raw = edgeFromConnection(connection, isSystems ? undefined : 'relates_to', ontology)
+    if (isSystems) raw.label = 'Define relation'
     setEdges((current) => addEdge(toFlowEdge(raw, ontology), current))
     setConnectNodeId(null)
     markDirty()
-  }, [isSystems, markDirty, newRelationType, ontology])
+  }, [isSystems, markDirty, ontology])
 
   const connectNodes = useCallback((sourceId: string, targetId: string) => {
     const source = nodes.find((node) => node.id === sourceId)
@@ -1143,12 +1129,12 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     const targetHandle = horizontal
       ? (dx >= 0 ? 'left' : 'right')
       : (dy >= 0 ? 'top' : 'bottom')
-    const raw = edgeFromConnection({ source: sourceId, target: targetId, sourceHandle, targetHandle }, newRelationType, ontology)
-    if (isSystems && !newRelationType) raw.label = 'Define relation'
+    const raw = edgeFromConnection({ source: sourceId, target: targetId, sourceHandle, targetHandle }, isSystems ? undefined : 'relates_to', ontology)
+    if (isSystems) raw.label = 'Define relation'
     setEdges((current) => addEdge(toFlowEdge(raw, ontology), current))
     setConnectNodeId(null)
     markDirty()
-  }, [isSystems, markDirty, newRelationType, nodes, ontology])
+  }, [isSystems, markDirty, nodes, ontology])
 
   const onConnectEnd = useCallback((
     event: { clientX: number; clientY: number } | TouchEvent,
@@ -1196,15 +1182,15 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       target: raw.id,
       sourceHandle: pending.fromSide,
       targetHandle: OPPOSITE_SIDE[pending.fromSide],
-    }, newRelationType, ontology)
-    if (isSystems && !newRelationType) edge.label = 'Define relation'
+    }, isSystems ? undefined : 'relates_to', ontology)
+    if (isSystems) edge.label = 'Define relation'
 
     setPendingConnection(null)
     setNodes((current) => insertNodes(current, [{ ...toFlowNode(raw), selected: true }]))
     setEdges((current) => [...current, toFlowEdge(edge, ontology)])
     setSelectedEdgeId(null)
     markDirty()
-  }, [isSystems, markDirty, newRelationType, ontology, pendingConnection])
+  }, [isSystems, markDirty, ontology, pendingConnection])
 
   const selectEdge = useCallback((id: string) => {
     setNodes((current) => current.map((node) => ({ ...node, selected: false })))
@@ -1598,33 +1584,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     await save(local, etag)
   }
 
-  function changeRelation(relationTypeId: string) {
-    if (!selectedEdgeId) {
-      setNewRelationType(relationTypeId)
-      return
-    }
-    setEdges((current) => current.map((edge) => {
-      if (edge.id !== selectedEdgeId) return edge
-      const next = applyRelationToFlowEdge(edge, relationTypeId, ontology)
-      if (isSystems && !relationTypeId && next.data) {
-        next.label = 'Define relation'
-        next.data = {
-          ...next.data,
-          label: 'Define relation',
-          raw: { ...next.data.raw, label: 'Define relation' },
-        }
-      }
-      return next
-    }))
-    markDirty()
-  }
-
-  const selectedEdge = selectedEdgeId
-    ? edges.find((edge) => edge.id === selectedEdgeId)
-    : undefined
-  const relationValue = selectedEdge
-    ? selectedEdge.data?.relationType ?? ''
-    : newRelationType
   const allValidationIssues = useProfileValidation({
     nodes,
     edges,
@@ -1933,39 +1892,22 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
           status={status}
           canUndo={canUndo}
           canRedo={canRedo}
-          selectedEdge={Boolean(selectedEdge)}
-          relationValue={relationValue}
-          relationTypes={profileRelationTypes}
           availableEntityTypes={availableEntityTypes}
-          issueCount={validationIssues.length}
-          errorCount={validationIssues.filter((issue) => issue.severity === 'error').length}
-          suggestionCount={suggestions.length}
           onBack={() => void back()}
           backLabel={trail.length > 1 ? 'Back' : 'All canvases'}
           onUndo={undo}
           onRedo={redo}
           onHelp={() => setHelpOpen(true)}
           onRename={() => setRenameOpen(true)}
-          onRelationChange={changeRelation}
-          onToggleValidation={() => {
-            setValidationFocusRequest(null)
-            setValidationPanel((current) => current === 'warnings' ? null : 'warnings')
-          }}
-          onToggleIntelligence={() => {
-            setValidationFocusRequest(null)
-            setValidationPanel((current) => current === 'intelligence' ? null : 'intelligence')
-          }}
           onAddNote={addNoteAtCenter}
           onAddCard={addAtCenter}
           onAddEntity={addEntityAtCenter}
           onAddProcessCanvas={() => void addProcessWithCanvas()}
-          onSave={() => void save()}
           onDownload={() => void download()}
           onScreenshot={() => { setScreenshotError(''); setScreenshotOpen(true) }}
           onOpenViews={() => setViewsOpen(true)}
           onFitView={fitCanvas}
           onAutoLayout={autoLayout}
-          onDataFlowLayout={dataFlowLayout}
           onAutoFitAll={autoFitAll}
         />
 

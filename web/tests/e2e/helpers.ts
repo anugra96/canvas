@@ -7,3 +7,8 @@ export async function createCanvas(page: Page, name = 'Untitled canvas') {
   await dialog.getByLabel('Canvas name').fill(name)
   await dialog.getByRole('button', { name: 'Create canvas' }).click()
 }
+
+export async function waitForSaved(page: Page) {
+  await page.waitForTimeout(1300)
+  await expect(page.locator('.save-status')).toHaveText('Saved', { timeout: 5000 })
+}

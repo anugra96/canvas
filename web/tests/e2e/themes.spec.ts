@@ -50,55 +50,16 @@ async function canvasStats(canvas: Locator) {
 
 test('applies and persists color themes', async ({ page }) => {
   await page.goto('/')
-  const picker = page.getByLabel('Color theme')
-  await expect(picker).toBeVisible()
-
   for (const theme of THEMES) {
-    await picker.selectOption(theme.id)
+    await page.evaluate((id) => localStorage.setItem('canvas-theme', id), theme.id)
+    await page.reload()
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme.id)
     await expect(page.locator('body')).toHaveCSS('background-color', backgroundRgb(theme.themeColor))
   }
 
-  await picker.selectOption('dune')
+  await page.evaluate(() => localStorage.setItem('canvas-theme', 'dune'))
   await page.reload()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dune')
-  await expect(page.getByLabel('Color theme')).toHaveValue('dune')
-})
-
-test('offers optional background ambience themes', async ({ page }) => {
-  const errors: string[] = []
-  page.on('pageerror', (error) => errors.push(error.message))
-  await page.goto('/')
-  const picker = page.getByLabel('Background ambience')
-  await expect(picker).toBeVisible()
-  await expect(picker.locator('option')).toContainText([
-    'Ambience off',
-    'Space sci-fi',
-    'Cyberpunk',
-    'Dune',
-    'Medieval sci-fi',
-    'Moss Circuit',
-    'Tide Signal',
-    'Paper Lanterns',
-    'Aurora Terminal',
-    'Copper Rain',
-    'Night Bus',
-    'Glass Meadow',
-    'Vapor Line',
-  ])
-
-  for (const ambience of ['space', 'cyberpunk', 'dune', 'medieval-scifi', 'moss', 'tide', 'lantern', 'aurora', 'rain', 'nightbus', 'meadow', 'vapor']) {
-    await picker.selectOption(ambience)
-    await expect(picker).toHaveValue(ambience)
-  }
-  const volume = page.getByLabel('Ambience volume')
-  await expect(volume).toBeVisible()
-  await volume.fill('50')
-  await expect(volume).toHaveValue('50')
-  await expect.poll(async () => page.evaluate(() => localStorage.getItem('canvas-ambience-volume'))).toBe('0.5')
-  await picker.selectOption('')
-  await expect(picker).toHaveValue('')
-  expect(errors).toEqual([])
 })
 
 test('shows a living pixel backdrop on scenic themes', async ({ page }) => {
@@ -111,7 +72,9 @@ test('shows a living pixel backdrop on scenic themes', async ({ page }) => {
   const canvas = backdrop.locator('canvas')
   for (const theme of scenicThemes) {
     await test.step(`${theme.id} renders ${theme.scene}`, async () => {
-      await page.getByLabel('Color theme').selectOption(theme.id)
+      await page.evaluate((id) => localStorage.setItem('canvas-theme', id), theme.id)
+      await page.reload()
+      await expect(page.locator('.canvas-flow')).toBeVisible()
       await expect(backdrop).toBeVisible()
       await expect(backdrop).toHaveAttribute('data-scene', theme.scene)
       await expect(canvas).toBeVisible()
@@ -125,32 +88,9 @@ test('shows a living pixel backdrop on scenic themes', async ({ page }) => {
     })
   }
 
-  await page.getByLabel('Color theme').selectOption('dune')
-  const toggle = page.getByRole('button', { name: 'Toggle animated backdrop' })
-  await toggle.click()
-  await expect(backdrop).toBeHidden()
-  await toggle.click()
-  await expect(backdrop).toBeVisible()
-
-  await page.getByLabel('Color theme').selectOption('graphite')
+  await page.evaluate(() => localStorage.setItem('canvas-theme', 'graphite'))
+  await page.reload()
+  await expect(page.locator('.canvas-flow')).toBeVisible()
   await expect(backdrop).toBeHidden()
   expect(errors).toEqual([])
-})
-
-test('offers four simple edge path styles', async ({ page }) => {
-  await page.goto('/')
-  await page.getByRole('button', { name: 'New canvas' }).click()
-  await page.getByLabel('Canvas name').fill('Edge paths')
-  await page.getByRole('button', { name: 'Create canvas' }).click()
-  const picker = page.getByLabel('Edge path style')
-  await expect(picker.locator('option')).toContainText([
-    'Bezier',
-    'Straight',
-    'Step',
-    'Smooth step',
-  ])
-  for (const style of ['bezier', 'straight', 'step', 'smoothstep']) {
-    await picker.selectOption(style)
-    await expect(picker).toHaveValue(style)
-  }
 })

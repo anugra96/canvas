@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url'
 
 import { expect, test } from '@playwright/test'
-import { createCanvas } from './helpers'
+import { createCanvas, waitForSaved } from './helpers'
 
 test('creates a canvas, edits a card, saves, and reopens it', async ({ page }) => {
   await page.goto('/')
@@ -17,8 +17,7 @@ test('creates a canvas, edits a card, saves, and reopens it', async ({ page }) =
   await page.keyboard.press('Escape')
   await expect(page.locator('.text-node')).toContainText('E2E card')
 
-  await page.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText('Saved', { exact: true })).toBeVisible()
+  await waitForSaved(page)
   await page.screenshot({ path: 'test-results/canvas-editor.png', fullPage: true })
 
   await page.reload()
@@ -100,8 +99,7 @@ test('adds a repository template and edits its fields', async ({ page }) => {
   await expect(page.locator('.entity-head strong')).toContainText('Canvas Engine')
   await page.getByRole('button', { name: 'Done' }).click()
 
-  await page.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText('Saved', { exact: true })).toBeVisible()
+  await waitForSaved(page)
   await page.screenshot({ path: 'test-results/entity-card.png', fullPage: true })
 })
 
@@ -121,16 +119,9 @@ test('creates a Systems canvas with typed cards and profile persistence', async 
   await page.getByRole('button', { name: 'Add note' }).click()
   await expect(page.locator('.entity-node')).toHaveCount(4)
   await expect(page.locator('.entity-type')).toContainText(['Actor', 'System', 'Note'])
-  await expect(page.getByRole('button', { name: 'Systems validation' })).toContainText('3 warnings')
-  await page.getByRole('button', { name: 'Systems validation' }).click()
-  await expect(page.locator('.validation-tray')).toContainText('Fill the empty required fields.')
-  await page.locator('.validation-group-toggle').filter({ hasText: 'Missing required field' }).click()
-  await page.locator('.validation-group').filter({ hasText: 'Missing required field' }).locator('.validation-item-main').first().click()
-  await expect(page.locator('.validation-tray')).toContainText('field "Name"')
-  await page.getByRole('button', { name: 'Close warnings' }).click()
+  await expect(page.locator('.canvas-warning-badge').first()).toBeVisible()
 
-  await page.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText('Saved', { exact: true })).toBeVisible()
+  await waitForSaved(page)
   await page.screenshot({ path: 'test-results/systems-canvas.png', fullPage: true })
 
   await page.getByRole('button', { name: 'All canvases' }).click()
@@ -138,50 +129,6 @@ test('creates a Systems canvas with typed cards and profile persistence', async 
   await page.locator('.canvas-card').first().click()
   await expect(page.locator('.profile-badge')).toHaveText('Systems')
   await expect(page.locator('.entity-node')).toHaveCount(4)
-})
-
-test('filters Systems edge relations by source and target', async ({ page }) => {
-  await page.goto('/')
-  await page.getByLabel('Canvas type').selectOption('systems')
-  await createCanvas(page)
-  for (const template of ['system', 'system', 'system', 'system']) {
-    await page.getByLabel('Add template').selectOption(template)
-    await page.waitForTimeout(120)
-  }
-  await expect(page.locator('.entity-node')).toHaveCount(4)
-  await page.waitForTimeout(300)
-
-  const nodes = page.locator('.react-flow__node')
-  async function connect(fromIndex: number, fromSide: string, toIndex: number, toSide: string) {
-    const from = await nodes.nth(fromIndex).locator(`.react-flow__handle-${fromSide}`).boundingBox()
-    const to = await nodes.nth(toIndex).locator(`.react-flow__handle-${toSide}`).boundingBox()
-    if (!from || !to) throw new Error('Missing connection handles')
-    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
-    await page.mouse.down()
-    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 })
-    await page.mouse.up()
-  }
-
-  await connect(0, 'right', 1, 'left')
-  await expect(page.locator('.react-flow__edge')).toHaveCount(1)
-  const firstLabel = await page.locator('.edge-label').first().boundingBox()
-  if (!firstLabel) throw new Error('Missing first edge label')
-  await page.mouse.click(firstLabel.x + firstLabel.width / 2, firstLabel.y + firstLabel.height / 2)
-  const relation = page.getByLabel('Edge relation')
-  await expect(relation).toHaveValue('')
-  const relationOptions = await relation.locator('option').allInnerTexts()
-  expect(relationOptions).toEqual(expect.arrayContaining(['Unspecified', 'runs', 'uses', 'produces', 'defines', 'describes']))
-  await relation.selectOption('uses')
-  await expect(relation).toHaveValue('uses')
-
-  await connect(2, 'right', 3, 'left')
-  await expect(page.locator('.react-flow__edge')).toHaveCount(2)
-  const secondLabel = await page.locator('.edge-label').nth(1).boundingBox()
-  if (!secondLabel) throw new Error('Missing second edge label')
-  await page.mouse.click(secondLabel.x + secondLabel.width / 2, secondLabel.y + secondLabel.height / 2)
-  await expect(relation).toHaveValue('')
-  await relation.selectOption('uses')
-  await expect(relation).toHaveValue('uses')
 })
 
 test('allows an untyped connection between arbitrary cards', async ({ page }) => {
@@ -204,11 +151,7 @@ test('allows an untyped connection between arbitrary cards', async ({ page }) =>
 
   await expect(page.locator('.react-flow__edge')).toHaveCount(1)
   await expect(page.locator('.edge-label')).toContainText('Define relation')
-  const label = await page.locator('.edge-label').boundingBox()
-  if (!label) throw new Error('Missing edge label')
-  await page.mouse.click(label.x + label.width / 2, label.y + label.height / 2)
-  await expect(page.getByLabel('Edge relation')).toHaveValue('')
-  await expect(page.getByRole('button', { name: 'Systems validation' })).toContainText('warnings')
+  await expect(page.locator('.canvas-warning-badge').first()).toBeVisible()
 })
 
 test('adds Process and Artifact cards in Systems mode', async ({ page }) => {
@@ -257,8 +200,7 @@ test('adds a highlighted code card', async ({ page }) => {
   await page.getByRole('button', { name: 'Done' }).click()
   await expect(page.locator('.code-node')).toContainText('const answer: number = 42')
 
-  await page.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText('Saved', { exact: true })).toBeVisible()
+  await waitForSaved(page)
   await page.screenshot({ path: 'test-results/code-card.png', fullPage: true })
 })
 
@@ -729,79 +671,6 @@ test('opens entity editing with properties expanded and ready', async ({ page })
   expect(after).toEqual(before)
 })
 
-test('ignores and restores a warning with a reason', async ({ page }) => {
-  await page.goto('/')
-  await page.getByLabel('Canvas type').selectOption('systems')
-  await createCanvas(page)
-  await page.getByLabel('Add template').selectOption('system')
-  await page.getByLabel('Add template').selectOption('system')
-  await expect(page.locator('.entity-node')).toHaveCount(2)
-
-  await page.getByRole('button', { name: 'Systems validation' }).click()
-  const fieldGroup = page.locator('.validation-group').filter({ hasText: 'Missing required field' })
-  await fieldGroup.locator('.validation-group-toggle').click()
-  const fieldRows = fieldGroup.locator('.validation-item')
-  const fieldCount = await fieldRows.count()
-  const fieldRow = fieldRows.first()
-  await fieldRow.locator('.validation-item-main').click()
-  await fieldRow.getByRole('button', { name: 'Ignore this warning' }).click()
-  await fieldRow.getByLabel(/Ignore reason/).selectOption('Accepted legacy item')
-  await fieldRow.getByRole('button', { name: 'Ignore', exact: true }).click()
-  await expect(fieldRows).toHaveCount(fieldCount - 1)
-
-  await page.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByText('Saved', { exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'All canvases' }).click()
-  await page.locator('.canvas-card').first().click()
-  await page.getByRole('button', { name: 'Systems validation' }).click()
-  await page.getByRole('button', { name: /Ignored/ }).click()
-  await page.locator('.validation-group-toggle').first().click()
-  await expect(page.locator('.validation-tray')).toContainText('Ignored: Accepted legacy item')
-  await page.locator('.validation-item').getByRole('button', { name: 'Restore' }).click()
-  await expect(page.locator('.validation-tray')).toContainText('No ignored warnings')
-})
-test('suggests a deterministic producer card for an artifact', async ({ page }) => {
-  await page.goto('/')
-  await page.getByLabel('Canvas type').selectOption('systems')
-  await createCanvas(page)
-  await page.getByLabel('Add template').selectOption('artifact')
-  await expect(page.locator('.entity-node')).toHaveCount(1)
-
-  await page.getByRole('button', { name: 'Canvas intelligence' }).click()
-  const suggestion = page.locator('.validation-suggestion-card').filter({ hasText: 'Add missing artifact producers' })
-  await expect(suggestion).toContainText('1')
-  await suggestion.locator('.validation-suggestion-toggle').click()
-  const item = suggestion.locator('.validation-suggestion-item').first()
-  await expect(item).toContainText('Untitled artifact')
-  await item.getByRole('button', { name: 'Show' }).click()
-  await expect(page.locator('.validation-panel')).toBeVisible()
-  await expect(page.locator('.entity-node')).toHaveCount(1)
-  await item.getByRole('button', { name: 'Fix', exact: true }).click()
-
-  await expect(page.locator('.validation-panel')).toHaveCount(0)
-  await expect(page.locator('.entity-node')).toHaveCount(2)
-  await expect(page.locator('.entity-type')).toContainText(['Artifact', 'System'])
-  await expect(page.locator('.edge-label')).toContainText('produces')
-})
-
-test('separates canvas intelligence from the warnings panel', async ({ page }) => {
-  await page.goto('/')
-  await page.getByLabel('Canvas type').selectOption('systems')
-  await createCanvas(page)
-  await page.getByLabel('Add template').selectOption('artifact')
-
-  await page.getByRole('button', { name: 'Canvas intelligence' }).click()
-  await expect(page.getByRole('heading', { name: 'Suggested fixes' })).toBeVisible()
-  await expect(page.locator('.validation-group')).toHaveCount(0)
-  await page.getByRole('button', { name: 'Close canvas intelligence' }).click()
-
-  await page.getByRole('button', { name: 'Systems validation' }).click()
-  await expect(page.getByRole('heading', { name: 'Warnings' })).toBeVisible()
-  await expect(page.locator('.validation-suggestion-card')).toHaveCount(0)
-  await expect(page.locator('.validation-group')).toHaveCount(2)
-})
-
-
 test('links a new canvas from any card and navigates back', async ({ page }) => {
   await page.goto('/')
   await createCanvas(page, 'Link parent')
@@ -862,33 +731,36 @@ test('creates a process card with a linked documentation canvas', async ({ page 
 
 test('derives focused graph views and a process sequence', async ({ page }) => {
   await page.goto('/')
-  await page.getByLabel('Canvas type').selectOption('systems')
-  await createCanvas(page, 'Derived views test')
-  for (const template of ['actor', 'process', 'system', 'artifact']) {
-    await page.getByLabel('Add template').selectOption(template)
-  }
+  await page.evaluate(async () => {
+    const response = await fetch('/v1/canvases/import', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        authorization: 'Bearer local-dev',
+      },
+      body: JSON.stringify({
+        title: 'Derived views test',
+        canvas: {
+          app: { profile: 'systems', profileVersion: 4, scope: 'container' },
+          nodes: [
+            { id: 'actor', type: 'text', x: 0, y: 0, width: 260, height: 120, text: '## Actor: Actor', app: { entityType: 'actor', fields: { name: 'Actor', kind: 'role' } } },
+            { id: 'process', type: 'text', x: 340, y: 0, width: 260, height: 140, text: '## Process: Process', app: { entityType: 'process', fields: { name: 'Process', mode: 'automated' } } },
+            { id: 'system', type: 'text', x: 680, y: 0, width: 260, height: 140, text: '## System: System', app: { entityType: 'system', fields: { name: 'System', kind: 'service' } } },
+            { id: 'artifact', type: 'text', x: 680, y: 220, width: 260, height: 140, text: '## Artifact: Artifact', app: { entityType: 'artifact', fields: { name: 'Artifact', kind: 'model' } } },
+          ],
+          edges: [
+            { id: 'runs', fromNode: 'actor', toNode: 'process', fromSide: 'right', toSide: 'left', toEnd: 'arrow', app: { relationType: 'runs' } },
+            { id: 'uses', fromNode: 'process', toNode: 'system', fromSide: 'right', toSide: 'left', toEnd: 'arrow', app: { relationType: 'uses' } },
+            { id: 'produces', fromNode: 'process', toNode: 'artifact', fromSide: 'bottom', toSide: 'top', toEnd: 'arrow', app: { relationType: 'produces' } },
+          ],
+        },
+      }),
+    })
+    if (!response.ok) throw new Error('Could not seed the derived views canvas.')
+  })
+  await page.reload()
+  await page.locator('.canvas-card').filter({ hasText: 'Derived views test' }).getByRole('button', { name: /^Open / }).click()
   await expect(page.locator('.entity-node')).toHaveCount(4)
-  await page.getByLabel('Canvas layout').selectOption('architecture')
-  await page.waitForTimeout(450)
-
-  const nodes = page.locator('.react-flow__node')
-  async function connect(fromIndex: number, toIndex: number) {
-    const from = await nodes.nth(fromIndex).locator('.react-flow__handle-right').boundingBox()
-    const to = await nodes.nth(toIndex).locator('.react-flow__handle-left').boundingBox()
-    if (!from || !to) throw new Error('Missing connection handles')
-    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
-    await page.mouse.down()
-    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 })
-    await page.mouse.up()
-  }
-
-  await page.getByLabel('Edge relation').selectOption('runs')
-  await connect(0, 1)
-  await page.getByLabel('Edge relation').selectOption('uses')
-  await connect(1, 2)
-  await page.getByLabel('Edge relation').selectOption('produces')
-  await connect(1, 3)
-  await expect(page.locator('.react-flow__edge')).toHaveCount(3)
 
   await page.getByRole('button', { name: 'Derived views' }).click()
   const dialog = page.getByRole('dialog', { name: 'Derived views' })
