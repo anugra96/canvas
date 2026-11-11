@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: install dev api web test lint typecheck build clean e2e verify stack-up stack-down stack-logs
+.PHONY: install dev api web test lint typecheck build clean e2e e2e-prod verify stack-up stack-down stack-logs
 
 install:
 	npm install
@@ -29,7 +29,10 @@ build:
 e2e:
 	cd web && npx playwright test
 
-verify: typecheck lint test build e2e
+e2e-prod: build
+	cd web && npx playwright test -c playwright.prod.config.ts
+
+verify: typecheck lint test build e2e e2e-prod
 
 clean:
 	rm -rf api/.data web/dist api/dist mcp/dist

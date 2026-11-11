@@ -30,3 +30,6 @@ jobs:
 
       - name: Run verification
         run: make verify
+
+      - name: Run production E2E smoke
+        run: make e2e-prod

@@ -1,6 +1,8 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
+const apiTarget = `http://127.0.0.1:${process.env.CANVAS_API_PORT ?? '8787'}`
+
 export default defineConfig({
   define: {
     global: 'globalThis',
@@ -38,7 +40,17 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/v1': {
-        target: `http://127.0.0.1:${process.env.CANVAS_API_PORT ?? '8787'}`,
+        target: apiTarget,
+        changeOrigin: true,
+      },
+    },
+  },
+  preview: {
+    port: 5175,
+    strictPort: true,
+    proxy: {
+      '/v1': {
+        target: apiTarget,
         changeOrigin: true,
       },
     },
