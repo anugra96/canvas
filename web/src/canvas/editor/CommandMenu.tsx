@@ -70,7 +70,7 @@ export function CommandMenu({
         aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        <Icon size={15} />
+        <Icon size={16} />
         {!iconOnly && label}
         {!iconOnly && <ChevronDown size={12} />}
       </button>

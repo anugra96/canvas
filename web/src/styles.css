@@ -3887,22 +3887,6 @@ select {
   }
 }
 
-@media (min-width: 721px) and (max-width: 1500px) {
-  .editor-toolbar {
-    align-items: flex-start;
-    flex-wrap: wrap;
-    row-gap: 8px;
-  }
-
-  .editor-toolbar-title {
-    flex: 1 1 240px;
-  }
-
-  .editor-actions {
-    flex: 1 0 100%;
-    justify-content: flex-end;
-  }
-}
 
 
 
@@ -6348,4 +6332,348 @@ select {
 
 .editor-toolbar .editor-toolbar-title {
   flex: 1 1 auto;
+}
+
+
+/* Visual chrome pass */
+.editor-toolbar.desktop-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 47px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.bar-zone {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+}
+
+.bar-left {
+  justify-self: start;
+  overflow: hidden;
+}
+
+.bar-center {
+  justify-self: center;
+}
+
+.bar-right {
+  justify-self: end;
+  gap: 6px;
+}
+
+.bar-group {
+  display: flex;
+  align-items: center;
+  gap: var(--chrome-gap);
+  height: calc(var(--chrome-control-h) + 2px);
+  padding: 1px;
+  border: 0.5px solid var(--ui-line);
+  border-radius: var(--chrome-group-radius);
+}
+
+.editor-toolbar.desktop-toolbar .bar-button,
+.editor-toolbar.desktop-toolbar .bar-icon-button,
+.editor-toolbar.desktop-toolbar .command-trigger,
+.editor-toolbar.desktop-toolbar .icon-button,
+.editor-toolbar.mobile-toolbar .bar-icon-button,
+.editor-toolbar.mobile-toolbar .command-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: var(--chrome-control-h);
+  min-height: var(--chrome-control-h);
+  padding: 0 9px;
+  border: 0;
+  border-radius: var(--chrome-radius);
+  color: var(--ui-text);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: none;
+  box-shadow: none;
+}
+
+.editor-toolbar.desktop-toolbar .bar-icon-button,
+.editor-toolbar.desktop-toolbar .icon-button,
+.editor-toolbar.desktop-toolbar .command-trigger.icon-only,
+.editor-toolbar.mobile-toolbar .bar-icon-button,
+.editor-toolbar.mobile-toolbar .command-trigger.icon-only {
+  width: var(--chrome-control-h);
+  padding: 0;
+}
+
+.editor-toolbar.desktop-toolbar .avatar-trigger {
+  width: var(--chrome-control-h);
+  height: var(--chrome-control-h);
+  border: 0.5px solid var(--ui-line-strong);
+  color: var(--ui-strong);
+  background: transparent;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.editor-toolbar.desktop-toolbar .bar-button:hover:not(:disabled),
+.editor-toolbar.desktop-toolbar .bar-icon-button:hover:not(:disabled),
+.editor-toolbar.desktop-toolbar .command-trigger:hover:not(:disabled),
+.editor-toolbar.desktop-toolbar .icon-button:hover:not(:disabled),
+.editor-toolbar.desktop-toolbar .avatar-trigger:hover:not(:disabled),
+.editor-toolbar.mobile-toolbar .bar-icon-button:hover:not(:disabled),
+.editor-toolbar.mobile-toolbar .command-trigger:hover:not(:disabled) {
+  border-color: transparent;
+  color: var(--ui-strong);
+  background: var(--ui-highlight);
+}
+
+.editor-toolbar.desktop-toolbar .bar-button:active:not(:disabled),
+.editor-toolbar.desktop-toolbar .bar-icon-button:active:not(:disabled),
+.editor-toolbar.desktop-toolbar .command-trigger:active:not(:disabled),
+.editor-toolbar.desktop-toolbar .icon-button:active:not(:disabled),
+.editor-toolbar.desktop-toolbar .avatar-trigger:active:not(:disabled),
+.editor-toolbar.desktop-toolbar .command-trigger[aria-expanded="true"],
+.editor-toolbar.desktop-toolbar .icon-button[aria-expanded="true"],
+.editor-toolbar.desktop-toolbar .avatar-trigger[aria-expanded="true"] {
+  background: var(--ui-highlight-strong);
+}
+
+.editor-toolbar.desktop-toolbar button:focus-visible,
+.editor-toolbar.mobile-toolbar button:focus-visible {
+  outline: 2px solid var(--ui-accent);
+  outline-offset: 2px;
+}
+
+.editor-toolbar.desktop-toolbar button:disabled {
+  opacity: 0.38;
+  color: var(--ui-faint);
+  cursor: default;
+}
+
+.bar-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--ui-line);
+}
+
+.editor-toolbar-title {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.desktop-toolbar .editor-toolbar-title {
+  flex: 1 1 auto;
+  gap: 8px;
+}
+
+.editor-toolbar .canvas-title-heading {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  color: var(--ui-strong);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.editor-toolbar .canvas-title-button {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  height: var(--chrome-control-h);
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: var(--chrome-radius);
+  color: var(--ui-strong);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.editor-toolbar .canvas-title-button:hover,
+.editor-toolbar .canvas-title-button:focus-visible {
+  background: var(--ui-highlight);
+}
+
+.canvas-title-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.canvas-title-pencil {
+  flex: 0 0 auto;
+  opacity: 0;
+}
+
+.editor-toolbar .canvas-title-button:hover .canvas-title-pencil,
+.editor-toolbar .canvas-title-button:focus-visible .canvas-title-pencil {
+  opacity: 1;
+}
+
+.desktop-toolbar .profile-badge,
+.mobile-toolbar .profile-badge {
+  padding: 2px 7px;
+  border: 0.5px solid var(--ui-line);
+  border-radius: 999px;
+  color: var(--ui-muted);
+  background: transparent;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.desktop-toolbar .profile-badge.systems,
+.mobile-toolbar .profile-badge.systems {
+  border-color: color-mix(in srgb, var(--ui-accent) 45%, transparent);
+  color: var(--ui-accent-bright);
+  background: transparent;
+}
+
+.save-status {
+  position: relative;
+  display: inline-flex;
+  height: var(--chrome-control-h);
+  align-items: center;
+  gap: 5px;
+  padding: 0 4px;
+  color: var(--ui-muted);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+.save-status::before {
+  content: none;
+}
+
+.save-status.saved,
+.save-status.dirty {
+  color: var(--ui-muted);
+}
+
+.save-status.error,
+.save-status.conflict {
+  color: var(--ui-danger-text);
+}
+
+.save-status.offline {
+  color: var(--ui-warning-text);
+}
+
+.save-status.saving .save-status-icon {
+  animation: chrome-spin 900ms linear infinite;
+}
+
+.save-status-text {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.save-status-text.visible {
+  position: static;
+  width: auto;
+  height: auto;
+  clip-path: none;
+}
+
+@keyframes chrome-spin {
+  to { transform: rotate(360deg); }
+}
+
+.bar-review {
+  padding-inline: 8px;
+  color: var(--ui-text);
+}
+
+.bar-review.valid {
+  color: var(--ui-muted);
+}
+
+.bar-review-count {
+  display: inline-flex;
+  min-width: 17px;
+  height: 17px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.bar-review-count.warning {
+  color: var(--ui-warning-text);
+  background: color-mix(in srgb, var(--ui-amber) 24%, transparent);
+}
+
+.bar-review-count.error {
+  color: var(--ui-danger-text);
+  background: color-mix(in srgb, var(--ui-red) 30%, transparent);
+}
+
+.editor-toolbar.mobile-toolbar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 6px;
+  padding: 6px max(8px, env(safe-area-inset-left));
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.mobile-toolbar .editor-toolbar-title {
+  gap: 4px;
+}
+
+.mobile-toolbar .canvas-title-heading,
+.mobile-toolbar .editor-toolbar .canvas-title-button {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.mobile-toolbar .profile-badge {
+  display: none;
+}
+
+.mobile-toolbar .save-status {
+  font-size: 12px;
+}
+
+.mobile-toolbar-actions {
+  gap: var(--chrome-gap);
+}
+
+.mobile-toolbar .command-trigger.icon-only {
+  width: var(--chrome-control-h);
+}
+
+.mobile-toolbar .mobile-back {
+  flex: 0 0 auto;
 }

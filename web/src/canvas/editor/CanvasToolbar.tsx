@@ -1,5 +1,15 @@
-import { ArrowLeft, MoreHorizontal, PenLine, Plus } from 'lucide-react'
-import { useRef, useState } from 'react'
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Check,
+  CircleDot,
+  CloudOff,
+  LoaderCircle,
+  MoreHorizontal,
+  PenLine,
+  Plus,
+} from 'lucide-react'
+import { useRef, useState, type ComponentType } from 'react'
 
 import { useIsMobile } from '../../useMediaQuery'
 import { AppearanceMenu } from '../../AppearanceMenu'
@@ -19,12 +29,56 @@ interface CanvasToolbarProps {
 }
 
 function statusLabel(status: SaveStatus): string {
-  if (status === 'saving') return 'Saving'
+  if (status === 'saving') return 'Saving…'
   if (status === 'dirty') return 'Unsaved changes'
   if (status === 'conflict') return 'Conflict'
   if (status === 'error') return 'Save failed'
   if (status === 'offline') return 'Offline, retrying'
   return 'Saved'
+}
+
+const saveIcons: Record<SaveStatus, ComponentType<{ size?: number; className?: string }>> = {
+  saved: Check,
+  dirty: CircleDot,
+  saving: LoaderCircle,
+  conflict: AlertTriangle,
+  error: AlertTriangle,
+  offline: CloudOff,
+}
+
+function SaveState({ status }: { status: SaveStatus }) {
+  const label = statusLabel(status)
+  const Icon = saveIcons[status]
+  const showText = status === 'saving' || status === 'offline' || status === 'error' || status === 'conflict'
+  return (
+    <span className={`save-status ${status}`} role="status" aria-label={label} title={label}>
+      <Icon size={16} className="save-status-icon" />
+      <span className={`save-status-text${showText ? ' visible' : ''}`}>{label}</span>
+    </span>
+  )
+}
+
+function EditorTitle({ title, rename }: { title: string; rename?: CanvasCommand }) {
+  return (
+    <div className="editor-toolbar-title">
+      <h1 className="canvas-title-heading" aria-label={title}>
+        {rename ? (
+          <button
+            type="button"
+            className="canvas-title-button"
+            onClick={rename.run}
+            aria-label={rename.label}
+            title={rename.label}
+          >
+            <span className="canvas-title-text">{title}</span>
+            <PenLine className="canvas-title-pencil" size={14} aria-hidden="true" />
+          </button>
+        ) : (
+          <span className="canvas-title-text">{title}</span>
+        )}
+      </h1>
+    </div>
+  )
 }
 
 export function CanvasToolbar(props: CanvasToolbarProps) {
@@ -37,11 +91,26 @@ function commandById(commands: CanvasCommand[], id: string): CanvasCommand | und
   return commands.find((command) => command.id === id)
 }
 
-function commandButtonClass(command: CanvasCommand): string {
-  if (command.id !== 'review') return 'button'
-  if (command.tone === 'error') return 'button command-review error'
-  if (command.tone === 'warning') return 'button command-review warn'
-  return 'button command-review valid'
+function ReviewButton({ command }: { command: CanvasCommand }) {
+  const count = Number(command.label.match(/\d+/)?.[0] ?? 0)
+  const level = command.tone === 'error' ? 'error' : 'warning'
+  const name = count === 0
+    ? 'Review, no warnings'
+    : `Review, ${count} ${level === 'error' ? (count === 1 ? 'issue' : 'issues') : (count === 1 ? 'warning' : 'warnings')}`
+  const Icon = count === 0 ? Check : command.icon
+  return (
+    <button
+      type="button"
+      className={`bar-button bar-review${count === 0 ? ' valid' : ` ${level}`}`}
+      onClick={command.run}
+      aria-label={name}
+      title={name}
+    >
+      <Icon size={16} />
+      <span>{count === 0 ? 'Valid' : 'Review'}</span>
+      {count > 0 && <span className={`bar-review-count ${level}`}>{count}</span>}
+    </button>
+  )
 }
 
 function DesktopToolbar({ title, profileLabel, isSystems, status, commands }: CanvasToolbarProps) {
@@ -55,70 +124,57 @@ function DesktopToolbar({ title, profileLabel, isSystems, status, commands }: Ca
   const overflowCommands = commands.filter((command) => command.available && command.surface === 'overflow')
 
   return (
-    <div className="editor-toolbar">
-      {back && (
-        <button className="button ghost" onClick={back.run}>
-          <ArrowLeft size={16} />
-          {back.label}
-        </button>
-      )}
-      <div className="editor-toolbar-title">
-        <h1>{title}</h1>
-        {rename && (
-          <button
-            className="icon-button canvas-title-rename"
-            onClick={rename.run}
-            aria-label={rename.label}
-            title={rename.label}
-          >
-            <PenLine size={13} />
+    <div className="editor-toolbar desktop-toolbar">
+      <div className="bar-zone bar-left">
+        {back && (
+          <button className="bar-button bar-back" onClick={back.run}>
+            <ArrowLeft size={16} />
+            <span>{back.label}</span>
           </button>
         )}
+        <EditorTitle title={title} rename={rename} />
         <span className={`profile-badge${isSystems ? ' systems' : ''}`}>{profileLabel}</span>
-        <span className={`save-status ${status}`}>{statusLabel(status)}</span>
+        <SaveState status={status} />
       </div>
-      <div className="editor-actions">
-        {addCommands.length > 0 && (
-          <CommandMenu label="Add" icon={Plus} commands={addCommands} triggerLabel="Add" />
-        )}
-        {views && (
-          <button className="button" onClick={views.run} aria-label={views.label}>
-            <views.icon size={15} />
-            {views.label}
-          </button>
-        )}
-        {review && (
-          <button
-            className={commandButtonClass(review)}
-            onClick={review.run}
-            aria-label={review.label}
-          >
-            <review.icon size={15} />
-            {review.label}
-          </button>
-        )}
-        {undo && (
-          <button
-            className="icon-button"
-            onClick={undo.run}
-            disabled={undo.disabled}
-            aria-label={undo.label}
-            title={undo.label}
-          >
-            <undo.icon size={15} />
-          </button>
-        )}
-        {redo && (
-          <button
-            className="icon-button"
-            onClick={redo.run}
-            disabled={redo.disabled}
-            aria-label={redo.label}
-            title={redo.label}
-          >
-            <redo.icon size={15} />
-          </button>
-        )}
+      <div className="bar-zone bar-center">
+        <div className="bar-group bar-group-primary">
+          {addCommands.length > 0 && (
+            <CommandMenu label="Add" icon={Plus} commands={addCommands} triggerLabel="Add" />
+          )}
+          {views && (
+            <button className="bar-button" onClick={views.run} aria-label={views.label}>
+              <views.icon size={16} />
+              <span>{views.label}</span>
+            </button>
+          )}
+          {review && <ReviewButton command={review} />}
+        </div>
+      </div>
+      <div className="bar-zone bar-right">
+        <div className="bar-group bar-group-history">
+          {undo && (
+            <button
+              className="bar-icon-button"
+              onClick={undo.run}
+              disabled={undo.disabled}
+              aria-label={undo.label}
+              title={undo.label}
+            >
+              <undo.icon size={16} />
+            </button>
+          )}
+          {redo && (
+            <button
+              className="bar-icon-button"
+              onClick={redo.run}
+              disabled={redo.disabled}
+              aria-label={redo.label}
+              title={redo.label}
+            >
+              <redo.icon size={16} />
+            </button>
+          )}
+        </div>
         {overflowCommands.length > 0 && (
           <CommandMenu
             label="More"
@@ -128,6 +184,7 @@ function DesktopToolbar({ title, profileLabel, isSystems, status, commands }: Ca
             triggerLabel="More canvas actions"
           />
         )}
+        <span className="bar-divider" aria-hidden="true" />
         <AppearanceMenu />
         <AvatarMenu />
       </div>
@@ -152,25 +209,13 @@ function PhoneToolbar({ title, profileLabel, isSystems, status, commands }: Canv
   return (
     <div className="editor-toolbar mobile-toolbar">
       {back && (
-        <button className="button ghost mobile-back" onClick={back.run} aria-label={back.label}>
-          <ArrowLeft size={18} />
+        <button className="bar-icon-button mobile-back" onClick={back.run} aria-label={back.label}>
+          <ArrowLeft size={16} />
         </button>
       )}
-      <div className="editor-toolbar-title">
-        <h1>{title}</h1>
-        {rename && (
-          <button
-            className="icon-button canvas-title-rename"
-            onClick={rename.run}
-            aria-label={rename.label}
-            title={rename.label}
-          >
-            <PenLine size={13} />
-          </button>
-        )}
-        <span className={`profile-badge${isSystems ? ' systems' : ''}`}>{profileLabel}</span>
-        <span className={`save-status ${status}`}>{statusLabel(status)}</span>
-      </div>
+      <EditorTitle title={title} rename={rename} />
+      <span className={`profile-badge${isSystems ? ' systems' : ''}`}>{profileLabel}</span>
+      <SaveState status={status} />
       <div className="mobile-toolbar-actions">
         {addCommands.length > 0 && (
           <CommandMenu label="Add" icon={Plus} commands={addCommands} iconOnly triggerLabel="Add" />
@@ -178,12 +223,12 @@ function PhoneToolbar({ title, profileLabel, isSystems, status, commands }: Canv
         <button
           ref={moreRef}
           type="button"
-          className="icon-button"
+          className="bar-icon-button"
           aria-label="More canvas actions"
           aria-expanded={sheetOpen}
           onClick={() => setSheetOpen(true)}
         >
-          <MoreHorizontal size={18} />
+          <MoreHorizontal size={16} />
         </button>
       </div>
       <CommandSheet
