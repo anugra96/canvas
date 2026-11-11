@@ -140,3 +140,108 @@ Commit each step with `make verify` green.
 
 Stop and ask before removing any command not listed as removed here, or before changing how a
 remaining command behaves.
+
+## Visual design pass
+
+Status: approved 2026-11-11. This pass restyles the editor bar, its menus, and the Appearance popover.
+It does not change commands, behaviour, cards, the canvas, or theme token values.
+
+### Problems it fixes
+
+Measured on `568dc4d`:
+
+- The global `.button` style is 10 px, weight 900, uppercase, with 0.07em tracking. `styles.css` has
+  231 rules of this uppercase/heavy kind. Every bar label shouts.
+- The font stack starts with Segoe UI, a Windows font. macOS falls back to Tahoma.
+- Every control draws its own 1 px border, so nothing reads as a group. Text buttons are 36 px tall and
+  icon buttons 32 px.
+- Review shows warnings as a filled amber block at all times.
+- On wide screens Add, Views, and Review sit at the far right, far from the title.
+- In the Appearance popover, the "Edge path" label wraps onto its select, controls mix four styles,
+  and a 20-item theme dropdown hides what each theme looks like.
+
+### Foundations
+
+- Font stack: `system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif`.
+  Keep the existing monospace stack.
+- Type in the chrome: 13 px, weight 400, sentence case. The canvas title is weight 500. Small labels in
+  popovers are 12 px in `--ui-muted`. No uppercase, no letter spacing, no weight above 600 in the bar,
+  its menus, or the Appearance popover.
+- One control height: 30 px for every bar button and icon button. Icons are 16 px.
+- Add chrome tokens in `styles.css` (not per theme): `--chrome-control-h: 30px`, `--chrome-gap: 2px`,
+  `--chrome-radius: 6px`, `--chrome-group-radius: 8px`. Colours keep using the existing `--ui-*` tokens.
+
+### Bar
+
+```text
+[←] Canvases / Title  [Systems] ☁✓      [+ Add ▾ | Views | Review ²]      [↶ ↷] ⋯ │ 🎨 (LD)
+ left: where you are                     centre: what you do                right: history, settings
+```
+
+- Three zones in a three-column grid (`1fr auto 1fr`). The centre group stays centred; the left zone
+  truncates the title with an ellipsis first.
+- Buttons are borderless (`ghost`): transparent at rest, `--ui-highlight` on hover,
+  `--ui-highlight-strong` when pressed or open. Focus shows a visible ring.
+- Groups: Add, Views, and Review share one container with a 0.5 px `--ui-line` outline and the group
+  radius. Undo and Redo share another. ⋯ stands alone. A thin divider separates ⋯ from Appearance and
+  the avatar.
+- Title: the title text itself is the rename button. A pencil icon appears on hover or focus only.
+  The accessible name stays "Rename canvas".
+- Profile: a small outlined chip in sentence case ("Systems", "Raw").
+- Save state: one 16 px icon with a tooltip and an accessible label. Saved is a muted check. Show text
+  next to it only for "Saving…", "Offline, retrying", "Save failed", and "Conflict".
+- Review: a neutral ghost button. A small count badge uses amber for warnings and red for errors. With no
+  issues it shows a muted check and "Valid". The accessible name includes the count, for example
+  "Review, 2 warnings".
+- Undo and Redo are disabled at reduced contrast when there is nothing to undo, with a tooltip.
+
+### Appearance popover
+
+- Width 300 px. Header "Appearance" with a close button. Rows use a two-column grid: an 84 px label
+  column and a control column. Labels never wrap onto controls.
+- Theme: a grid of swatches, 7 per row, one per registry theme, coloured with `themeColor`. Name in a
+  tooltip and as the accessible name. Scenic themes show a small mark in the corner. The current theme
+  has an accent outline. The grid is a radio group: arrow keys move, Enter or Space selects. Show the
+  current theme name above the grid.
+- Backdrop: a switch (`role="switch"`), shown only for themes with a scene.
+- Ambience: the select, a speaker icon, and the volume slider on one row. The speaker toggles mute.
+- Edge style: a four-option segmented control with icons (bezier, straight, step, smooth step), each with
+  a tooltip and accessible name. Keep the `canvas-edge-style` storage key.
+
+### Menus
+
+The Add menu, the ⋯ menu, and the avatar menu use the same type and row style: 13 px sentence case,
+32 px rows, 16 px leading icons, shortcuts right-aligned in `--ui-faint`, section dividers for the ⋯
+groups (Layout, Export, Help).
+
+### Phone
+
+Same type and control height. The phone bar keeps back, title, save icon, Add, and ⋯. The ⋯ sheet uses
+the menu row style above, with 44 px touch rows.
+
+### Acceptance
+
+- Bar, menus, and Appearance popover: no `text-transform: uppercase`, no `letter-spacing`, no
+  `font-weight` above 600, measured with `getComputedStyle` on every control and label inside them.
+- Every bar control is 30 px tall at 1440×900.
+- The Add, Views, Review group's centre is within 4 px of the bar's centre at 1440 and 1920 px widths.
+- The Appearance popover: no label overlaps its control; the theme grid works with keyboard only.
+- No horizontal overflow at 320, 375, and 390 px (the existing test must keep passing).
+- Check every theme: bar and popover text keep at least 4.5:1 contrast against their background.
+- `make verify` passes.
+
+### Tests
+
+- Update E2E selectors that depend on visible text or the theme `<select>`: the theme tests in
+  `themes.spec.ts` use the Appearance popover and must pick themes from the swatch grid by accessible name.
+- Add one table-driven E2E test for the bar's computed styles and heights (first three acceptance
+  checks). Do not snapshot screenshots.
+- Keep the accessible names of existing commands so other tests keep working.
+
+### Order
+
+1. Foundations: font stack and chrome tokens. Commit.
+2. Bar zones, ghost buttons, groups, title, save icon, Review badge. Commit.
+3. Menus and the phone sheet rows. Commit.
+4. Appearance popover. Commit.
+5. Rebuild the Docker stack and check desktop and phone in a browser with a scratch canvas.
