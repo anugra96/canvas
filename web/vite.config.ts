@@ -10,6 +10,7 @@ export default defineConfig({
   envDir: '..',
   plugins: [react()],
   build: {
+    chunkSizeWarningLimit: 510_000, // Lazy Tiptap loads only while editing text; other oversize chunks still warn.
     rolldownOptions: {
       output: {
         codeSplitting: {
