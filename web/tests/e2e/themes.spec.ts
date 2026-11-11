@@ -4,7 +4,7 @@ import { THEMES } from '../../src/atmosphere/registry'
 import { createCanvas } from './helpers'
 
 const scenicThemes = THEMES.flatMap((theme) => (
-  'scene' in theme && theme.scene ? [{ id: theme.id, scene: theme.scene }] : []
+  'scene' in theme && theme.scene ? [{ id: theme.id, label: theme.label, scene: theme.scene }] : []
 ))
 
 function backgroundRgb(hex: string): string {
@@ -58,18 +58,19 @@ async function canvasStats(canvas: Locator) {
 test('applies and persists color themes', async ({ page }) => {
   await page.goto('/')
   let appearance = await openAppearance(page)
-  const picker = appearance.getByLabel('Color theme')
   for (const theme of THEMES) {
-    await picker.selectOption(theme.id)
+    const swatch = appearance.getByRole('radio', { name: theme.label, exact: true })
+    await swatch.click()
+    await expect(swatch).toHaveAttribute('aria-checked', 'true')
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme.id)
     await expect(page.locator('body')).toHaveCSS('background-color', backgroundRgb(theme.themeColor))
   }
 
-  await picker.selectOption('dune')
+  await appearance.getByRole('radio', { name: 'Dune', exact: true }).click()
   await appearance.getByRole('button', { name: 'Close appearance' }).click()
   await page.reload()
   appearance = await openAppearance(page)
-  await expect(appearance.getByLabel('Color theme')).toHaveValue('dune')
+  await expect(appearance.getByRole('radio', { name: 'Dune', exact: true })).toHaveAttribute('aria-checked', 'true')
 })
 
 test('offers optional background ambience themes', async ({ page }) => {
@@ -113,14 +114,14 @@ test('shows a living pixel backdrop on scenic themes', async ({ page }) => {
   page.on('pageerror', (error) => errors.push(error.message))
   await page.goto('/')
   await createCanvas(page)
+  await expect(page.locator('.canvas-flow')).toBeVisible()
 
   const backdrop = page.locator('.canvas-backdrop')
   const canvas = backdrop.locator('canvas')
   const appearance = await openAppearance(page)
-  const picker = appearance.getByLabel('Color theme')
   for (const theme of scenicThemes) {
     await test.step(`${theme.id} renders ${theme.scene}`, async () => {
-      await picker.selectOption(theme.id)
+      await appearance.getByRole('radio', { name: theme.label, exact: true }).click()
       await expect(backdrop).toBeVisible()
       await expect(backdrop).toHaveAttribute('data-scene', theme.scene)
       await expect(canvas).toBeVisible()
@@ -134,14 +135,14 @@ test('shows a living pixel backdrop on scenic themes', async ({ page }) => {
     })
   }
 
-  const toggle = appearance.getByLabel('Backdrop')
-  await expect(toggle).toBeChecked()
-  await toggle.uncheck()
+  const toggle = appearance.getByRole('switch', { name: 'Backdrop' })
+  await expect(toggle).toHaveAttribute('aria-checked', 'true')
+  await toggle.click()
   await expect(backdrop).toBeHidden()
-  await toggle.check()
+  await toggle.click()
   await expect(backdrop).toBeVisible()
 
-  await picker.selectOption('graphite')
+  await appearance.getByRole('radio', { name: 'Graphite', exact: true }).click()
   await expect(backdrop).toBeHidden()
   expect(errors).toEqual([])
 })
@@ -149,16 +150,14 @@ test('shows a living pixel backdrop on scenic themes', async ({ page }) => {
 test('offers four simple edge path styles', async ({ page }) => {
   await page.goto('/')
   await createCanvas(page)
+  await expect(page.locator('.canvas-flow')).toBeVisible()
   const appearance = await openAppearance(page)
-  const picker = appearance.getByLabel('Edge path style')
-  await expect(picker.locator('option')).toContainText([
-    'Bezier',
-    'Straight',
-    'Step',
-    'Smooth step',
-  ])
-  for (const style of ['bezier', 'straight', 'step', 'smoothstep']) {
-    await picker.selectOption(style)
-    await expect(picker).toHaveValue(style)
+  const control = appearance.getByRole('group', { name: 'Edge path style' })
+  const labels = ['Bezier', 'Straight', 'Step', 'Smooth step']
+  await expect(control.getByRole('button')).toHaveCount(labels.length)
+  for (const label of labels) {
+    const option = control.getByRole('button', { name: label, exact: true })
+    await option.click()
+    await expect(option).toHaveAttribute('aria-pressed', 'true')
   }
 })

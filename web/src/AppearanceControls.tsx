@@ -1,3 +1,5 @@
+import { CornerDownRight, Minus, Spline, Waves, type LucideIcon } from 'lucide-react'
+
 import {
   EDGE_STYLES,
   setEdgeStyle,
@@ -10,6 +12,13 @@ import { useTheme } from './themes'
 import { ThemePicker } from './ThemePicker'
 import { AmbiencePicker } from './AmbiencePicker'
 
+const EDGE_ICONS: Record<EdgeStyle, LucideIcon> = {
+  bezier: Spline,
+  straight: Minus,
+  step: CornerDownRight,
+  smoothstep: Waves,
+}
+
 export function AppearanceControls() {
   const theme = useTheme()
   const edgeStyle = useEdgeStyle()
@@ -18,31 +27,57 @@ export function AppearanceControls() {
 
   return (
     <div className="appearance-controls">
-      <ThemePicker />
+      <div className="appearance-row">
+        <span className="appearance-label">Theme</span>
+        <div className="appearance-value">
+          <ThemePicker />
+        </div>
+      </div>
       {hasBackdrop && (
-        <label className="appearance-toggle">
-          <input
-            type="checkbox"
-            checked={backdropEnabled}
-            onChange={(event) => setBackdropEnabled(event.target.checked)}
-          />
-          <span>Backdrop</span>
-        </label>
+        <div className="appearance-row">
+          <span className="appearance-label">Backdrop</span>
+          <div className="appearance-value appearance-value-center">
+            <button
+              type="button"
+              className="appearance-switch"
+              role="switch"
+              aria-label="Backdrop"
+              aria-checked={backdropEnabled}
+              title={backdropEnabled ? 'Backdrop on' : 'Backdrop off'}
+              onClick={() => setBackdropEnabled(!backdropEnabled)}
+            />
+          </div>
+        </div>
       )}
-      <AmbiencePicker />
-      <label className="appearance-field">
-        <span>Edge path</span>
-        <select
-          className="template-select"
-          aria-label="Edge path style"
-          value={edgeStyle}
-          onChange={(event) => setEdgeStyle(event.target.value as EdgeStyle)}
-        >
-          {EDGE_STYLES.map((style) => (
-            <option key={style.id} value={style.id}>{style.label}</option>
-          ))}
-        </select>
-      </label>
+      <div className="appearance-row">
+        <span className="appearance-label">Ambience</span>
+        <div className="appearance-value">
+          <AmbiencePicker />
+        </div>
+      </div>
+      <div className="appearance-row">
+        <span className="appearance-label">Edge style</span>
+        <div className="appearance-value">
+          <div className="edge-style-control" role="group" aria-label="Edge path style">
+            {EDGE_STYLES.map((style) => {
+              const Icon = EDGE_ICONS[style.id]
+              return (
+                <button
+                  key={style.id}
+                  type="button"
+                  className="edge-style-option"
+                  aria-label={style.label}
+                  title={style.label}
+                  aria-pressed={edgeStyle === style.id}
+                  onClick={() => setEdgeStyle(style.id)}
+                >
+                  <Icon size={16} />
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

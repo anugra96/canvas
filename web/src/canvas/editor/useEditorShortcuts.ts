@@ -10,7 +10,7 @@ export function useEditorShortcuts(commands: CanvasCommand[]) {
       if (
         event.key.startsWith('Arrow')
         && event.target instanceof HTMLElement
-        && event.target.closest('[role="tab"], [role="listbox"], [role="menu"]')
+        && event.target.closest('[role="tab"], [role="radio"], [role="radiogroup"], [role="listbox"], [role="menu"]')
       ) {
         return
       }
