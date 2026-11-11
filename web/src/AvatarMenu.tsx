@@ -12,7 +12,7 @@ export function AvatarPanel() {
       <span>{session.email}</span>
       {mockAuthEnabled() && <span className="local-mode-line">Local mode</span>}
       <button className="button" onClick={signOut}>
-        <LogOut size={15} />
+        <LogOut size={16} />
         Sign out
       </button>
     </div>

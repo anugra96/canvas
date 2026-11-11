@@ -57,3 +57,49 @@ test('keeps the desktop bar typography, control heights, and centre aligned', as
     })
   }
 })
+
+test('keeps menu and sheet chrome typography consistent', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/')
+  await page.getByLabel('Canvas type').selectOption('systems')
+  await createCanvas(page)
+
+  for (const menu of [
+    { trigger: 'Add', popup: '.command-menu-popup', row: '.command-menu-item', height: 32 },
+    { trigger: 'More canvas actions', popup: '.command-menu-popup', row: '.command-menu-item', height: 32 },
+    { trigger: 'Account menu', popup: '.avatar-popup', row: '.avatar-panel .button', height: 32 },
+  ]) {
+    await test.step(menu.trigger, async () => {
+      await page.getByRole('button', { name: menu.trigger, exact: menu.trigger === 'Add' }).click()
+      const popup = page.locator(menu.popup)
+      await expect(popup).toBeVisible()
+      const violations = await popup.evaluate((element) => {
+        return [...element.querySelectorAll('button, h2, span, kbd')].flatMap((target) => {
+          const style = getComputedStyle(target)
+          const spacing = style.letterSpacing
+          const weight = Number(style.fontWeight)
+          const violations: string[] = []
+          if (style.textTransform === 'uppercase') violations.push(`uppercase:${target.textContent}`)
+          if (spacing !== 'normal' && Number.parseFloat(spacing) !== 0) violations.push(`tracking:${target.textContent}`)
+          if (Number.isFinite(weight) && weight > 600) violations.push(`weight:${target.textContent}`)
+          return violations
+        })
+      })
+      expect(violations).toEqual([])
+      const heights = await popup.locator(menu.row).evaluateAll((rows) => (
+        rows.map((row) => Math.round(row.getBoundingClientRect().height))
+      ))
+      expect(new Set(heights)).toEqual(new Set([menu.height]))
+      await page.keyboard.press('Escape')
+    })
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.getByRole('button', { name: 'More canvas actions' }).click()
+  const sheet = page.locator('.command-sheet')
+  await expect(sheet).toBeVisible()
+  const sheetHeights = await sheet.locator('.command-sheet-item').evaluateAll((rows) => (
+    rows.map((row) => Math.round(row.getBoundingClientRect().height))
+  ))
+  expect(new Set(sheetHeights)).toEqual(new Set([44]))
+})
