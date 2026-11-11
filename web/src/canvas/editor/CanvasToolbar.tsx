@@ -88,7 +88,7 @@ export function CanvasToolbar(props: CanvasToolbarProps) {
 }
 
 function commandById(commands: CanvasCommand[], id: string): CanvasCommand | undefined {
-  return commands.find((command) => command.id === id)
+  return commands.find((command) => command.id === id && command.available)
 }
 
 function ReviewButton({ command }: { command: CanvasCommand }) {

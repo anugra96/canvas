@@ -236,3 +236,24 @@ test('keeps bar and appearance text above 4.5 contrast across themes', async ({ 
     })
   }
 })
+
+
+test('shows Views and Review only when the profile makes them available', async ({ page }) => {
+  const cases = [
+    { profile: 'raw', type: 'Raw canvas', views: 0, review: 0 },
+    { profile: 'systems', type: 'Systems', views: 1, review: 1 },
+  ]
+  for (const expected of cases) {
+    await test.step(expected.type, async () => {
+      await page.goto('/')
+      if (expected.profile === 'systems') {
+        await page.getByLabel('Canvas type').selectOption('systems')
+      }
+      await createCanvas(page)
+      await expect(page.locator('.canvas-flow')).toBeVisible()
+      await expect(page.locator('.profile-badge')).toHaveText(expected.type)
+      await expect(page.getByRole('button', { name: 'Views', exact: true })).toHaveCount(expected.views)
+      await expect(page.getByRole('button', { name: /^Review,/ })).toHaveCount(expected.review)
+    })
+  }
+})
