@@ -125,7 +125,50 @@ export const SYSTEMS_PROFILE: CanvasProfile = {
     },
   ],
 }
-export const DEFAULT_PROFILES: CanvasProfile[] = [RAW_PROFILE, SYSTEMS_PROFILE]
+export const API_PROFILE: CanvasProfile = {
+  id: 'api',
+  label: 'API',
+  version: 1,
+  description: 'One OpenAPI 3.1 HTTP API at endpoint level.',
+  scope: 'container',
+  allowUntypedText: false,
+  allowUnlistedEntityTypes: false,
+  allowUnlistedRelationTypes: false,
+  requireRelationType: true,
+  entityTypes: ['api_definition', 'resource', 'endpoint', 'security_scheme', 'schema'],
+  annotationTypes: ['note', 'decision', 'risk'],
+  relationTypes: [
+    'contains',
+    'accepts',
+    'returns',
+    'authenticates_via',
+    'uses',
+    'relates_to',
+  ],
+  relationRules: [
+    { relationType: 'contains', from: ['api_definition'], to: ['resource', 'security_scheme'] },
+    { relationType: 'contains', from: ['resource'], to: ['endpoint'] },
+    { relationType: 'accepts', from: ['endpoint'], to: ['schema'] },
+    { relationType: 'returns', from: ['endpoint'], to: ['schema'] },
+    {
+      relationType: 'authenticates_via',
+      from: ['api_definition', 'resource', 'endpoint'],
+      to: ['security_scheme'],
+    },
+    { relationType: 'uses', from: ['schema'], to: ['schema'] },
+    {
+      relationType: 'relates_to',
+      from: ['note', 'decision', 'risk'],
+      to: ['*'],
+    },
+    {
+      relationType: 'relates_to',
+      from: ['api_definition', 'resource', 'endpoint', 'security_scheme', 'schema'],
+      to: ['note', 'decision', 'risk'],
+    },
+  ],
+}
+export const DEFAULT_PROFILES: CanvasProfile[] = [RAW_PROFILE, SYSTEMS_PROFILE, API_PROFILE]
 
 export function profileMetadata(profile: CanvasProfile): CanvasProfileMetadata {
   return {

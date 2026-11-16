@@ -1,4 +1,4 @@
-import { PenLine, Plus, Search, Trash2, Upload } from 'lucide-react'
+import { FileJson, PenLine, Plus, Search, Trash2, Upload } from 'lucide-react'
 import {
   useEffect,
   useRef,
@@ -6,6 +6,7 @@ import {
   type ChangeEvent,
 } from 'react'
 
+import type { OpenApiImportResult } from '@canvas/contract'
 import {
   DEFAULT_PROFILES,
   MAX_CANVAS_BYTES,
@@ -17,6 +18,7 @@ import {
 
 import { CanvasConflictError, type CanvasClient } from '../api/client'
 import { CanvasNameDialog } from '../CanvasNameDialog'
+import { OpenApiImportDialog } from '../canvas/apiDesign/OpenApiImportDialog'
 import { DeleteCanvasDialog } from '../DeleteCanvasDialog'
 
 interface CanvasListPageProps {
@@ -38,6 +40,7 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
   const [canvases, setCanvases] = useState<CanvasSummary[] | null>(null)
   const [error, setError] = useState('')
   const [importing, setImporting] = useState(false)
+  const [openApiOpen, setOpenApiOpen] = useState(false)
   const [profileId, setProfileId] = useState('raw')
   const [nameDialog, setNameDialog] = useState<
     { mode: 'create' } | { mode: 'rename'; canvas: CanvasSummary } | null
@@ -90,6 +93,21 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
       onOpen(document.id, document.title)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not import that canvas.')
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  async function createOpenApiCanvas(result: OpenApiImportResult) {
+    setImporting(true)
+    setError('')
+    try {
+      const document = await client.importCanvas(result.title, result.canvas)
+      setOpenApiOpen(false)
+      onOpen(document.id, document.title)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not import the OpenAPI document.')
+      throw cause
     } finally {
       setImporting(false)
     }
@@ -162,6 +180,14 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
           >
             <Upload size={16} />
             {importing ? 'Importing' : 'Import .canvas'}
+          </button>
+          <button
+            className="button"
+            onClick={() => setOpenApiOpen(true)}
+            disabled={nameBusy || importing}
+          >
+            <FileJson size={16} />
+            Import OpenAPI
           </button>
           <select
             className="template-select canvas-profile-select"
@@ -271,6 +297,12 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
           ))}
         </div>
       )}
+
+      <OpenApiImportDialog
+        open={openApiOpen}
+        onClose={() => setOpenApiOpen(false)}
+        onCreate={createOpenApiCanvas}
+      />
 
       {nameDialog && (
         <CanvasNameDialog

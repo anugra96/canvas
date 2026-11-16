@@ -6,6 +6,7 @@ import {
   DEFAULT_PROFILES,
   RAW_PROFILE,
   SYSTEMS_PROFILE,
+  API_PROFILE,
   allowedRelationTypes,
   canvasProfileMetadataSchema,
   canvasProfileSchema,
@@ -61,10 +62,11 @@ function edge(
 
 describe('canvas profiles', () => {
   it('registers valid Raw and Systems profiles', () => {
-    expect(DEFAULT_PROFILES.map((profile) => profile.id)).toEqual(['raw', 'systems'])
+    expect(DEFAULT_PROFILES.map((profile) => profile.id)).toEqual(['raw', 'systems', 'api'])
     expect(findProfile(DEFAULT_PROFILES, 'systems')).toBe(SYSTEMS_PROFILE)
     expect(canvasProfileSchema.safeParse(RAW_PROFILE).success).toBe(true)
     expect(canvasProfileSchema.safeParse(SYSTEMS_PROFILE).success).toBe(true)
+    expect(canvasProfileSchema.safeParse(API_PROFILE).success).toBe(true)
     expect(profileEntityTypeIds(SYSTEMS_PROFILE)).toContain('note')
     expect(profileEntityTypeIds(SYSTEMS_PROFILE)).toContain('schema')
     for (const rule of SYSTEMS_PROFILE.relationRules) {
@@ -224,5 +226,27 @@ describe('profile canvas validation', () => {
     expect(codes).toContain('missing_relation_type')
     expect(codes).toContain('unknown_relation_type')
     expect(codes).toContain('group_endpoint')
+  })
+})
+
+
+describe('API profile', () => {
+  it('registers API cards and managed relation rules', () => {
+    expect(profileEntityTypeIds(API_PROFILE)).toEqual([
+      'api_definition',
+      'resource',
+      'endpoint',
+      'security_scheme',
+      'schema',
+      'note',
+      'decision',
+      'risk',
+    ])
+    expect(allowedRelationTypes(API_PROFILE, 'endpoint', 'schema')).toEqual(['accepts', 'returns'])
+    expect(allowedRelationTypes(API_PROFILE, 'resource', 'endpoint')).toEqual(['contains'])
+    expect(allowedRelationTypes(API_PROFILE, 'api_definition', 'security_scheme')).toEqual([
+      'contains',
+      'authenticates_via',
+    ])
   })
 })

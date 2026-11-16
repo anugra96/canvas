@@ -7050,3 +7050,416 @@ select {
   color: var(--ui-strong);
   background: var(--ui-highlight-strong);
 }
+
+/* API design surfaces */
+.openapi-import-dialog {
+  width: min(920px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  border: 1px solid var(--ui-line-strong);
+  border-radius: var(--radius);
+  background: var(--ui-panel-solid);
+  box-shadow: var(--ui-shadow);
+}
+
+.openapi-import-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--ui-line);
+}
+
+.openapi-import-head h2 {
+  color: var(--ui-strong);
+  font-size: 18px;
+}
+
+.openapi-import-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(240px, 0.6fr);
+  gap: 18px;
+  padding: 18px;
+}
+
+.openapi-import-source {
+  display: grid;
+  gap: 10px;
+}
+
+.openapi-import-source textarea {
+  width: 100%;
+  min-height: 280px;
+  resize: vertical;
+  border: 1px solid var(--ui-input-border);
+  border-radius: var(--radius);
+  color: var(--ui-text);
+  background: var(--ui-input-bg);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 11px;
+  padding: 10px;
+}
+
+.openapi-import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.openapi-import-preview {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--radius);
+  background: var(--ui-panel-raised);
+}
+
+.openapi-import-preview h3 {
+  color: var(--ui-strong);
+  font-size: 13px;
+}
+
+.openapi-import-preview p {
+  color: var(--ui-muted);
+  font-size: 12px;
+}
+
+.openapi-import-preview dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.openapi-import-preview dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--ui-muted);
+  font-size: 12px;
+}
+
+.openapi-import-preview dd {
+  margin: 0;
+  color: var(--ui-strong);
+  font-weight: 700;
+}
+
+.openapi-import-warnings {
+  margin: 0;
+  padding-left: 16px;
+  color: var(--ui-warning-text);
+  font-size: 11px;
+}
+
+.api-canvas-command {
+  justify-content: flex-start;
+  margin-bottom: 10px;
+}
+
+.api-endpoint-editor {
+  display: grid;
+  gap: 12px;
+  min-height: 0;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.api-endpoint-tabs {
+  display: flex;
+  gap: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--ui-line);
+}
+
+.api-endpoint-tabs button {
+  padding: 5px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--ui-muted);
+  background: transparent;
+  font-size: 12px;
+}
+
+.api-endpoint-tabs button.active {
+  border-color: var(--ui-line-strong);
+  color: var(--ui-strong);
+  background: var(--ui-highlight);
+}
+
+.api-endpoint-fields {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) 130px;
+  gap: 8px;
+}
+
+.api-endpoint-section {
+  display: grid;
+  gap: 7px;
+  padding-top: 6px;
+  border-top: 1px solid var(--ui-line);
+}
+
+.api-endpoint-section h3 {
+  color: var(--ui-strong);
+  font-size: 12px;
+}
+
+.api-endpoint-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.api-endpoint-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 11px;
+}
+
+.api-endpoint-table th {
+  color: var(--ui-faint);
+  font-size: 10px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.api-endpoint-table th,
+.api-endpoint-table td {
+  padding: 3px;
+  border-bottom: 1px solid var(--ui-line);
+  vertical-align: middle;
+}
+
+.api-endpoint-table input:not([type="checkbox"]) {
+  width: 100%;
+  min-width: 0;
+  padding: 4px 5px;
+  border: 1px solid var(--ui-input-border);
+  border-radius: 3px;
+  color: var(--ui-text);
+  background: var(--ui-input-bg);
+  font-size: 11px;
+}
+
+.api-endpoint-missing {
+  color: var(--ui-warning-text);
+}
+
+.api-endpoint-model-row,
+.api-endpoint-response-row {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: center;
+}
+
+.api-endpoint-response-row {
+  grid-template-columns: 82px minmax(0, 1fr) minmax(90px, auto) auto;
+}
+
+.api-endpoint-response-row input {
+  min-width: 0;
+  padding: 5px 6px;
+  border: 1px solid var(--ui-input-border);
+  border-radius: 3px;
+  color: var(--ui-text);
+  background: var(--ui-input-bg);
+  font-size: 11px;
+}
+
+.api-endpoint-muted {
+  color: var(--ui-muted);
+  font-size: 11px;
+}
+
+.api-endpoint-raw textarea {
+  width: 100%;
+  resize: vertical;
+  border: 1px solid var(--ui-input-border);
+  border-radius: var(--radius);
+  color: var(--ui-text);
+  background: var(--ui-input-bg);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 11px;
+  padding: 8px;
+}
+
+.api-reference {
+  display: grid;
+  gap: 18px;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.api-reference-resource {
+  display: grid;
+  gap: 10px;
+}
+
+.api-reference-resource > header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--ui-line-strong);
+}
+
+.api-reference-resource h3 {
+  color: var(--ui-strong);
+  font-size: 18px;
+}
+
+.api-reference-resource p,
+.api-reference-endpoint p {
+  color: var(--ui-muted);
+  font-size: 12px;
+}
+
+.api-reference-inferred,
+.api-reference-deprecated {
+  padding: 2px 7px;
+  border: 1px solid var(--ui-line);
+  border-radius: 999px;
+  color: var(--ui-faint);
+  font-size: 10px;
+}
+
+.api-reference-endpoint {
+  display: grid;
+  gap: 7px;
+  padding: 10px 12px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--radius);
+  background: var(--ui-panel-raised);
+}
+
+.api-reference-endpoint-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.api-method {
+  min-width: 48px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: var(--ui-strong);
+  background: var(--ui-highlight-strong);
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.api-method-get { color: var(--ui-green); }
+.api-method-post { color: var(--ui-accent-bright); }
+.api-method-put,
+.api-method-patch { color: var(--ui-warning-text); }
+.api-method-delete { color: var(--ui-danger-text); }
+
+.api-reference-block {
+  display: grid;
+  gap: 5px;
+}
+
+.api-reference-block > span,
+.api-reference-security > span {
+  color: var(--ui-faint);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.api-reference-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.api-reference-table th,
+.api-reference-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--ui-line);
+  text-align: left;
+}
+
+.api-reference-table th {
+  color: var(--ui-faint);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.api-reference-models,
+.api-reference-security {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.api-reference-models code,
+.api-reference-security code {
+  padding: 2px 5px;
+  border: 1px solid var(--ui-line);
+  border-radius: 3px;
+  color: var(--ui-accent-bright);
+  font-size: 10px;
+}
+
+.api-reference-responses {
+  display: grid;
+  gap: 4px;
+}
+
+.api-reference-responses > div {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  color: var(--ui-muted);
+  font-size: 11px;
+}
+
+.api-status {
+  color: var(--ui-strong);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.api-status-2 { color: var(--ui-green); }
+.api-status-4,
+.api-status-5 { color: var(--ui-warning-text); }
+
+@media (max-width: 720px) {
+  .openapi-import-body {
+    grid-template-columns: 1fr;
+  }
+
+  .api-endpoint-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .api-endpoint-table {
+    min-width: 560px;
+  }
+
+  .api-endpoint-section {
+    overflow-x: auto;
+  }
+
+  .api-endpoint-response-row {
+    grid-template-columns: 70px minmax(0, 1fr) auto;
+  }
+
+  .api-reference {
+    padding: 12px;
+  }
+}

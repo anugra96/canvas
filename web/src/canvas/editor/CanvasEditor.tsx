@@ -16,6 +16,7 @@ import { useCanvasCapture } from './capture/useCanvasCapture'
 import { useCanvasLinks } from './links/useCanvasLinks'
 import { useCanvasProfile } from './useCanvasProfile'
 import { useCanvasValidation } from './validation/useCanvasValidation'
+import { useApiManagedRelations } from '../apiDesign/useApiManagedRelations'
 import { useCanvasHistory } from './useCanvasHistory'
 import { useEditorShortcuts } from './useEditorShortcuts'
 import { readValidationSuppressions, type ValidationSuppression } from './validationSuppressions'
@@ -25,7 +26,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const ontology = useOntology()
   const isMobile = useIsMobile()
   const coarsePointer = useCoarsePointer()
-  const { profile, isSystems, availableEntityTypes, profileRelationTypes } = useCanvasProfile(ontology, document)
+  const { profile, isSystems, isApi, isStructured, availableEntityTypes, profileRelationTypes } = useCanvasProfile(ontology, document)
   const initial = useMemo(() => toFlowCanvas(document.canvas, ontology), [document, ontology])
   const viewportLayout = isMobile ? 'mobile' as const : 'desktop' as const
   const savedViewport = useMemo(() => readViewport(document.id, viewportLayout), [document.id, viewportLayout])
@@ -91,7 +92,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     markDirty,
     setNotice,
     ontology,
-    isSystems,
+    isSystems: isStructured,
     flowRef,
     canUndo: history.canUndo,
     canRedo: history.canRedo,
@@ -140,7 +141,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     baseCanvas,
     profile,
     ontology,
-    isSystems,
+    isSystems: isStructured,
     suppressions,
     setSuppressions,
     setNodes,
@@ -162,6 +163,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       editEdgeLabel: graph.openEdgeLabelEditor,
       selectEdge: graph.selectEdge,
       openCanvasLinks: links.openCanvasLinks,
+      createOrOpenApiCanvas: links.createOrOpenApiCanvas,
     }),
     [
       graph.autoFitNode,
@@ -171,13 +173,21 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       graph.updateEntityField,
       graph.updateLabel,
       graph.updateText,
+      links.createOrOpenApiCanvas,
       links.openCanvasLinks,
     ],
   )
 
+  useApiManagedRelations({
+    nodes,
+    setEdges,
+    enabled: isApi,
+  })
+
   const commands = useCanvasCommands({
     backLabel: trail.length > 1 ? 'Back' : 'All canvases',
-    isSystems,
+    isSystems: isStructured,
+    profileId: profile.id,
     issueCount: validation.validationIssues.length,
     errorCount: validation.validationIssues.filter((issue) => issue.severity === 'error').length,
     canUndo: graph.canUndo,
@@ -238,7 +248,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
             edges={edges}
             isMobile={isMobile}
             coarsePointer={coarsePointer}
-            isSystems={isSystems}
+            isSystems={isStructured}
             profile={profile}
             ontology={ontology}
             availableEntityTypes={availableEntityTypes}
@@ -259,7 +269,8 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
             nodes={nodes}
             edges={edges}
             ontology={ontology}
-            isSystems={isSystems}
+            isSystems={isStructured}
+            isApi={isApi}
             trail={trail}
             commands={commands}
             conflicts={conflicts}

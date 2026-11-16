@@ -13,6 +13,7 @@ export interface CanvasEditorActions {
   editEdgeLabel: (id: string, clientX: number, clientY: number) => void
   selectEdge: (id: string) => void
   openCanvasLinks: (id: string) => void
+  createOrOpenApiCanvas: (id: string, title: string) => void
 }
 
 export const CanvasEditorActionsContext = createContext<CanvasEditorActions | null>(null)

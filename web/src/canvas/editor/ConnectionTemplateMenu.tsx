@@ -25,7 +25,7 @@ export function ConnectionTemplateMenu({
   onClose: () => void
 }) {
   const ontology = useOntology()
-  const systems = profile.id === 'systems'
+  const systems = profile.id !== 'raw'
   const availableEntityTypes = systems
     ? profileEntityTypeIds(profile)
       .map((id) => findEntityType(ontology, id))

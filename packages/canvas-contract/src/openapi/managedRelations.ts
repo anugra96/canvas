@@ -1,0 +1,196 @@
+import { getEdgeMeta, getEntityMeta } from '../ontology'
+import type { CanvasEdge, CanvasNode, JsonCanvas } from '../jsonCanvas'
+import { isObject, objectOrEmpty, schemaNameFromRef } from './document'
+
+const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace'] as const
+
+function stringField(node: CanvasNode, key: string): string {
+  const value = getEntityMeta(node)?.fields[key]
+  return value == null ? '' : String(value)
+}
+
+function operationFor(node: CanvasNode): Record<string, unknown> {
+  try {
+    const parsed: unknown = JSON.parse(stringField(node, 'operation') || '{}')
+    return isObject(parsed) ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function nodeType(node: CanvasNode | undefined): string {
+  return node ? getEntityMeta(node)?.entityType ?? '' : ''
+}
+
+function refsForSchema(schema: unknown, result = new Set<string>()): Set<string> {
+  if (Array.isArray(schema)) {
+    for (const item of schema) refsForSchema(item, result)
+    return result
+  }
+  if (!isObject(schema)) return result
+  const name = schemaNameFromRef(schema.$ref)
+  if (name) result.add(name)
+  for (const value of Object.values(schema)) refsForSchema(value, result)
+  return result
+}
+
+function operationRefs(operation: Record<string, unknown>, key: 'request' | 'responses'): Array<{ name: string; status?: string; mediaType?: string }> {
+  const refs: Array<{ name: string; status?: string; mediaType?: string }> = []
+  if (key === 'request') {
+    const content = objectOrEmpty(objectOrEmpty(operation.requestBody).content)
+    for (const [mediaType, media] of Object.entries(content)) {
+      const name = schemaNameFromRef(objectOrEmpty(media).schema && objectOrEmpty(objectOrEmpty(media).schema).$ref)
+      if (name) refs.push({ name, mediaType })
+    }
+    return refs
+  }
+  const responses = objectOrEmpty(operation.responses)
+  for (const [status, response] of Object.entries(responses)) {
+    const content = objectOrEmpty(objectOrEmpty(response).content)
+    for (const [mediaType, media] of Object.entries(content)) {
+      const name = schemaNameFromRef(objectOrEmpty(objectOrEmpty(media).schema).$ref)
+      if (name) refs.push({ name, status, mediaType })
+    }
+  }
+  return refs
+}
+
+function securityNames(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap((entry) => Object.keys(objectOrEmpty(entry)))
+}
+
+function managedId(relationType: string, from: string, to: string, detail = ''): string {
+  return `managed:${relationType}:${from}:${to}${detail ? `:${detail}` : ''}`
+}
+
+function managedEdge(
+  relationType: 'contains' | 'accepts' | 'returns' | 'authenticates_via' | 'uses',
+  from: string,
+  to: string,
+  options: { label?: string; status?: string; mediaType?: string; endpoint?: string; detail?: string } = {},
+): CanvasEdge {
+  return {
+    id: managedId(relationType, from, to, options.detail),
+    fromNode: from,
+    toNode: to,
+    toEnd: 'arrow',
+    ...(options.label ? { label: options.label } : {}),
+    app: {
+      relationType,
+      managed: true,
+      ...(options.status ? { status: options.status } : {}),
+      ...(options.mediaType ? { mediaType: options.mediaType } : {}),
+      ...(options.endpoint ? { endpoint: options.endpoint } : {}),
+    },
+  }
+}
+
+function inferredResourceName(path: string): string {
+  const segments = path.split('/').filter(Boolean)
+  return segments.find((segment) => !/^v\d+(?:\.\d+)*$/i.test(segment))?.replace(/[{}]/g, '') || 'root'
+}
+
+export function endpointResourceName(node: CanvasNode): string {
+  const operation = operationFor(node)
+  const tags = Array.isArray(operation.tags)
+    ? operation.tags.filter((tag): tag is string => typeof tag === 'string' && Boolean(tag.trim()))
+    : []
+  return tags[0]?.trim() || inferredResourceName(stringField(node, 'path'))
+}
+
+export function deriveManagedRelations(canvas: Pick<JsonCanvas, 'nodes' | 'edges'>): CanvasEdge[] {
+  const nodes = canvas.nodes ?? []
+  const api = nodes.find((node) => nodeType(node) === 'api_definition')
+  if (!api) return []
+  const resources = nodes.filter((node) => nodeType(node) === 'resource')
+  const endpoints = nodes.filter((node) => nodeType(node) === 'endpoint')
+  const schemas = nodes.filter((node) => nodeType(node) === 'schema')
+  const security = nodes.filter((node) => nodeType(node) === 'security_scheme')
+  const schemaByName = new Map(schemas.map((node) => [stringField(node, 'name'), node]))
+  const resourceByName = new Map(resources.map((node) => [stringField(node, 'name'), node]))
+  const securityByName = new Map(security.map((node) => [stringField(node, 'name'), node]))
+  let apiExtra: Record<string, unknown> = {}
+  try {
+    const parsed: unknown = JSON.parse(stringField(api, 'extra') || '{}')
+    apiExtra = isObject(parsed) ? parsed : {}
+  } catch {
+    apiExtra = {}
+  }
+  const topSecurity = securityNames(apiExtra.security)
+  const edges: CanvasEdge[] = []
+
+  for (const resource of resources) {
+    edges.push(managedEdge('contains', api.id, resource.id))
+  }
+  for (const scheme of security) {
+    edges.push(managedEdge('contains', api.id, scheme.id))
+  }
+
+  for (const endpoint of endpoints) {
+    const operation = operationFor(endpoint)
+    const path = stringField(endpoint, 'path')
+    const method = stringField(endpoint, 'method').toLowerCase()
+    const endpointKey = `${method.toUpperCase()} ${path}`
+    const resource = resourceByName.get(endpointResourceName(endpoint))
+    if (resource) edges.push(managedEdge('contains', resource.id, endpoint.id))
+
+    for (const ref of operationRefs(operation, 'request')) {
+      const schema = schemaByName.get(ref.name)
+      if (schema) {
+        edges.push(managedEdge('accepts', endpoint.id, schema.id, {
+          mediaType: ref.mediaType,
+          endpoint: endpointKey,
+          detail: ref.mediaType,
+        }))
+      }
+    }
+    for (const ref of operationRefs(operation, 'responses')) {
+      const schema = schemaByName.get(ref.name)
+      if (schema) {
+        edges.push(managedEdge('returns', endpoint.id, schema.id, {
+          label: ref.status,
+          status: ref.status,
+          mediaType: ref.mediaType,
+          endpoint: endpointKey,
+          detail: `${ref.status}:${ref.mediaType}`,
+        }))
+      }
+    }
+
+    const effectiveSecurity = 'security' in operation ? securityNames(operation.security) : topSecurity
+    for (const name of effectiveSecurity) {
+      const scheme = securityByName.get(name)
+      if (scheme) edges.push(managedEdge('authenticates_via', endpoint.id, scheme.id))
+    }
+  }
+
+  for (const name of topSecurity) {
+    const scheme = securityByName.get(name)
+    if (scheme) edges.push(managedEdge('authenticates_via', api.id, scheme.id))
+  }
+
+  for (const schema of schemas) {
+    let parsed: unknown = {}
+    try {
+      parsed = JSON.parse(stringField(schema, 'source') || '{}')
+    } catch {
+      parsed = {}
+    }
+    for (const ref of refsForSchema(parsed)) {
+      if (ref === stringField(schema, 'name')) continue
+      const target = schemaByName.get(ref)
+      if (target) edges.push(managedEdge('uses', schema.id, target.id, { detail: ref }))
+    }
+  }
+
+  return edges.filter((edge) => !(edge.fromNode === edge.toNode))
+}
+
+export function withManagedRelations(canvas: JsonCanvas): JsonCanvas {
+  const managed = deriveManagedRelations(canvas)
+  const manual = (canvas.edges ?? []).filter((edge) => !getEdgeMeta(edge)?.managed)
+  return { ...canvas, edges: [...manual, ...managed] }
+}
+
+export { HTTP_METHODS }

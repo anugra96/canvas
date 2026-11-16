@@ -1,9 +1,10 @@
 import { X } from 'lucide-react'
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 
-import type { Ontology } from '@canvas/contract'
+import { buildApiReference, type Ontology } from '@canvas/contract'
 
 import type { CanvasFlowEdge, CanvasFlowNode } from '../model/adapter'
+import { ApiReferenceView } from '../apiDesign/ApiReferenceView'
 import { layoutDerivedView, type DerivedDiagram } from '../views/diagramLayout'
 import {
   DERIVED_VIEWS,
@@ -15,7 +16,7 @@ import {
   type DerivedViewId,
 } from '../views/derivedViews'
 
-type ActiveView = DerivedViewId | 'sequence'
+type ActiveView = DerivedViewId | 'sequence' | 'reference'
 
 interface DerivedViewsDialogProps {
   open: boolean
@@ -23,6 +24,7 @@ interface DerivedViewsDialogProps {
   nodes: CanvasFlowNode[]
   edges: CanvasFlowEdge[]
   ontology: Ontology
+  profileId?: string
   onClose: () => void
 }
 
@@ -32,9 +34,11 @@ export function DerivedViewsDialog({
   nodes,
   edges,
   ontology,
+  profileId = 'systems',
   onClose,
 }: DerivedViewsDialogProps) {
-  const [activeView, setActiveView] = useState<ActiveView>('architecture')
+  const isApi = profileId === 'api'
+  const [activeView, setActiveView] = useState<ActiveView>(isApi ? 'reference' : 'architecture')
   const [processId, setProcessId] = useState('')
   const [viewport, setViewport] = useState(() => ({
     width: window.visualViewport?.width ?? window.innerWidth,
@@ -49,7 +53,7 @@ export function DerivedViewsDialog({
     ? processId
     : recommendedProcessId ?? processOptions[0]?.id
   const view = useMemo(
-    () => (activeView === 'sequence'
+    () => (activeView === 'sequence' || activeView === 'reference'
       ? { nodes: [], edges: [] }
       : deriveView(nodes, edges, activeView, ontology)),
     [activeView, edges, nodes, ontology],
@@ -120,6 +124,16 @@ export function DerivedViewsDialog({
         </header>
 
         <div className="derived-views-tabs" role="tablist" aria-label="Derived view">
+          {isApi && (
+            <button
+              role="tab"
+              aria-selected={activeView === 'reference'}
+              className={activeView === 'reference' ? 'active' : ''}
+              onClick={() => setActiveView('reference')}
+            >
+              Reference
+            </button>
+          )}
           {DERIVED_VIEWS.map((definition) => (
             <button
               key={definition.id}
@@ -142,7 +156,13 @@ export function DerivedViewsDialog({
         </div>
 
         <div className="derived-views-meta">
-          {viewDefinition ? (
+          {activeView === 'reference' ? (
+            <>
+              <span>Endpoint and model reference derived from the API canvas.</span>
+              <span>{buildApiReference(nodes.map((node) => node.data.raw)).length} resources</span>
+              <span>{nodes.filter((node) => node.data.entity?.entityType === 'endpoint').length} endpoints</span>
+            </>
+          ) : viewDefinition ? (
             <>
               <span>{viewDefinition.description}</span>
               <span>{diagram.nodes.length} cards</span>
@@ -175,11 +195,13 @@ export function DerivedViewsDialog({
         <div
           className="derived-views-body"
           role="tabpanel"
-          aria-label={viewDefinition?.label ?? 'Sequence'}
+          aria-label={activeView === 'reference' ? 'API reference' : viewDefinition?.label ?? 'Sequence'}
         >
-          {activeView === 'sequence'
-            ? <SequenceDiagram sequence={sequence} />
-            : <GraphDiagram diagram={diagram} label={viewDefinition?.label ?? 'Architecture'} />}
+          {activeView === 'reference'
+            ? <ApiReferenceView nodes={nodes} />
+            : activeView === 'sequence'
+              ? <SequenceDiagram sequence={sequence} />
+              : <GraphDiagram diagram={diagram} label={viewDefinition?.label ?? 'Architecture'} />}
         </div>
 
         <footer className="derived-views-foot">

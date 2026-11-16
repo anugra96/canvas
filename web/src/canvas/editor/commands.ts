@@ -45,6 +45,7 @@ export interface CanvasCommand {
 interface CanvasCommandInput {
   backLabel: string
   isSystems: boolean
+  profileId: string
   issueCount: number
   errorCount: number
   canUndo: boolean
@@ -147,7 +148,7 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       label: 'Process with canvas',
       icon: Workflow,
       surface: 'add',
-      available: input.isSystems,
+      available: input.profileId === 'systems',
       run: input.onAddProcessCanvas,
     },
     {

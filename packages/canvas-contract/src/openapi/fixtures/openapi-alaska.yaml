@@ -1,0 +1,65 @@
+openapi: 3.1.0
+info:
+  title: Skyward Wildfire - Alaska Client API
+  version: 1.0.0
+  description: >
+    API contract for the Alaska consumer fetching single-day Lightning Fire Risk (LFR) data.
+    All endpoints require a specific API Key passed in the header. No Thor predictions are included.
+servers:
+  - url: https://api.skywardwildfire.com/v1
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: Your consumer API Key
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /lfr:
+    get:
+      summary: Retrieve static Map, PDF Report, or COG image for LFR predictions.
+      description: Returns either a static tile layer (PMTiles), Cloud Optimized GeoTIFF (COG), or a generated daily PDF report for the Lightning Fire Risk model, specific to Alaska/BC projections.
+      parameters:
+        - name: run_date
+          in: query
+          required: true
+          description: The daily run date to fetch historical or current data for in YYYYMMDD format.
+          schema:
+            type: string
+            pattern: '^\d{8}$'
+            example: "20260415"
+        - name: format
+          in: query
+          required: true
+          description: The requested delivery format. 'static' for daily PDF report, 'tiles' for PMTiles, and 'image' for timestamped COGs.
+          schema:
+            type: string
+            enum: [static, tiles, image]
+            example: image
+      responses:
+        '200':
+          description: The requested artifact.
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            application/pmtiles:
+              schema:
+                type: string
+                format: binary
+            image/tiff:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Invalid run_date or format parameter.
+        '401':
+          description: Unauthorized. Missing or invalid API Key.
+        '404':
+          description: Data not found for the specified run_date. Data is typically ready by 9 AM Alaska time.

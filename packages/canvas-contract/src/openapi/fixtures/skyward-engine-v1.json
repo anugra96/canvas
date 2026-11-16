@@ -1,0 +1,1857 @@
+{
+  "components": {
+    "schemas": {
+      "ApiErrorResponse": {
+        "properties": {
+          "detail": {
+            "description": "Actionable API error detail.",
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ApiErrorResponse",
+        "type": "object"
+      },
+      "AutomatedLfrBoxesDerivedOutputRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "T_hours": {
+            "default": 3.0,
+            "description": "Time-window duration, in hours, used for each timestamped box ranking.",
+            "exclusiveMinimum": 0.0,
+            "title": "T Hours",
+            "type": "number"
+          },
+          "box_size_km": {
+            "default": 250.0,
+            "description": "Approximate box size in kilometers.",
+            "exclusiveMinimum": 0.0,
+            "title": "Box Size Km",
+            "type": "number"
+          },
+          "n": {
+            "default": 3,
+            "description": "Number of ranked boxes per timestamped output.",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "N",
+            "type": "integer"
+          },
+          "search_bbox": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "maxItems": 4,
+                "minItems": 4,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional WGS84 [west, south, east, north] search bounds.",
+            "title": "Search Bbox"
+          },
+          "search_geometry": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional GeoJSON Polygon or MultiPolygon search area; ranking uses only cells inside it.",
+            "title": "Search Geometry"
+          },
+          "source_variable": {
+            "default": "lightning_fire_risk",
+            "description": "Source variable used to rank automated LFR boxes.",
+            "title": "Source Variable",
+            "type": "string"
+          },
+          "type": {
+            "const": "automated_lfr_boxes",
+            "description": "Derived output layer to add to the run manifest.",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "AutomatedLfrBoxesDerivedOutputRequest",
+        "type": "object"
+      },
+      "ExpectedFireClustersDerivedOutputRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "rule_set_id": {
+            "const": "midlfr_expected_fire_density_legend_v1",
+            "default": "midlfr_expected_fire_density_legend_v1",
+            "description": "Server-approved immutable Expected Fire Density legend rule set.",
+            "title": "Rule Set Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "expected_fire_count_clusters",
+            "description": "Daily or hourly Expected Fire Density cluster bundle to add to the run manifest.",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "ExpectedFireClustersDerivedOutputRequest",
+        "type": "object"
+      },
+      "ExpectedStrikeClustersDerivedOutputRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "rule_set_id": {
+            "const": "midthor-calibrated-expected-strikes-superlevels-v1",
+            "default": "midthor-calibrated-expected-strikes-superlevels-v1",
+            "description": "Server-frozen immutable Expected Strikes cumulative rule set.",
+            "title": "Rule Set Id",
+            "type": "string"
+          },
+          "type": {
+            "const": "expected_strike_count_clusters",
+            "description": "Hourly MidTHOR Expected Strikes cluster bundle to add to the run manifest.",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "ExpectedStrikeClustersDerivedOutputRequest",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "ok": {
+            "description": "Health probe status string.",
+            "title": "Ok",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "JobCreateAcceptedResponse": {
+        "properties": {
+          "created_utc": {
+            "title": "Created Utc",
+            "type": "string"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "status",
+          "message",
+          "created_utc"
+        ],
+        "title": "JobCreateAcceptedResponse",
+        "type": "object"
+      },
+      "JobCreateRequest": {
+        "additionalProperties": false,
+        "description": "Pydantic model for POST /v1/jobs.\n\nMaps a Skyward Engine artifact request into a validated worker payload.",
+        "properties": {
+          "derived_outputs": {
+            "description": "Optional derived layers emitted into the same run manifest.",
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "automated_lfr_boxes": "#/components/schemas/AutomatedLfrBoxesDerivedOutputRequest",
+                  "expected_fire_count_clusters": "#/components/schemas/ExpectedFireClustersDerivedOutputRequest",
+                  "expected_strike_count_clusters": "#/components/schemas/ExpectedStrikeClustersDerivedOutputRequest",
+                  "updraft_candidate_regions": "#/components/schemas/RadarUpdraftRegionsDerivedOutputRequest"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/AutomatedLfrBoxesDerivedOutputRequest"
+                },
+                {
+                  "$ref": "#/components/schemas/ExpectedFireClustersDerivedOutputRequest"
+                },
+                {
+                  "$ref": "#/components/schemas/RadarUpdraftRegionsDerivedOutputRequest"
+                },
+                {
+                  "$ref": "#/components/schemas/ExpectedStrikeClustersDerivedOutputRequest"
+                }
+              ]
+            },
+            "title": "Derived Outputs",
+            "type": "array"
+          },
+          "job_type": {
+            "const": "generate_artifacts",
+            "default": "generate_artifacts",
+            "description": "Skyward Engine job type discriminator.",
+            "title": "Job Type",
+            "type": "string"
+          },
+          "outputs": {
+            "description": "Requested Skyward Engine artifact outputs.",
+            "items": {
+              "$ref": "#/components/schemas/JobOutputRequest"
+            },
+            "maxItems": 1,
+            "minItems": 1,
+            "title": "Outputs",
+            "type": "array"
+          },
+          "product": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobProductRequest"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional product envelope for canonical contracts. For product.id=lfr, product.mode is required. For product.id=midthor and product.id=midlfr, mode is optional but validated when provided. For product.id=nowthor, mode must be hourly. For product.id=hres_fwi, mode must be daily and source.layout must be existing_cog_collection. For product.id=radar_updrafts, mode is 10min."
+          },
+          "run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobRunRequest"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional run-level collection semantics. Required for hres_fwi existing COG collection jobs to declare run_date, forecast_dates, and latest promotion."
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional client-supplied run identifier. When omitted, the server infers a run_id from canonical context and source metadata.",
+            "title": "Run Id"
+          },
+          "source": {
+            "$ref": "#/components/schemas/JobSourceRequest",
+            "description": "Normalized source envelope (uri/layout/variables)."
+          },
+          "spatial_filter": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional WGS84 clipping filter applied to all requested outputs. Pass a GeoJSON Polygon, MultiPolygon, Feature, FeatureCollection, or an s3:// URI to a GeoJSON file.",
+            "title": "Spatial Filter"
+          },
+          "target": {
+            "$ref": "#/components/schemas/JobTargetRequest",
+            "description": "Normalized target envelope (output routing and overwrite policy)."
+          },
+          "temporal_filter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobTemporalFilterRequest"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional UTC time window for time_series sources."
+          }
+        },
+        "required": [
+          "source",
+          "target",
+          "outputs"
+        ],
+        "title": "JobCreateRequest",
+        "type": "object"
+      },
+      "JobListResponse": {
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "jobs": {
+            "items": {
+              "$ref": "#/components/schemas/JobRecordResponse"
+            },
+            "title": "Jobs",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "jobs",
+          "count",
+          "limit",
+          "status"
+        ],
+        "title": "JobListResponse",
+        "type": "object"
+      },
+      "JobOutputRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "style": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional style override for styled outputs. Omit for the product default, pass a s3:// or https:// URI string, or pass an inline style document object.",
+            "title": "Style"
+          },
+          "type": {
+            "description": "Requested output artifact type.",
+            "minLength": 1,
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "JobOutputRequest",
+        "type": "object"
+      },
+      "JobProductRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional canonical product identifier. Supported: goes_na_dayconvection, goes_na_lightningcast, goes_na_precipitation_estimate, hres_fwi, lfr, midlfr, midthor, nowthor, radar_updrafts, thor.",
+            "title": "Id"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional product mode. Required for product.id=lfr (daily|hourly). Supported for product.id=midlfr and product.id=midthor (daily|hourly). Supported for product.id=nowthor (hourly), product.id=hres_fwi (daily), and product.id=radar_updrafts (10min).",
+            "title": "Mode"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional product region segment. Required for hres_fwi when not using the default NA region.",
+            "title": "Region"
+          }
+        },
+        "title": "JobProductRequest",
+        "type": "object"
+      },
+      "JobRecordResponse": {
+        "properties": {
+          "created_utc": {
+            "title": "Created Utc",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "finished_utc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished Utc"
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "started_utc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started Utc"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "succeeded",
+              "failed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          }
+        },
+        "required": [
+          "job_id",
+          "status",
+          "message",
+          "payload",
+          "created_utc"
+        ],
+        "title": "JobRecordResponse",
+        "type": "object"
+      },
+      "JobRunRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "forecast_dates": {
+            "description": "Expected forecast-date tokens for run-level source collections, each formatted as YYYYMMDD.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Forecast Dates",
+            "type": "array"
+          },
+          "promote_latest": {
+            "default": true,
+            "description": "Whether the job may promote latest.json after all expected artifacts and manifest rows succeed.",
+            "title": "Promote Latest",
+            "type": "boolean"
+          },
+          "run_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Run date token for run-level source collections, formatted as YYYYMMDD.",
+            "title": "Run Date"
+          }
+        },
+        "title": "JobRunRequest",
+        "type": "object"
+      },
+      "JobSourceRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "layout": {
+            "description": "Declared source layout contract. time_series and single_frame are NetCDF layouts; existing_cog_collection is currently supported for HRES FWI archive COG inputs.",
+            "enum": [
+              "time_series",
+              "single_frame",
+              "existing_cog_collection"
+            ],
+            "title": "Layout",
+            "type": "string"
+          },
+          "uri": {
+            "description": "Local path or s3:// URI to the source NetCDF file.",
+            "minLength": 1,
+            "title": "Uri",
+            "type": "string"
+          },
+          "variables": {
+            "description": "Ordered list of source variables. For time_series or single_frame, pass one or more exact NetCDF variable names.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Variables",
+            "type": "array"
+          }
+        },
+        "required": [
+          "uri",
+          "layout",
+          "variables"
+        ],
+        "title": "JobSourceRequest",
+        "type": "object"
+      },
+      "JobTargetRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "output_bucket": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional output destination bucket override. Allowed only when the service is configured with an S3 output backend.",
+            "title": "Output Bucket"
+          },
+          "output_prefix": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional output partition prefix. When omitted for recognized canonical products, the server infers prefix defaults from source metadata.",
+            "title": "Output Prefix"
+          },
+          "overwrite": {
+            "default": false,
+            "description": "Allow overwriting existing artifacts at the output prefix.",
+            "title": "Overwrite",
+            "type": "boolean"
+          }
+        },
+        "title": "JobTargetRequest",
+        "type": "object"
+      },
+      "JobTemporalFilterRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "end_utc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional inclusive UTC end timestamp.",
+            "title": "End Utc"
+          },
+          "start_utc": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional inclusive UTC start timestamp.",
+            "title": "Start Utc"
+          }
+        },
+        "title": "JobTemporalFilterRequest",
+        "type": "object"
+      },
+      "ProductRegistryItemResponse": {
+        "properties": {
+          "default_output_bucket": {
+            "title": "Default Output Bucket",
+            "type": "string"
+          },
+          "default_output_prefix_template": {
+            "title": "Default Output Prefix Template",
+            "type": "string"
+          },
+          "default_style_source": {
+            "title": "Default Style Source",
+            "type": "string"
+          },
+          "default_style_uri": {
+            "title": "Default Style Uri",
+            "type": "string"
+          },
+          "default_style_uris": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Default Style Uris",
+            "type": "object"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "requirements": {
+            "additionalProperties": true,
+            "title": "Requirements",
+            "type": "object"
+          },
+          "source_uri_patterns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Uri Patterns",
+            "type": "array"
+          },
+          "supports": {
+            "additionalProperties": true,
+            "title": "Supports",
+            "type": "object"
+          },
+          "valid_variables": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Valid Variables",
+            "type": "array"
+          },
+          "variable_contract": {
+            "title": "Variable Contract",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "enabled",
+          "source_uri_patterns",
+          "default_output_prefix_template",
+          "default_output_bucket",
+          "default_style_uri",
+          "default_style_uris",
+          "default_style_source",
+          "requirements",
+          "valid_variables",
+          "variable_contract",
+          "supports"
+        ],
+        "title": "ProductRegistryItemResponse",
+        "type": "object"
+      },
+      "ProductRegistryResponse": {
+        "properties": {
+          "generated_utc": {
+            "title": "Generated Utc",
+            "type": "string"
+          },
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/ProductRegistryItemResponse"
+            },
+            "title": "Products",
+            "type": "array"
+          },
+          "registry_version": {
+            "title": "Registry Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "registry_version",
+          "generated_utc",
+          "products"
+        ],
+        "title": "ProductRegistryResponse",
+        "type": "object"
+      },
+      "RadarUpdraftRegionsDerivedOutputRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "summary_uri": {
+            "description": "Canonical s3:// URI for the matching radar-updraft JSON summary.",
+            "minLength": 1,
+            "title": "Summary Uri",
+            "type": "string"
+          },
+          "type": {
+            "const": "updraft_candidate_regions",
+            "description": "Polygonized candidate-region layer paired with the radar raster.",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "summary_uri"
+        ],
+        "title": "RadarUpdraftRegionsDerivedOutputRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "description": "Pass the API token as: Authorization: Bearer <token>.",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "Skyward Engine API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/healthz": {
+      "get": {
+        "description": "Liveness check endpoint for API/service probes.",
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Health check"
+      }
+    },
+    "/v1/jobs": {
+      "get": {
+        "description": "List recent jobs, optionally filtered by status.",
+        "operationId": "list_jobs_v1_jobs_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid query parameter values."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "List jobs"
+      },
+      "post": {
+        "description": "Submit a NetCDF artifact generation request. The API performs contract preflight validation and enqueues asynchronous execution.",
+        "operationId": "create_job_v1_jobs_post",
+        "parameters": [
+          {
+            "description": "Optional case-sensitive retry key: 1-128 safe ASCII characters matching [A-Za-z0-9][A-Za-z0-9._:-]*. Reuse only with the same public JSON payload. Bindings have the same non-sliding 14-day retention as job records.",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional case-sensitive retry key: 1-128 safe ASCII characters matching [A-Za-z0-9][A-Za-z0-9._:-]*. Reuse only with the same public JSON payload. Bindings have the same non-sliding 14-day retention as job records.",
+              "examples": [
+                "radar-updrafts:KCBX:20260806T010000Z"
+              ],
+              "maxLength": 128,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobCreateRequest",
+                "examples": {
+                  "goes_dayconvection_output_bucket_override": {
+                    "description": "Override output destination bucket for an S3-backed deployment.",
+                    "summary": "GOES dayconvection with output bucket override",
+                    "value": {
+                      "outputs": [
+                        {
+                          "type": "raw_cog"
+                        }
+                      ],
+                      "product": {
+                        "id": "goes_na_dayconvection"
+                      },
+                      "source": {
+                        "layout": "single_frame",
+                        "uri": "s3://aws-skyward-ops-product-archive/regions/NA/2026/20260504/dayconvection/GOES18/DayConvection_GOES-18_20260504-1450.nc",
+                        "variables": [
+                          "DayConvection"
+                        ]
+                      },
+                      "target": {
+                        "output_bucket": "aws-skyward-cogs-dev",
+                        "overwrite": false
+                      }
+                    }
+                  },
+                  "goes_na_dayconvection": {
+                    "description": "Canonical GOES single-frame visual run rendered as a raw COG.",
+                    "summary": "GOES DayConvection raw COG",
+                    "value": {
+                      "outputs": [
+                        {
+                          "type": "raw_cog"
+                        }
+                      ],
+                      "product": {
+                        "id": "goes_na_dayconvection"
+                      },
+                      "source": {
+                        "layout": "single_frame",
+                        "uri": "s3://input-bucket/goes/DayConvection_GOES-18_20260427-0600.nc",
+                        "variables": [
+                          "DayConvection"
+                        ]
+                      },
+                      "target": {
+                        "output_prefix": "products/goes/west/dayconvection/2026/04/27"
+                      }
+                    }
+                  },
+                  "goes_na_lightningcast": {
+                    "description": "Canonical single-frame GOES LightningCast run using the S3 default style for an isoband GeoJSON artifact job.",
+                    "summary": "GOES LightningCast isoband GeoJSON",
+                    "value": {
+                      "outputs": [
+                        {
+                          "style": "s3://aws-skyward-cogs/styles/goes_lightningcast_default_style.json",
+                          "type": "isoband_geojson"
+                        }
+                      ],
+                      "product": {
+                        "id": "goes_na_lightningcast"
+                      },
+                      "source": {
+                        "layout": "single_frame",
+                        "uri": "s3://aws-skyward-ops-product-archive/regions/NA/2026/20260503/lightningcast/GOES18/LightningCast_GOES-18_20260503-1300.nc",
+                        "variables": [
+                          "lcast_prob"
+                        ]
+                      },
+                      "target": {
+                        "output_bucket": "aws-skyward-cogs",
+                        "overwrite": true
+                      }
+                    }
+                  },
+                  "goes_precipitation_estimate_isoband": {
+                    "description": "Generate timestamped isoband GeoJSON artifacts for the full GOES precipitation estimate frame.",
+                    "summary": "GOES precipitation estimate isobands",
+                    "value": {
+                      "outputs": [
+                        {
+                          "style": "s3://aws-skyward-cogs/styles/goes_precipitation_estimate_default_style.json",
+                          "type": "isoband_geojson"
+                        }
+                      ],
+                      "product": {
+                        "id": "goes_na_precipitation_estimate"
+                      },
+                      "source": {
+                        "layout": "single_frame",
+                        "uri": "s3://aws-skyward-ops-product-archive/regions/NA/2026/20260519/precipestimate/GOES18/PrecipEstimate_GOES-18_20260519-1650.nc",
+                        "variables": [
+                          "RRQPE"
+                        ]
+                      },
+                      "target": {
+                        "output_bucket": "aws-skyward-cogs-dev",
+                        "overwrite": false
+                      }
+                    }
+                  },
+                  "lfr_daily": {
+                    "description": "Canonical LFR daily compact-day run with strict single-variable selection.",
+                    "summary": "LFR Daily paletted COG",
+                    "value": {
+                      "outputs": [
+                        {
+                          "type": "paletted_cog"
+                        }
+                      ],
+                      "product": {
+                        "id": "lfr",
+                        "mode": "daily"
+                      },
+                      "source": {
+                        "layout": "time_series",
+                        "uri": "s3://input-bucket/lfr/lfr_d_preds_20250619T06.nc",
+                        "variables": [
+                          "dmc_hres",
+                          "lightning_fire_risk",
+                          "relative_humidity",
+                          "thor_lightning_density",
+                          "thor_lightning_probability"
+                        ]
+                      },
+                      "target": {
+                        "output_prefix": "lfr/daily/2025/06/19"
+                      }
+                    }
+                  },
+                  "lfr_daily_inline_style_document": {
+                    "description": "Inline style object alternative for local and development flows.",
+                    "summary": "LFR Daily using inline style document",
+                    "value": {
+                      "outputs": [
+                        {
+                          "style": {
+                            "id": "lfr-style-inline-example",
+                            "metadata": {
+                              "approved": true,
+                              "approved_utc": "2026-04-29T00:00:00Z",
+                              "created_utc": "2026-04-29T00:00:00Z"
+                            },
+                            "schema_version": "3.0",
+                            "spec": {
+                              "lightning_fire_risk": {
+                                "data_mapping": {
+                                  "categorical": {
+                                    "classes": [
+                                      {
+                                        "color": [
+                                          240,
+                                          164,
+                                          94,
+                                          255
+                                        ],
+                                        "id": 1,
+                                        "lower": 0.25,
+                                        "name": "Low",
+                                        "upper": 0.75
+                                      },
+                                      {
+                                        "color": [
+                                          255,
+                                          0,
+                                          0,
+                                          255
+                                        ],
+                                        "id": 2,
+                                        "lower": 0.75,
+                                        "name": "High",
+                                        "upper": 1.0
+                                      }
+                                    ],
+                                    "enabled": true
+                                  },
+                                  "nodata": {
+                                    "threshold": 0.25
+                                  },
+                                  "ramp": [
+                                    [
+                                      0.0,
+                                      [
+                                        255,
+                                        195,
+                                        140,
+                                        0
+                                      ]
+                                    ],
+                                    [
+                                      0.25,
+                                      [
+                                        240,
+                                        164,
+                                        94,
+                                        255
+                                      ]
+                                    ],
+                                    [
+                                      0.75,
+                                      [
+                                        224,
+                                        135,
+                                        53,
+                                        255
+                                      ]
+                                    ],
+                                    [
+                                      1.0,
+                                      [
+                                        255,
+                                        0,
+                                        0,
+                                        255
+                                      ]
+                                    ]
+                                  ],
+                                  "range": [
+                                    0.0,
+                                    1.0
+                                  ]
+                                },
+                                "label": "Lightning Fire Risk"
+                              }
+                            }
+                          },
+                          "type": "paletted_cog"
+                        }
+                      ],
+                      "product": {
+                        "id": "lfr",
+                        "mode": "daily"
+                      },
+                      "source": {
+                        "layout": "time_series",
+                        "uri": "s3://input-bucket/lfr/lfr_d_preds_20250619T06.nc",
+                        "variables": [
+                          "lightning_fire_risk"
+                        ]
+                      },
+                      "target": {
+                        "output_prefix": "lfr/daily/2025/06/19"
+                      }
+                    }
+                  },
+                  "lfr_daily_style_uri": {
+                    "description": "Styled run with an explicit stylesheet URI override.",
+                    "summary": "LFR Daily using style URI",
+                    "value": {
+                      "outputs": [
+                        {
+                          "style": "https://styles.example.com/lfr-style-v9.json",
+                          "type": "paletted_cog"
+                        }
+                      ],
+                      "product": {
+                        "id": "lfr",
+                        "mode": "daily"
+                      },
+                      "source": {
+                        "layout": "time_series",
+                        "uri": "s3://input-bucket/lfr/lfr_d_preds_20250619T06.nc",
+                        "variables": [
+                          "lightning_fire_risk"
+                        ]
+                      },
+                      "target": {
+                        "output_prefix": "lfr/daily/2025/06/19"
+                      }
+                    }
+                  },
+                  "lfr_hourly": {
+                    "description": "Canonical LFR hourly compact-day run with strict single-variable selection.",
+                    "summary": "LFR Hourly paletted COG",
+                    "value": {
+                      "outputs": [
+                        {
+                          "type": "paletted_cog"
+                        }
+                      ],
+                      "product": {
+                        "id": "lfr",
+                        "mode": "hourly"
+                      },
+                      "source": {
+                        "layout": "time_series",
+                        "uri": "s3://aws-skyward-ops-product-archive/midLFR/NW-NA/otnnecmwf/2026/20260503/06/midLFR_otnnecmwf_h_20260503T06Z.nc",
+                        "variables": [
+                          "dmc_hres",
+                          "lightning_fire_risk",
+                          "relative_humidity",
+                          "thor_lightning_density",
+                          "thor_lightning_probability"
+                        ]
+                      },
+                      "target": {
+                        "output_prefix": "lfr/hourly/2026/05/03"
+                      }
+                    }
+                  },
+                  "midlfr_daily_alaska_clip": {
+                    "description": "Spatially clipped midLFR daily run. Clipped jobs include an explicit output prefix.",
+                    "summary": "midLFR daily Alaska-clipped paletted COG",
+                    "value": {
+                      "outputs": [
+                        {
+                          "type": "paletted_cog"
+                        }
+                      ],
+                      "product": {
+                        "id": "midlfr",
+                        "mode": "daily"
+                      },
+                      "source": {
+                        "layout": "time_series",
+                        "uri": "s3://aws-skyward-ops-product-archive/midLFR/NW-NA/otnnecmwf/2026/20260504/06/midLFR_otnnecmwf_d_20260504T06Z.nc",
+                        "variables": [
+                          "dmc_hres",
+                          "lightning_fire_risk",
+                          "relative_humidity",
+                          "thor_lightning_density",
+                          "thor_lightning_probability"
+                        ]
+                      },
+                      "spatial_filter": {
+                        "geometry": {
+                          "coordinates": [
+                            [
+                              [
+                                -170.0,
+                                51.0
+                              ],
+                              [
+                                -130.0,
+                                51.0
+                              ],
+                              [
+                                -130.0,
+                                72.0
+                              ],
+                              [
+                                -170.0,
+                                72.0
+                              ],
+                              [
+                                -170.0,
+                                51.0
+                              ]
+                            ]
+                          ],
+                          "type": "Polygon"
+                        },
+                        "properties": {
+                          "name": "Alaska validation clip"
+                        },
+                        "type": "Feature"
+                      },
+                      "target": {
+                        "output_bucket": "aws-skyward-cogs",
+                        "output_prefix": "local-validation/midlfr/daily/alaska/2026/05/04/06",
+                        "overwrite": true
+                      }
+                    }
+                  },
+                  "midlfr_daily_expected_fire_clusters": {
+                    "description": "Daily Expected Fire Density paletted COG using the immutable server-approved parent style, plus the five-level expected_fire_count_clusters GeoJSON bundle.",
+                    "summary": "midLFR daily Expected Fire Density plus canonical clusters",
+                    "value": {
+                      "derived_outputs": [
+                        {
+                          "rule_set_id": "midlfr_expected_fire_density_legend_v1",
+                          "type": "expected_fire_count_clusters"
+                        }
+                      ],
+                      "outputs": [
+                        {
+                          "type": "paletted_cog"
+                        }
+                      ],
+                      "product": {
+                        "id": "midlfr",
+                        "mode": "daily"
+                      },
+                      "source": {
+                        "layout": "time_series",
+                        "uri": "s3://aws-skyward-ops-product-archive/midLFR/NW-NA/otnnecmwf/2026/20260728/06/midLFR_otnnecmwf_d_20260728T06Z.nc",
+                        "variables": [
+                          "expected_fires_per_10k_km2_day"
+                        ]
+                      },
+                      "target": {
+                        "output_bucket": "aws-skyward-cogs",
+                        "overwrite": false
+                      }
+                    }
+                  },
+                  "midlfr_daily_full_extent": {
+                    "description": "Full-extent midLFR daily run. No spatial_filter means the server infers canonical routing.",
+                    "summary": "midLFR daily full-extent paletted COG",
+                    "value": {
+                      "outputs": [
+                        {
+                          "type": "paletted_cog"
+                        }
+                      ],
+                      "product": {
+                        "id": "midlfr",
+                        "mode": "daily"
+                      },
+                      "source": {
+                        "layout": "time_series",
+                        "uri": "s3://aws-skyward-ops-product-archive/midLFR/NW-NA/otnnecmwf/2026/20260504/06/midLFR_otnnecmwf_d_20260504T06Z.nc",
+                        "variables": [
+                          "dmc_hres",
+                          "lightning_fire_risk",
+                          "relative_humidity",
+                          "thor_lightning_density",
+                          "thor_lightning_probability"
+                        ]
+                      },
+                      "target": {
+                        "output_bucket": "aws-skyward-cogs",
+                        "overwrite": true
+                      }
+                    }
+                  },
+                  "midlfr_hourly_automated_lfr_boxes": {
+                    "description": "Validation-prefix MidLFR hourly run that emits normal paletted COG rows plus timestamped automated_lfr_boxes GeoJSON rows in the same manifest.",
+                    "summary": "midLFR hourly paletted COG plus automated LFR boxes",
+                    "value": {
+                      "derived_outputs": [
+                        {
+                          "T_hours": 3,
+                          "box_size_km": 250,
+                          "n": 3,
+                          "search_bbox": [
+                            -121,
+                            48,
+                            -109,
+                            61
+                          ],
+                          "source_variable": "lightning_fire_risk",
+                          "type": "automated_lfr_boxes"
+                        }
+                      ],
+                      "outputs": [
+                        {
+                          "type": "paletted_cog"
+                        }
+                      ],
+                      "product": {
+                        "id": "midlfr",
+                        "mode": "hourly"
+                      },
+                      "source": {
+                        "layout": "time_series",
+                        "uri": "s3://aws-skyward-ops-product-archive/midLFR/NW-NA/otnnecmwf/2026/20260506/06/midLFR_otnnecmwf_h_20260506T06Z.nc",
+                        "variables": [
+                          "lightning_fire_risk"
+                        ]
+                      },
+                      "target": {
+                        "output_bucket": "aws-skyward-cogs",
+                        "output_prefix": "local-validation/midlfr/automated-lfr-boxes/20260506/06",
+                        "overwrite": false
+                      },
+                      "temporal_filter": {
+                        "end_utc": "2026-05-06T12:00:00Z",
+                        "start_utc": "2026-05-06T06:00:00Z"
+                      }
+                    }
+                  },
+                  "midthor_hourly_alaska_clip": {
+                    "description": "Spatially clipped midThor hourly run limited to five frames. Clipped jobs include an explicit output prefix.",
+                    "summary": "midThor hourly Alaska-clipped paletted COG",
+                    "value": {
+                      "outputs": [
+                        {
+                          "type": "paletted_cog"
+                        }
+                      ],
+                      "product": {
+                        "id": "midthor",
+                        "mode": "hourly"
+                      },
+                      "source": {
+                        "layout": "time_series",
+                        "uri": "s3://aws-skyward-ops-product-archive/midThor/NW-NA/ecmwf/2026/20260504/06/midthor_otnnecmwf_20260504T06Z.nc",
+                        "variables": [
+                          "prob",
+                          "density",
+                          "cape",
+                          "calibrated_prob"
+                        ]
+                      },
+                      "spatial_filter": {
+                        "geometry": {
+                          "coordinates": [
+                            [
+                              [
+                                -170.0,
+                                51.0
+                              ],
+                              [
+                                -130.0,
+                                51.0
+                              ],
+                              [
+                                -130.0,
+                                72.0
+                              ],
+                              [
+                                -170.0,
+                                72.0
+                              ],
+                              [
+                                -170.0,
+                                51.0
+                              ]
+                            ]
+                          ],
+                          "type": "Polygon"
+                        },
+                        "properties": {
+                          "name": "Alaska validation clip"
+                        },
+                        "type": "Feature"
+                      },
+                      "target": {
+                        "output_bucket": "aws-skyward-cogs",
+                        "output_prefix": "local-validation/midthor/hourly/alaska/2026/05/04/06",
+                        "overwrite": true
+                      },
+                      "temporal_filter": {
+                        "end_utc": "2026-05-04T10:00:00Z",
+                        "start_utc": "2026-05-04T06:00:00Z"
+                      }
+                    }
+                  },
+                  "midthor_hourly_expected_strikes": {
+                    "description": "Manual non-promoting MidTHOR run that emits calibrated parent COG rows and one immutable expected_strike_count_clusters GeoJSON companion per valid hour. Engine automatically enables the derived companion for eligible styled hourly MidTHOR jobs and preserves optional producer/archive provenance when available.",
+                    "summary": "MidTHOR hourly calibrated outputs plus Expected Strikes clusters",
+                    "value": {
+                      "outputs": [
+                        {
+                          "type": "paletted_cog"
+                        }
+                      ],
+                      "product": {
+                        "id": "midthor",
+                        "mode": "hourly"
+                      },
+                      "run": {
+                        "promote_latest": false
+                      },
+                      "source": {
+                        "layout": "time_series",
+                        "uri": "s3://aws-skyward-ops-product-archive/midThor/NW-NA/ecmwf/2025/20250801/06/midthor_otnnecmwf_20250801T06Z.nc",
+                        "variables": [
+                          "calibrated_prob"
+                        ]
+                      },
+                      "target": {
+                        "output_bucket": "aws-skyward-cogs",
+                        "overwrite": false
+                      }
+                    }
+                  },
+                  "midthor_hourly_full_extent": {
+                    "description": "Full-extent midThor hourly run. No spatial_filter means the server infers canonical routing.",
+                    "summary": "midThor hourly full-extent paletted COG",
+                    "value": {
+                      "outputs": [
+                        {
+                          "type": "paletted_cog"
+                        }
+                      ],
+                      "product": {
+                        "id": "midthor",
+                        "mode": "hourly"
+                      },
+                      "source": {
+                        "layout": "time_series",
+                        "uri": "s3://aws-skyward-ops-product-archive/midThor/NW-NA/ecmwf/2026/20260504/06/midthor_otnnecmwf_20260504T06Z.nc",
+                        "variables": [
+                          "prob",
+                          "density",
+                          "cape",
+                          "calibrated_prob"
+                        ]
+                      },
+                      "target": {
+                        "output_bucket": "aws-skyward-cogs",
+                        "overwrite": true
+                      }
+                    }
+                  },
+                  "midthor_style_uri": {
+                    "description": "Canonical request using an explicit stylesheet URI and inferred routing.",
+                    "summary": "midThor using style URI",
+                    "value": {
+                      "outputs": [
+                        {
+                          "style": "s3://aws-skyward-cogs/styles/midthor_default_style.json",
+                          "type": "paletted_cog"
+                        }
+                      ],
+                      "product": {
+                        "id": "midthor",
+                        "mode": "hourly"
+                      },
+                      "source": {
+                        "layout": "time_series",
+                        "uri": "s3://aws-skyward-ops-product-archive/midThor/NW-NA/ecmwf/2026/20260504/06/midthor_otnnecmwf_20260504T06Z.nc",
+                        "variables": [
+                          "prob",
+                          "density",
+                          "cape",
+                          "calibrated_prob"
+                        ]
+                      },
+                      "target": {
+                        "overwrite": false
+                      }
+                    }
+                  },
+                  "nowthor_hourly_full_extent": {
+                    "description": "Full-extent nowThor run. No spatial_filter means the server infers canonical rolling-day routing and merges rows into the valid-time day manifest.",
+                    "summary": "nowThor hourly full-extent paletted COG",
+                    "value": {
+                      "outputs": [
+                        {
+                          "type": "paletted_cog"
+                        }
+                      ],
+                      "product": {
+                        "id": "nowthor",
+                        "mode": "hourly"
+                      },
+                      "source": {
+                        "layout": "time_series",
+                        "uri": "s3://aws-skyward-ops-product-archive/nowThor/NW-NA/ecmwf/2025/20250730/nowthor_2025secmwf_20250730T06Z_20250730-1900.nc",
+                        "variables": [
+                          "prob",
+                          "density"
+                        ]
+                      },
+                      "target": {
+                        "output_bucket": "aws-skyward-cogs",
+                        "overwrite": true
+                      }
+                    }
+                  },
+                  "radar_updrafts_kcbx": {
+                    "description": "Exact-second candidate COG and paired scan-local region GeoJSON.",
+                    "summary": "KCBX radar updraft candidates and connected regions",
+                    "value": {
+                      "derived_outputs": [
+                        {
+                          "summary_uri": "s3://aws-skyward-ops-product-archive/radarUpdrafts/KCBX/2026/20260724/updrafts_KCBX_20260724T015137Z.json",
+                          "type": "updraft_candidate_regions"
+                        }
+                      ],
+                      "outputs": [
+                        {
+                          "type": "paletted_cog"
+                        }
+                      ],
+                      "product": {
+                        "id": "radar_updrafts",
+                        "region": "KCBX"
+                      },
+                      "source": {
+                        "layout": "single_frame",
+                        "uri": "s3://aws-skyward-ops-product-archive/radarUpdrafts/KCBX/2026/20260724/updrafts_KCBX_20260724T015137Z.nc",
+                        "variables": [
+                          "updraft_candidate"
+                        ]
+                      },
+                      "target": {
+                        "output_bucket": "aws-skyward-cogs",
+                        "overwrite": false
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobCreateAcceptedResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Idempotency-Key, payload validation, or preflight failure."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Idempotency-Key was already used with a different request payload."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Worker launch acceptance is unconfirmed; retry with the same Idempotency-Key."
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Create artifact generation job"
+      }
+    },
+    "/v1/jobs/{job_id}": {
+      "get": {
+        "description": "Fetch a single job record by job_id.",
+        "operationId": "get_job_v1_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobRecordResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Job not found."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get job"
+      }
+    },
+    "/v1/products/registry": {
+      "get": {
+        "description": "Return canonical product registry metadata for client-side request construction.",
+        "operationId": "get_products_registry_v1_products_registry_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductRegistryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get product registry"
+      }
+    },
+    "/v1/products/registry/{product_id}": {
+      "get": {
+        "description": "Return one canonical product registry entry by id.",
+        "operationId": "get_product_registry_item_v1_products_registry__product_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "product_id",
+            "required": true,
+            "schema": {
+              "title": "Product Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductRegistryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Product registry entry not found."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "summary": "Get product registry item"
+      }
+    }
+  }
+}

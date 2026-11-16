@@ -19,6 +19,7 @@ interface EditorDialogsProps {
   edges: CanvasFlowEdge[]
   ontology: Ontology
   isSystems: boolean
+  isApi: boolean
   trail: Array<{ id: string; label: string }>
   commands: CanvasCommand[]
   conflicts: MergeConflict[]
@@ -44,6 +45,7 @@ export function EditorDialogs({
   edges,
   ontology,
   isSystems,
+  isApi,
   trail,
   commands,
   conflicts,
@@ -110,6 +112,7 @@ export function EditorDialogs({
           nodes={nodes}
           edges={edges}
           ontology={ontology}
+          profileId={isApi ? 'api' : 'systems'}
           onClose={() => setViewsOpen(false)}
         />
       )}

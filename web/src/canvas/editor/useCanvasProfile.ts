@@ -17,20 +17,22 @@ export function useCanvasProfile(ontology: Ontology, document: CanvasDocument) {
     [document.canvas.app?.profile],
   )
   const isSystems = profile.id === 'systems'
+  const isApi = profile.id === 'api'
+  const isStructured = isSystems || isApi
   const availableEntityTypes = useMemo(() => {
-    const ids = isSystems
+    const ids = isStructured
       ? profileEntityTypeIds(profile)
       : ontology.entityTypes.map((entityType) => entityType.id)
     return ids
       .map((id) => findEntityType(ontology, id))
       .filter((entityType): entityType is NonNullable<typeof entityType> => Boolean(entityType))
-  }, [isSystems, ontology, profile])
+  }, [isStructured, ontology, profile])
   const profileRelationTypes = useMemo(() => {
-    if (!isSystems) return ontology.relationTypes
+    if (!isStructured) return ontology.relationTypes
     return profile.relationTypes
       .map((id) => findRelationType(ontology, id))
       .filter((relation): relation is NonNullable<typeof relation> => Boolean(relation))
-  }, [isSystems, ontology, profile])
+  }, [isStructured, ontology, profile])
 
-  return { profile, isSystems, availableEntityTypes, profileRelationTypes }
+  return { profile, isSystems, isApi, isStructured, availableEntityTypes, profileRelationTypes }
 }

@@ -125,6 +125,32 @@ export function useCanvasLinks({
     setNotice(`Created and linked "${child.title}".`)
   }, [canvasLinkNodeId, client, profileId, setNotice, updateCanvasLinks])
 
+  const createOrOpenApiCanvas = useCallback(async (nodeId: string, cardTitle: string) => {
+    const node = nodes.find((candidate) => candidate.id === nodeId)
+    if (!node) return
+    if (dirty) {
+      const saved = await save()
+      if (!saved) return
+    }
+    setError('')
+    try {
+      const links = getCanvasLinks(node.data.raw)
+      const canvases = await client.listCanvases()
+      const linkedApi = links.find((link) => (
+        canvases.some((canvas) => canvas.id === link.canvasId && canvas.profile === 'api')
+      ))
+      if (linkedApi) {
+        onOpenLinkedCanvas(linkedApi.canvasId, linkedApi.label ?? 'API canvas')
+        return
+      }
+      const child = await client.createCanvas(cardTitle, 'api')
+      updateCanvasLinks(nodeId, (current) => [...current, createCanvasLink(child.id, 'API canvas')])
+      setNotice(`Created API canvas "${child.title}" and linked it to this card.`)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not create the API canvas.')
+    }
+  }, [client, dirty, nodes, onOpenLinkedCanvas, save, setError, setNotice, updateCanvasLinks])
+
   const openLinkedCanvas = useCallback(async (link: CanvasLink) => {
     if (trail.some((entry) => entry.id === link.canvasId)) {
       throw new Error('That canvas is already open in the trail.')
@@ -225,6 +251,7 @@ export function useCanvasLinks({
     canvasOptionsError,
     currentCanvasId: documentId,
     openCanvasLinks,
+    createOrOpenApiCanvas,
     closeCanvasLinks,
     linkExistingCanvas,
     unlinkCanvas,

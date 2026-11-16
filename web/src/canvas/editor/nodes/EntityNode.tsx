@@ -14,6 +14,7 @@ import {
   Package,
   Scale,
   Server,
+  ShieldCheck,
   StickyNote,
   TriangleAlert,
   UserRound,
@@ -38,6 +39,7 @@ import { MarkdownContent } from '../MarkdownContent'
 import { FocusEditor } from '../FocusEditor'
 import { MarkdownEditor } from '../MarkdownEditorLazy'
 import { NodeShell } from './NodeShell'
+import { ApiEndpointEditor } from '../../apiDesign/ApiEndpointEditor'
 
 const ICONS = {
   boxes: Boxes,
@@ -54,6 +56,7 @@ const ICONS = {
   list: List,
   package: Package,
   server: Server,
+  shield: ShieldCheck,
   'sticky-note': StickyNote,
   workflow: Workflow,
   zap: Zap,
@@ -76,12 +79,14 @@ function FieldInput({
   onChange,
   className,
   rows = 2,
+  readOnly = false,
 }: {
   field: OntologyField
   value: string
   onChange: (value: string) => void
   className?: string
   rows?: number
+  readOnly?: boolean
 }) {
   const labelClassName = `entity-field${className ? ` ${className}` : ''}`
 
@@ -94,6 +99,7 @@ function FieldInput({
           data-field-key={field.key}
           value={value}
           placeholder={field.placeholder}
+          readOnly={readOnly}
           onChange={(event) => onChange(event.target.value)}
         />
       </label>
@@ -205,7 +211,15 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
 
   const title = entityTitle(entityType, meta.fields)
   const iconColor = colorFor(entityType.color)
+  const hiddenSummaryKeys = entityType.id === 'endpoint'
+    ? new Set(['operation'])
+    : entityType.id === 'api_definition'
+      ? new Set(['extra'])
+      : entityType.id === 'security_scheme'
+        ? new Set(['definition'])
+        : new Set<string>()
   const rows = entityFields(entityType, meta.fields, contentField?.key)
+    .filter(({ field }) => !hiddenSummaryKeys.has(field.key))
   const contentValue = contentField
     ? String(meta.fields[contentField.key] ?? '').trim()
     : ''
@@ -223,6 +237,16 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
         }
       }}
     >
+      {entityType.id === 'system' && meta.fields.kind === 'api' && (
+        <button
+          type="button"
+          className="button ghost api-canvas-command"
+          onClick={() => actions.createOrOpenApiCanvas(id, title || 'API canvas')}
+        >
+          <Cable size={16} />
+          Create or open API canvas
+        </button>
+      )}
       {propertyFields.length > 0 && (
         <section className="property-drawer">
           <button
@@ -242,6 +266,7 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
                   key={field.key}
                   field={field}
                   value={meta.fields[field.key] == null ? '' : String(meta.fields[field.key])}
+                  readOnly={entityType.id === 'api_definition' && field.key === 'extra'}
                   onChange={(value) => actions.updateEntityField(id, field.key, value)}
                 />
               ))}
@@ -326,7 +351,12 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
           title={title || `Untitled ${entityType.label.toLowerCase()}`}
           onClose={() => setEditing(false)}
         >
-          {editorForm}
+          {entityType.id === 'endpoint' ? (
+            <ApiEndpointEditor
+              fields={meta.fields}
+              onChange={(key, value) => actions.updateEntityField(id, key, value)}
+            />
+          ) : editorForm}
         </FocusEditor>
       )}
     </NodeShell>
