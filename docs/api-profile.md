@@ -130,7 +130,7 @@ already show:
 | `authenticates_via` | Only from an Endpoint or Resource whose security differs from the API's. The API card and each endpoint's lock show the rest |
 | `returns` | Only for `1XX`, `2XX`, and `3XX` statuses, from the endpoint's right side to the model's left side, labelled with the status. Error responses appear as chips on the Endpoint card |
 | `accepts` | From the model's right side into the endpoint's left side. The stored edge stays Endpoint -> Schema; it sets `fromEnd: "arrow"` and `toEnd: "none"` so the arrow points into the endpoint |
-| `uses` | Always, left to right |
+| `uses` | Always, drawn away from the endpoints: rightwards on the response side, leftwards on the request side. Between two models in the same column, from the upper card's bottom to the lower card's top |
 | `relates_to` | Always |
 
 Selecting a card shows all its managed edges, including hidden ones, until the
@@ -173,13 +173,14 @@ rows point at it.)
 | Rule | Detail |
 | --- | --- |
 | Header row | API card, then Security cards to its right |
-| Columns | Request models; endpoint lanes; response models; then one extra column per `uses` depth (a model that another response model references goes one column further right) |
+| Columns | Request models; endpoint lanes; response models. Nested models get one extra column per `uses` depth, moving away from the lanes: a model referenced by a response model goes one column further right; a model referenced by a request model goes one column further left (the lanes and response columns shift right to make room). A model reachable from both sides goes on the response side |
 | A model used both as a request and a response | Response column |
-| Shared row | A model referenced only by `4XX`/`5XX` responses, and by no success response or request, goes in a row below the lanes. It draws no edges |
+| Shared row | A model referenced only by `4XX`/`5XX` responses, and by no success response or request, goes in a row below the lanes. It draws no response edges. Models it references go in the same row to its right |
 | Unused models | After the shared row, in name order |
 | Resource lanes | Tag order, then inferred Resources by name. The lane is the Resource card, sized to enclose its endpoints with 24 px padding and a header |
 | Endpoint order in a lane | Path segments in order with collection paths before item paths (`/tasks` before `/tasks/{task_id}`), then GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, TRACE |
-| Model order in a column | By the vertical position of the first endpoint (or model) that references it, so arrows stay short and near horizontal; ties by name |
+| Model position in a column | Each model's target top is the top of the first endpoint (or model) that references it. Models are placed in target order at `max(target, previous bottom + 40)`, so a model sits level with its first user unless the card above pushes it down. Ties by name. Request models therefore sit beside their endpoints, never below the lanes |
+| Canvas height | No referenced model is placed below the shared row; only unused models go there |
 | Spacing | 80 px between columns, 24 px between endpoints in a lane, 40 px between lanes and between models. No overlaps |
 | Drag | Moving a Resource lane moves its endpoints, reusing the group-drag behaviour. An endpoint dropped into another lane does not change its tag; only the inspector does |
 | New cards | A new Endpoint goes at the end of its Resource's lane; a new Schema goes at the end of the column its references put it in (unreferenced: the unused area); a new Resource lane goes below the last lane. Nothing else moves, except that the lane grows to enclose a new endpoint |
@@ -316,7 +317,7 @@ server share it. UI lives in `web/src/canvas/apiDesign/`.
 | --- | --- |
 | Import or export loses data | Round-trip test in the contract package: import, export, and deep-equal after key sorting, for both fixtures below and one synthetic document that uses every supported feature plus `webhooks` and `x-*` extensions |
 | Managed relations drift from operations | Table-driven test: operation edit -> expected managed edges |
-| Layout is unreadable | Table-driven layout test on both fixtures and the example, plus placing a new endpoint and a new schema (nothing else moves) and dropping an endpoint outside its lane (the lane grows): no overlaps; every endpoint inside its lane; request models left of lanes and response models right; no drawn edge points leftwards except `accepts` into an endpoint; same input gives the same positions |
+| Layout is unreadable | Table-driven layout test on both fixtures and the example: every referenced model's top is at or below its first user's top and within one card height plus 40 px of it unless pushed by the card above; nested request models are left of their parent; on the Engine fixture no referenced model is below the shared row. Plus placing a new endpoint and a new schema (nothing else moves) and dropping an endpoint outside its lane (the lane grows): no overlaps; every endpoint inside its lane; request models left of lanes and response models right; no drawn edge points leftwards except `accepts` into an endpoint; same input gives the same positions |
 | Canvas shows noise or hides a fact | Table-driven test: relation, status, and security override -> drawn or hidden. Browser check: the imported sample at fit view and one Endpoint card at 100%, with no raw JSON on any card |
 | Checks are wrong | One table-driven test per rule family with a passing and a failing operation |
 | Breaking-change check misses a break | Table-driven test with one pair of documents per row in the table above |
