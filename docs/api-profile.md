@@ -197,6 +197,33 @@ the user runs **Tidy API layout**. Every card can be moved freely, positions are
 saved, and nothing is rearranged without that command. There is no automatic
 re-layout after edits.
 
+### Card forms
+
+Each form edits the stored facts directly; no form field may exist that export
+ignores. Select options show labels ("Needs review"), not ids. Dates use a date
+input. A double-click on an unselected card opens its form. A selected Resource
+lane stays below its endpoints so they remain clickable. The selection toolbar
+does not offer **Card type** for API cards, because changing the type breaks
+the model.
+
+| Card | Form |
+| --- | --- |
+| API | **Overview**: Title, Version, Description, Servers (one row per URL, add and remove). **Ownership**: Owner (exported as `info.contact.name`, imported from it), Status. **Review**: Review status, Reviewed version, Last reviewed, Review interval. **Advanced** (collapsed): Extra, read-only |
+| Resource | Name, Description, Owner (`x-owner`). Renaming rewrites `tags[0]` on every endpoint of the lane, and the top-level tag, as one undoable edit |
+| Endpoint | Header: method badge, path, and actions (**Copy curl**). **Basics**: Method, Path, Status, Summary, Description. **Parameters**: Name; In (path, query, header, cookie); Type (string, integer, number, boolean, array, object) and optional Format; Required (forced on and disabled for path parameters); Description. **Request body**: None, a Schema card, or Inline (edited in Raw); media type, default `application/json`. **Responses**: Status, Description, model (None or a Schema card), **Generate example** with the example shown below the row. **Security**: Inherit from API, Public (`security: []`), or chosen schemes. **Raw** tab: the operation JSON |
+| Security | Name, Type, Description, then fields for the type: http → Scheme (bearer, basic) and Bearer format; apiKey → In (header, query, cookie) and Parameter name; openIdConnect → Discovery URL; oauth2 → Flows (JSON, Advanced). The `definition` JSON is built from these fields and shown read-only under Advanced |
+| Schema | On API canvases: Name and the JSON Schema workbench only. Owner, Version, Status, and the Review block are hidden (review is on the API card). The default dialect is JSON Schema 2020-12 (the OpenAPI 3.1 default), with no "no $schema" warning |
+
+The **Add** menu's Resource item opens the Add resource dialog (no blank Resource
+card). In that dialog Plural fills from Singular (editable), Path prefix is
+prefilled only when every existing path shares a leading version segment (for
+example `/v1`), and a disabled submit button says what is missing.
+
+Add resource places cards with the layout module's "New cards" rule and a
+collision check against the current canvas and measured sizes: no new card may
+overlap an existing card, and new models sit level with the new endpoints that
+use them.
+
 ## Profile metadata
 
 ```json
