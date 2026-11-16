@@ -124,6 +124,23 @@ export function CanvasWorkspace({
         sourceType: sourceTypes.get(edge.source),
         securityOverride: endpoints.get(edge.source)?.securityOverride,
       })
+    }).map((edge) => {
+      if (edge.data?.relationType !== 'uses') return edge
+      const source = nodes.find((node) => node.id === edge.source)
+      const target = nodes.find((node) => node.id === edge.target)
+      if (!source || !target) return edge
+      if (Math.abs(source.position.x - target.position.x) < 1) {
+        return {
+          ...edge,
+          sourceHandle: source.position.y < target.position.y ? 'bottom' : 'top',
+          targetHandle: source.position.y < target.position.y ? 'top' : 'bottom',
+        }
+      }
+      return {
+        ...edge,
+        sourceHandle: target.position.x > source.position.x ? 'right' : 'left',
+        targetHandle: target.position.x > source.position.x ? 'left' : 'right',
+      }
     })
   }, [apiDesign, edges, nodes])
 

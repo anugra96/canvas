@@ -29,7 +29,10 @@ describe('API layout', () => {
     { name: 'Simple Tasks sample', source: sample },
   ])('$name is deterministic and readable', ({ source }) => {
     const imported = importOpenApi(source).canvas
-    const first = layoutApiCanvas(imported, estimateApiSizes(imported))
+    const sizes = estimateApiSizes(imported)
+    const sizeSnapshot = JSON.stringify(sizes)
+    const first = layoutApiCanvas(imported, sizes)
+    expect(JSON.stringify(sizes)).toBe(sizeSnapshot)
     const second = layoutApiCanvas(first, estimateApiSizes(first))
     expect((second.nodes ?? []).map((node) => [node.id, node.x, node.y, node.width, node.height]))
       .toEqual((first.nodes ?? []).map((node) => [node.id, node.x, node.y, node.width, node.height]))
@@ -87,8 +90,15 @@ describe('API layout', () => {
       const source = nodes.find((node) => node.id === edge.fromNode)
       const target = nodes.find((node) => node.id === edge.toNode)
       expect(target?.x ?? 0).toBeLessThan(source?.x ?? 0)
+      expect(Math.abs((target?.y ?? 0) - (source?.y ?? 0))).toBeLessThanOrEqual(80)
       expect(edge.fromEnd).toBe('arrow')
       expect(edge.toEnd).toBe('none')
+    }
+    for (const edge of (first.edges ?? []).filter((candidate) => getEdgeMeta(candidate)?.relationType === 'uses')) {
+      const source = nodes.find((node) => node.id === edge.fromNode)
+      const target = nodes.find((node) => node.id === edge.toNode)
+      if (!source || !target) continue
+      if (Math.abs(source.x - target.x) < 1) expect(source.y).toBeLessThan(target.y)
     }
   })
 })
