@@ -255,6 +255,18 @@ server share it. UI lives in `web/src/canvas/apiDesign/`.
 11. **Request snippet**: copy a `curl` command for the selected endpoint using
     the first server, its path parameters, and an example body.
 
+#### Phase 2 details
+
+| Tool | Decision |
+| --- | --- |
+| Export | Pure `exportOpenApiDocument(canvas)` in the contract package; the web app turns it into a `<title-slug>.openapi.yaml` or `.json` download, or copies it. It refuses with a list of cards when an Endpoint `operation`, Schema `source`, Security `definition`, or API `extra` is not valid JSON; it never writes `{}` or drops a card in their place. Paths follow Resource lane order, then the lane's endpoint order (see Layout) |
+| Add resource | Dialog: singular, plural, path prefix (prefilled with the most common first segments of existing paths, for example `/v1`), and id parameter (prefilled `<singular>_id`). Creates `GET /<prefix>/<plural>` (200 `<Name>List`, `limit` and `cursor` query parameters), `POST` (201 `<Name>`, body `<Name>Create`), `GET`, `PATCH` (200 `<Name>`, body `<Name>Update`), and `DELETE` (204) on `/<prefix>/<plural>/{<id>}`. `<Name>List` is `{ items: <Name>[], next_cursor: string or null }`. Security is inherited. If a Problem schema exists, `4XX` and `5XX` responses reference it. Refuses when any of the names, schema names, or method and path pairs already exist. Placement follows "New cards". One undoable edit |
+| Standard errors | Adds (or reuses) a Schema named `Problem` with the RFC 9457 members `type`, `title`, `status`, `detail`, `instance`. On each selected endpoint it adds `4XX` and `5XX` responses with media type `application/problem+json` only where the endpoint has no response in that class; existing responses are never changed. One undoable edit |
+| Examples | Generated examples are stored in the operation, as the media type `example` (single source of truth). Generator is pure and deterministic: `const`, then first `enum`, then `default`, then a `format`-aware placeholder (`date-time`, `date`, `uuid`, `email`, `uri`), then type placeholders honouring `minLength`, `minimum`, and `minItems`; required properties only, plus one level of optional ones; `$ref` resolved from Schema cards with a depth limit for cycles. Validation checks every media type `example`, `examples.*.value`, parameter example, and schema `examples` against its schema with the app's Ajv 2020-12 validator, resolving `#/components/schemas/*` from Schema cards. A failure is a Review error `example_invalid` on the Endpoint or Schema card |
+| Request snippet | `curl -X <METHOD> '<first server><path>'`; path parameters filled from their example or as `<name>`; query parameters only when required; `-H 'Authorization: Bearer $TOKEN'` for HTTP bearer, `-H '<name>: $API_KEY'` for header API keys; `-H 'Content-Type: …'` and `--data` from the request example when there is a body. Never inserts a real credential |
+
+Proof for Phase 2 (at most six new tests): export ordering and refusal on invalid JSON; Add resource output re-imports and round-trips with zero Review errors; Standard errors does not change existing responses; example generator table; example validation pass and fail; snippet table (bearer, API key, path and body). One E2E: Add resource, Standard errors, export YAML contains the new paths.
+
 ### Phase 3: review and change safety
 
 12. **API checks** in the existing Review panel, with the same Issues, Fixes,
