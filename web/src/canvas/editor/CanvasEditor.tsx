@@ -143,6 +143,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     profile,
     ontology,
     isSystems: isStructured,
+    isApi,
     suppressions,
     setSuppressions,
     setNodes,

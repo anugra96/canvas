@@ -18,6 +18,7 @@ export function useProfileValidation({
   profile,
   ontology,
   isSystems,
+  isApi,
 }: {
   nodes: CanvasFlowNode[]
   edges: CanvasFlowEdge[]
@@ -25,14 +26,15 @@ export function useProfileValidation({
   profile: CanvasProfile
   ontology: Ontology
   isSystems: boolean
+  isApi: boolean
 }) {
   return useMemo(() => {
     if (!isSystems) return []
     const canvas = fromFlowCanvas(nodes, edges, baseCanvas)
     return [
       ...validateProfileCanvas(canvas, profile, ontology),
-      ...validateSchemaContracts(canvas.nodes ?? [], canvas.edges ?? []),
+      ...validateSchemaContracts(canvas.nodes ?? [], canvas.edges ?? [], new Date(), isApi ? 'api' : 'systems'),
       ...validateSemanticRules(canvas.nodes ?? [], canvas.edges ?? []),
     ]
-  }, [baseCanvas, edges, isSystems, nodes, ontology, profile])
+  }, [baseCanvas, edges, isApi, isSystems, nodes, ontology, profile])
 }

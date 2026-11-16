@@ -96,6 +96,17 @@ describe('validateSchemaContracts', () => {
     expect(issues.some((issue) => issue.code === 'schema_review' && issue.nodeId === 'overdue')).toBe(true)
   })
 
+  it('moves API model review warnings to the API card', () => {
+    const api = entityNode('api-card', 'api_definition', { title: 'Tasks API', version: '1.0.0' })
+    const first = entityNode('first', 'schema', schemaFields({ name: 'Task', reviewStatus: 'needs_review' }))
+    const second = entityNode('second', 'schema', schemaFields({ name: 'TaskCreate', reviewStatus: 'needs_review' }))
+    const issues = validateSchemaContracts([api, first, second], [], now, 'api')
+    const reviews = issues.filter((issue) => issue.code === 'schema_review')
+    expect(reviews).toHaveLength(1)
+    expect(reviews[0]).toMatchObject({ nodeId: 'api-card', severity: 'warning' })
+    expect(reviews[0]?.message).toContain('2 imported models need review')
+  })
+
   it('flags an active API System described by a draft schema', () => {
     const schema = entityNode('schema', 'schema', schemaFields({ status: 'draft' }))
     const api = entityNode('api', 'system', { name: 'Orders API', kind: 'api', status: 'active' })

@@ -261,6 +261,7 @@ export function validateSchemaContracts(
   nodes: CanvasNode[],
   edges: CanvasEdge[],
   now = new Date(),
+  mode: 'systems' | 'api' = 'systems',
 ): CanvasProfileIssue[] {
   const issues: CanvasProfileIssue[] = []
   const nodesById = new Map(nodes.map((node) => [node.id, node]))
@@ -298,6 +299,8 @@ export function validateSchemaContracts(
     }
   }
 
+  let apiReviewCount = 0
+  const apiReviewReasons = new Set<string>()
   for (const schema of schemas) {
     const fields = getEntityMeta(schema)?.fields ?? {}
     const name = nodeName(schema)
@@ -313,12 +316,17 @@ export function validateSchemaContracts(
     }
     const reviewReasons = schemaReviewReasons(fields, now)
     if (reviewReasons.length > 0) {
-      issues.push({
-        code: 'schema_review',
-        severity: 'warning',
-        message: `Schema "${name}" needs review: ${reviewReasons.join(', ')}.`,
-        nodeId: schema.id,
-      })
+      if (mode === 'api') {
+        apiReviewCount += 1
+        for (const reason of reviewReasons) apiReviewReasons.add(reason)
+      } else {
+        issues.push({
+          code: 'schema_review',
+          severity: 'warning',
+          message: `Schema "${name}" needs review: ${reviewReasons.join(', ')}.`,
+          nodeId: schema.id,
+        })
+      }
     }
     if (!linkedSchemas.has(schema.id)) {
       issues.push({
@@ -343,6 +351,16 @@ export function validateSchemaContracts(
         })
       }
     }
+  }
+
+  if (mode === 'api' && apiReviewCount > 0) {
+    const api = nodes.find((node) => nodeEntityType(node) === 'api_definition')
+    issues.push({
+      code: 'schema_review',
+      severity: 'warning',
+      message: `${apiReviewCount} imported models need review: ${[...apiReviewReasons].join(', ')}.`,
+      ...(api ? { nodeId: api.id } : {}),
+    })
   }
 
   for (const node of nodes) {

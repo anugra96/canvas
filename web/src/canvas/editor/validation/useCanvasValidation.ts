@@ -78,6 +78,7 @@ interface UseCanvasValidationInput {
   profile: CanvasProfile
   ontology: Ontology
   isSystems: boolean
+  isApi: boolean
   suppressions: ValidationSuppression[]
   setSuppressions: (update: (current: ValidationSuppression[]) => ValidationSuppression[]) => void
   setNodes: (update: (current: CanvasFlowNode[]) => CanvasFlowNode[]) => void
@@ -94,6 +95,7 @@ export function useCanvasValidation({
   profile,
   ontology,
   isSystems,
+  isApi,
   suppressions,
   setSuppressions,
   setNodes,
@@ -115,6 +117,7 @@ export function useCanvasValidation({
     profile,
     ontology,
     isSystems,
+    isApi,
   })
   const suppressionByFingerprint = useMemo(
     () => new Map(suppressions.map((suppression) => [suppression.fingerprint, suppression])),
