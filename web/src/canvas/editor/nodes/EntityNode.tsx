@@ -289,7 +289,12 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
   )
 
   return (
-    <NodeShell node={{ id, data, selected } as CanvasFlowNode} selected={Boolean(selected)} className={`entity-node${entityType.id === 'resource' ? ' api-lane-node' : ''}`}>
+    <NodeShell
+      node={{ id, data, selected } as CanvasFlowNode}
+      selected={Boolean(selected)}
+      className={`entity-node${entityType.id === 'resource' ? ' api-lane-node' : ''}`}
+      onEdit={startEditing}
+    >
       {['api_definition', 'resource', 'endpoint', 'security_scheme'].includes(entityType.id) ? (
         <div
           className="entity-card api-card"

@@ -393,3 +393,194 @@ export function layoutApiCanvas(canvas: JsonCanvas, sizes: ApiSizeMap = {}): Jso
   })
   return { ...canvas, nodes: nextNodes }
 }
+
+
+interface PlacementRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+function horizontalOverlap(left: PlacementRect, right: PlacementRect): boolean {
+  return left.x < right.x + right.width && left.x + left.width > right.x
+}
+
+function rectFor(node: CanvasNode, sizes: ApiSizeMap): PlacementRect {
+  const size = nodeSize(node, sizes)
+  return { x: node.x, y: node.y, width: size.width, height: size.height }
+}
+
+function overlaps(left: PlacementRect, right: PlacementRect): boolean {
+  return horizontalOverlap(left, right)
+    && left.y < right.y + right.height
+    && left.y + left.height > right.y
+}
+
+function pushBelow(rect: PlacementRect, obstacles: PlacementRect[]): number {
+  let y = Math.max(0, rect.y)
+  let moved = true
+  while (moved) {
+    moved = false
+    const candidate = { ...rect, y }
+    for (const obstacle of obstacles) {
+      if (!overlaps(candidate, obstacle)) continue
+      y = obstacle.y + obstacle.height + MODEL_GAP
+      moved = true
+    }
+  }
+  return y
+}
+
+export function placeNewApiCards(
+  canvas: JsonCanvas,
+  additions: CanvasNode[],
+  sizes: ApiSizeMap = {},
+): CanvasNode[] {
+  if (additions.length === 0) return []
+  const existing = canvas.nodes ?? []
+  const placed = additions.map((node) => ({ ...node }))
+  const addedResources = placed.filter((node) => getEntityMeta(node)?.entityType === 'resource')
+  const addedEndpoints = placed.filter((node) => getEntityMeta(node)?.entityType === 'endpoint')
+  const addedSchemas = placed.filter((node) => getEntityMeta(node)?.entityType === 'schema')
+  const existingResources = existing
+    .filter((node) => getEntityMeta(node)?.entityType === 'resource')
+    .sort(resourceOrder)
+  const laneX = existingResources.length > 0
+    ? Math.min(...existingResources.map((node) => node.x))
+    : Math.max(0, ...existing.map((node) => node.x + nodeSize(node, sizes).width + COLUMN_GAP))
+  const endpointWidth = Math.max(0, ...addedEndpoints.map((node) => nodeSize(node, sizes).width))
+  const laneWidth = endpointWidth > 0 ? endpointWidth + LANE_PADDING * 2 : 408
+  const laneBaseY = existingResources.length > 0
+    ? Math.max(...existingResources.map((node) => node.y + nodeSize(node, sizes).height))
+    : Math.max(0, ...existing.map((node) => node.y + nodeSize(node, sizes).height))
+  const laneObstacles = existing
+    .map((node) => rectFor(node, sizes))
+    .filter((rect) => horizontalOverlap({ x: laneX, y: 0, width: laneWidth, height: 1 }, rect))
+  const laneY = Math.max(
+    laneBaseY,
+    ...laneObstacles.map((rect) => rect.y + rect.height),
+  ) + LANE_GAP
+
+  const orderedEndpoints = [...addedEndpoints].sort((left, right) => endpointOrder(
+    { path: field(left, 'path'), method: field(left, 'method') },
+    { path: field(right, 'path'), method: field(right, 'method') },
+  ))
+  let endpointY = laneY + LANE_HEADER + LANE_PADDING
+  const endpointById = new Map<string, CanvasNode>()
+  for (const endpoint of orderedEndpoints) {
+    const size = nodeSize(endpoint, sizes)
+    endpoint.x = laneX + LANE_PADDING
+    endpoint.y = endpointY
+    endpoint.width = size.width
+    endpoint.height = size.height
+    endpointById.set(endpoint.id, endpoint)
+    endpointY += size.height + ENDPOINT_GAP
+  }
+  const laneHeight = Math.max(
+    LANE_HEADER + LANE_PADDING * 2,
+    endpointY - ENDPOINT_GAP + LANE_PADDING - laneY,
+  )
+  for (const resource of addedResources) {
+    resource.x = laneX
+    resource.y = laneY
+    resource.width = laneWidth
+    resource.height = laneHeight
+  }
+
+  const reference = buildApiReferenceDocument([...existing, ...placed])
+  const addedIds = new Set(orderedEndpoints.map((node) => node.id))
+  const addedReferenceEndpoints = reference.resources
+    .flatMap((resource) => resource.endpoints)
+    .filter((endpoint) => addedIds.has(endpoint.id))
+  const requestTargets = new Map<string, number>()
+  const responseTargets = new Map<string, number>()
+  const sharedTargets = new Map<string, number>()
+  for (const endpoint of addedReferenceEndpoints) {
+    const y = endpointById.get(endpoint.id)?.y ?? laneY
+    for (const model of endpoint.requestModels) {
+      requestTargets.set(model, Math.min(requestTargets.get(model) ?? y, y))
+    }
+    for (const response of endpoint.responses) {
+      const model = response.model
+      if (!model) continue
+      if (/^[123]/.test(response.status)) {
+        responseTargets.set(model, Math.min(responseTargets.get(model) ?? y, y))
+      } else if (/^[45]/.test(response.status)) {
+        sharedTargets.set(model, Math.min(sharedTargets.get(model) ?? y, y))
+      }
+    }
+  }
+  const schemaByName = new Map(addedSchemas.map((node) => [field(node, 'name'), node]))
+  const requestNames = [...requestTargets.keys()].filter((name) => !responseTargets.has(name))
+  const responseNames = [...responseTargets.keys()]
+  const sharedNames = [...sharedTargets.keys()].filter((name) => (
+    !requestTargets.has(name) && !responseTargets.has(name)
+  ))
+  const existingReference = buildApiReferenceDocument(existing)
+  const existingEndpoints = existingReference.resources.flatMap((resource) => resource.endpoints)
+  const existingRequestNames = new Set(existingEndpoints.flatMap((endpoint) => endpoint.requestModels))
+  const existingResponseNames = new Set(existingEndpoints.flatMap((endpoint) => (
+    endpoint.responses
+      .filter((response) => /^[123]/.test(response.status) && response.model)
+      .flatMap((response) => response.model!.split(', '))
+  )))
+  const requestColumns = existing
+    .filter((node) => getEntityMeta(node)?.entityType === 'schema'
+      && node.x < laneX
+      && existingRequestNames.has(field(node, 'name'))
+      && !existingResponseNames.has(field(node, 'name')))
+    .map((node) => node.x)
+  const responseColumns = existing
+    .filter((node) => getEntityMeta(node)?.entityType === 'schema'
+      && node.x > laneX
+      && existingResponseNames.has(field(node, 'name')))
+    .map((node) => node.x)
+  const requestWidth = Math.max(0, ...requestNames.map((name) => (
+    schemaByName.get(name) ? nodeSize(schemaByName.get(name)!, sizes).width : 0
+  )))
+  const requestX = requestColumns.length > 0
+    ? Math.max(...requestColumns)
+    : laneX - COLUMN_GAP - requestWidth
+  const responseX = responseColumns.length > 0
+    ? Math.min(...responseColumns)
+    : laneX + laneWidth + COLUMN_GAP
+  const sharedX = laneX
+  const obstacles = [
+    ...existing.map((node) => rectFor(node, sizes)),
+    ...placed.filter((node) => !addedSchemas.includes(node)).map((node) => rectFor(node, sizes)),
+  ]
+
+  function placeModels(
+    names: string[],
+    targets: Map<string, number>,
+    x: number,
+    fallbackY: number,
+  ): void {
+    const ordered = names
+      .flatMap((name) => {
+        const node = schemaByName.get(name)
+        return node ? [{ node, target: targets.get(name) ?? fallbackY }] : []
+      })
+      .sort((left, right) => left.target - right.target || field(left.node, 'name').localeCompare(field(right.node, 'name')))
+    for (const { node, target } of ordered) {
+      const size = nodeSize(node, sizes)
+      const y = pushBelow({ x, y: target, width: size.width, height: size.height }, obstacles)
+      node.x = x
+      node.y = y
+      node.width = size.width
+      node.height = size.height
+      obstacles.push({ x, y, width: size.width, height: size.height })
+    }
+  }
+
+  placeModels(requestNames, requestTargets, requestX, laneY)
+  placeModels(responseNames, responseTargets, responseX, laneY)
+  const unusedY = Math.max(laneY + laneHeight, ...existing.map((node) => node.y + nodeSize(node, sizes).height)) + MODEL_GAP
+  placeModels(sharedNames, sharedTargets, sharedX, unusedY)
+  const referenced = new Set([...requestNames, ...responseNames, ...sharedNames])
+  const unused = addedSchemas.filter((node) => !referenced.has(field(node, 'name')))
+  placeModels(unused.map((node) => field(node, 'name')), new Map(), responseX, unusedY)
+
+  return placed
+}

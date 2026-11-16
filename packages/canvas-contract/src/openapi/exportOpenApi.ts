@@ -3,6 +3,7 @@ import type { CanvasNode, JsonCanvas } from '../jsonCanvas'
 import { stringify as stringifyYaml } from 'yaml'
 import { isObject, objectOrEmpty } from './document'
 import { orderedApiEndpoints } from './layout'
+import { buildSecuritySchemeDefinition } from './securityScheme'
 import type { JsonObject } from './types'
 
 function stringField(node: CanvasNode, key: string): string {
@@ -63,7 +64,7 @@ export class OpenApiExportError extends Error {
   readonly issues: OpenApiExportIssue[]
 
   constructor(issues: OpenApiExportIssue[]) {
-    super(`Cannot export OpenAPI: ${issues.length} card${issues.length === 1 ? '' : 's'} contain invalid JSON.`)
+    super(`Cannot export OpenAPI: ${issues.length} ${issues.length === 1 ? 'card contains' : 'cards contain'} invalid JSON.`)
     this.issues = issues
   }
 }
@@ -117,6 +118,9 @@ export function exportOpenApiDocument(canvas: JsonCanvas): JsonObject {
   const title = stringField(api, 'title')
   const version = stringField(api, 'version')
   const description = stringField(api, 'description')
+  const owner = stringField(api, 'owner').trim()
+  const contact = objectOrEmpty(info.contact)
+  const infoContact = owner ? { ...contact, name: owner } : contact
   const paths: JsonObject = {}
 
   const endpoints = orderedApiEndpoints(nodes)
@@ -143,7 +147,11 @@ export function exportOpenApiDocument(canvas: JsonCanvas): JsonObject {
   for (const security of nodes.filter((node) => nodeType(node) === 'security_scheme')) {
     const name = stringField(security, 'name')
     if (!name) continue
-    securitySchemes[name] = securityDefinitions.get(security.id)
+    const base = objectOrEmpty(securityDefinitions.get(security.id))
+    securitySchemes[name] = buildSecuritySchemeDefinition(
+      getEntityMeta(security)?.fields ?? {},
+      base,
+    )
   }
 
   const components = {
@@ -161,6 +169,7 @@ export function exportOpenApiDocument(canvas: JsonCanvas): JsonObject {
       title,
       version,
       ...(description ? { description } : {}),
+      ...(Object.keys(infoContact).length > 0 ? { contact: infoContact } : {}),
     },
     ...(servers ? { servers } : {}),
     paths,

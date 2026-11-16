@@ -31,7 +31,10 @@ export function SchemaNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
   const meta = data.entity
   const entityType = meta ? findEntityType(ontology, meta.entityType) : undefined
   const source = meta ? fieldValue(meta.fields, 'source') : ''
-  const analysis = useMemo(() => analyzeJsonSchema(source), [source])
+  const analysis = useMemo(
+    () => analyzeJsonSchema(source, apiDesign ? { assumedDialect: '2020-12' } : {}),
+    [apiDesign, source],
+  )
 
   if (!meta || !entityType) {
     return (
@@ -57,15 +60,15 @@ export function SchemaNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
   }
 
   return (
-    <NodeShell node={{ id, data, selected } as CanvasFlowNode} selected={Boolean(selected)} className="schema-node">
+    <NodeShell node={{ id, data, selected } as CanvasFlowNode} selected={Boolean(selected)} className="schema-node" onEdit={startEditing}>
       <div className="schema-card" onDoubleClick={startEditing}>
         <header className="schema-head">
           <span className="schema-icon"><Braces size={17} /></span>
           <div>
-            <span className="entity-type">JSON Schema · {kind || 'contract'}</span>
+            <span className="entity-type">{apiDesign ? 'JSON Schema' : `JSON Schema · ${kind || 'contract'}`}</span>
             <strong>{name}</strong>
           </div>
-          <span className="schema-version">{version ? `v${version}` : 'unversioned'}</span>
+          {!apiDesign && <span className="schema-version">{version ? `v${version}` : 'unversioned'}</span>}
         </header>
         <div className="schema-body">
           <div className="schema-health-row">
@@ -79,7 +82,9 @@ export function SchemaNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
                 {reviewHealthy ? 'Reviewed' : 'Review required'}
               </span>
             )}
-            <span className={`schema-health ${status === 'active' ? 'valid' : 'pending'}`}>{status || 'draft'}</span>
+            {!apiDesign && (
+              <span className={`schema-health ${status === 'active' ? 'valid' : 'pending'}`}>{status || 'draft'}</span>
+            )}
           </div>
           {firstError && (
             <p className="schema-card-error">{firstError.message}</p>
@@ -100,7 +105,7 @@ export function SchemaNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
             <p className="schema-empty">Double-tap to paste a JSON Schema contract.</p>
           )}
           <div className="schema-card-meta">
-            <span>{owner || 'No owner'}</span>
+            {!apiDesign && <span>{owner || 'No owner'}</span>}
             <span>{fields.length} root fields</span>
           </div>
         </div>
@@ -109,6 +114,7 @@ export function SchemaNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
         <FocusEditor label="Edit schema contract" title={name} onClose={() => setEditing(false)}>
           <SchemaEditor
             fields={meta.fields}
+            api={Boolean(apiDesign)}
             onChange={(key, value) => actions.updateEntityField(id, key, value)}
           />
         </FocusEditor>

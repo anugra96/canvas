@@ -12,6 +12,7 @@ import {
 } from '@canvas/contract'
 import {
   fromFlowCanvas,
+  nodeDimensions,
   toFlowCanvas,
   toFlowEdge,
   toFlowNode,
@@ -272,7 +273,8 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
 
   const addResource = useCallback((input: AddApiResourceInput): string[] => {
     const canvas = fromFlowCanvas(nodes, edges, baseCanvas)
-    const result = addApiResource(canvas, input)
+    const sizes = Object.fromEntries(nodes.map((node) => [node.id, nodeDimensions(node)]))
+    const result = addApiResource(canvas, input, sizes)
     if (result.errors.length > 0) return result.errors
     const additions = result.nodes.map(toFlowNode)
     const rawNodes = [...(canvas.nodes ?? []), ...result.nodes]

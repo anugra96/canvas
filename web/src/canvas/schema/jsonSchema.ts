@@ -111,7 +111,11 @@ function formatSchemaError(error: { instancePath?: string; message?: string }): 
   return `${path}: ${error.message ?? 'invalid JSON Schema'}`
 }
 
-export function analyzeJsonSchema(source: string): SchemaAnalysis {
+export interface SchemaAnalysisOptions {
+  assumedDialect?: 'draft-07' | '2019-09' | '2020-12'
+}
+
+export function analyzeJsonSchema(source: string, options: SchemaAnalysisOptions = {}): SchemaAnalysis {
   const value = source.trim()
   if (!value) {
     return {
@@ -149,7 +153,10 @@ export function analyzeJsonSchema(source: string): SchemaAnalysis {
   const record = typeof parsed === 'object' && !Array.isArray(parsed)
     ? parsed as Record<string, unknown>
     : null
-  const schemaUri = record && typeof record.$schema === 'string' ? record.$schema : ''
+  const declaredUri = record && typeof record.$schema === 'string' ? record.$schema : ''
+  const schemaUri = declaredUri || (options.assumedDialect
+    ? `https://json-schema.org/draft/${options.assumedDialect}/schema`
+    : '')
   if (schemaUri.includes('draft-04') || schemaUri.includes('draft-06')) {
     return {
       valid: false,
@@ -186,7 +193,7 @@ export function analyzeJsonSchema(source: string): SchemaAnalysis {
       })
     }
   }
-  if (diagnostics.length === 0 && record && typeof record.$schema !== 'string') {
+  if (diagnostics.length === 0 && record && typeof record.$schema !== 'string' && !options.assumedDialect) {
     diagnostics.push({
       severity: 'warning',
       message: 'No $schema dialect is declared; draft-07 is assumed.',
@@ -303,7 +310,10 @@ export function validateSchemaContracts(
   for (const schema of schemas) {
     const fields = getEntityMeta(schema)?.fields ?? {}
     const name = nodeName(schema)
-    const analysis = analyzeJsonSchema(stringField(fields.source))
+    const analysis = analyzeJsonSchema(
+      stringField(fields.source),
+      mode === 'api' ? { assumedDialect: '2020-12' } : {},
+    )
     const firstError = analysis.diagnostics.find((diagnostic) => diagnostic.severity === 'error')
     if (firstError) {
       issues.push({

@@ -197,6 +197,12 @@ export function importOpenApi(source: string | unknown): OpenApiImportResult {
       name,
       type: stringValue(definition.type) || 'http',
       description: stringValue(definition.description),
+      scheme: stringValue(definition.scheme),
+      bearerFormat: stringValue(definition.bearerFormat),
+      in: stringValue(definition.in),
+      parameterName: stringValue(definition.name),
+      discoveryUrl: stringValue(definition.openIdConnectUrl),
+      flows: isObject(definition.flows) ? jsonText(definition.flows) : '',
       definition: jsonText(definition),
     }))
   }

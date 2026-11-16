@@ -1,6 +1,7 @@
 import { DEFAULT_ONTOLOGY, findEntityType, getEntityMeta, type EntityFields } from '../ontology'
 import { createNodeId, type CanvasNode, type JsonCanvas } from '../jsonCanvas'
 import type { JsonObject } from './types'
+import { placeNewApiCards, type ApiSizeMap } from './layout'
 
 export interface AddApiResourceInput {
   singular: string
@@ -70,7 +71,11 @@ function problemResponses(problem: boolean): JsonObject {
   return { '4XX': response('Client error'), '5XX': response('Server error') }
 }
 
-export function addApiResource(canvas: JsonCanvas, input: AddApiResourceInput): AddApiResourceResult {
+export function addApiResource(
+  canvas: JsonCanvas,
+  input: AddApiResourceInput,
+  sizes: ApiSizeMap = {},
+): AddApiResourceResult {
   const singular = input.singular.trim()
   const plural = input.plural.trim()
   const prefix = normalizePrefix(input.pathPrefix)
@@ -108,42 +113,17 @@ export function addApiResource(canvas: JsonCanvas, input: AddApiResourceInput): 
   }
   if (errors.length > 0) return { nodes: [], errors }
 
-  const resources = nodes.filter((node) => getEntityMeta(node)?.entityType === 'resource')
   const schemas = nodes.filter((node) => getEntityMeta(node)?.entityType === 'schema')
-  const laneX = resources.length > 0
-    ? Math.min(...resources.map((node) => node.x))
-    : Math.max(0, ...nodes.map((node) => node.x + node.width + 80))
-  const endpointHeight = 220
-  const endpointGap = 24
-  const lanePadding = 24
-  const laneHeader = 52
-  const laneWidth = 408
-  const laneBottom = Math.max(0, ...nodes
-    .filter((node) => node.x < laneX + laneWidth && node.x + node.width > laneX)
-    .map((node) => node.y + node.height))
-  const laneY = laneBottom + 80
-  const laneHeight = laneHeader + lanePadding * 2 + pairs.length * endpointHeight + (pairs.length - 1) * endpointGap
   const problem = schemas.some((node) => field(node, 'name') === 'Problem')
-
-  const requestColumns = schemas.filter((node) => node.x < laneX).map((node) => node.x)
-  const responseColumns = schemas.filter((node) => node.x > laneX).map((node) => node.x)
-  const requestX = requestColumns.length > 0 ? Math.max(...requestColumns) : laneX - 440
-  const responseX = responseColumns.length > 0 ? Math.min(...responseColumns) : laneX + laneWidth + 80
-  const requestY = requestColumns.length > 0
-    ? Math.max(...schemas.filter((node) => node.x === requestX).map((node) => node.y + node.height)) + 40
-    : laneY
-  const responseY = responseColumns.length > 0
-    ? Math.max(...schemas.filter((node) => node.x === responseX).map((node) => node.y + node.height)) + 40
-    : laneY
-
-  const resource = makeNode('resource', laneX, laneY, laneWidth, laneHeight, {
+  const endpointHeight = 220
+  const resource = makeNode('resource', 0, 0, 408, 0, {
     name: plural,
     description: '',
     owner: '',
   })
   const endpointNodes = pairs.map(([method, path]) => makeNode(
     'endpoint',
-    laneX + lanePadding,
+    0,
     0,
     360,
     endpointHeight,
@@ -305,20 +285,15 @@ export function addApiResource(canvas: JsonCanvas, input: AddApiResourceInput): 
     },
     required: ['items', 'next_cursor'],
   })
-  const schemaPlan: Array<[CanvasNode, string, number, number]> = [
-    [model, `${name}`, responseX, responseY],
-    [listSchema, `${name}List`, responseX, responseY + 340],
-    [createSchema, `${name}Create`, requestX, requestY],
-    [updateSchema, `${name}Update`, requestX, requestY + 340],
+  const schemaPlan: Array<[CanvasNode, string]> = [
+    [model, `${name}`],
+    [listSchema, `${name}List`],
+    [createSchema, `${name}Create`],
+    [updateSchema, `${name}Update`],
   ]
-  for (const [node, schemaName, x, y] of schemaPlan) {
-    node.x = x
-    node.y = y
+  for (const [node, schemaName] of schemaPlan) {
     node.app = { ...(node.app ?? {}), fields: { ...(getEntityMeta(node)?.fields ?? {}), name: schemaName } }
   }
-  for (const [index, node] of endpointNodes.entries()) {
-    node.y = laneY + laneHeader + lanePadding + index * (endpointHeight + endpointGap)
-  }
-
-  return { nodes: [resource, ...endpointNodes, ...schemaPlan.map(([node]) => node)], errors: [] }
+  const additions = [resource, ...endpointNodes, ...schemaPlan.map(([node]) => node)]
+  return { nodes: placeNewApiCards(canvas, additions, sizes), errors: [] }
 }

@@ -20,9 +20,10 @@ interface NodeShellProps {
   selected: boolean
   className: string
   children: ReactNode
+  onEdit?: () => void
 }
 
-export function NodeShell({ node, selected, className, children }: NodeShellProps) {
+export function NodeShell({ node, selected, className, children, onEdit }: NodeShellProps) {
   const actions = useCanvasEditorActions()
   const validation = useCanvasValidation()
   const issues = validation.nodeIssues.get(node.id) ?? []
@@ -100,16 +101,24 @@ export function NodeShell({ node, selected, className, children }: NodeShellProp
         style={Object.keys(style).length > 0 ? style : undefined}
         onDoubleClickCapture={(event) => {
           if (node.data.raw.type === 'group') return
+          const target = event.target as HTMLElement
+          if (target.closest('button, a, input, textarea, select')) return
           const rect = event.currentTarget.getBoundingClientRect()
           const edge = 8
           const nearEdge = event.clientX <= rect.left + edge
             || event.clientX >= rect.right - edge
             || event.clientY <= rect.top + edge
             || event.clientY >= rect.bottom - edge
-          if (!nearEdge) return
+          if (nearEdge) {
+            event.preventDefault()
+            event.stopPropagation()
+            actions.autoFitNode(node.id)
+            return
+          }
+          if (!onEdit) return
           event.preventDefault()
           event.stopPropagation()
-          actions.autoFitNode(node.id)
+          onEdit()
         }}
       >
         {children}

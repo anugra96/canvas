@@ -260,6 +260,7 @@ export function CanvasWorkspace({
         connectionMode={ConnectionMode.Loose}
         fitView={shouldFitInitial}
         fitViewOptions={{ padding: 0.25, maxZoom: 1.2 }}
+        elevateNodesOnSelect={profile.id !== 'api'}
         defaultViewport={savedViewport ?? undefined}
         onMoveEnd={(_, viewport: Viewport) => writeViewport(documentId, viewport, viewportLayout)}
         minZoom={isMobile ? 0.08 : 0.2}
@@ -336,10 +337,10 @@ export function CanvasWorkspace({
           onConnect={() => graph.setConnectNodeId((current) => current ? null : graph.singleSelectedNode?.id ?? null)}
           canResize={Boolean(graph.singleSelectedNode)}
           onResize={() => graph.setSizeDialogOpen(true)}
-          cardTypeValue={graph.cardTypeValue}
+          cardTypeValue={profile.id === 'api' ? undefined : graph.cardTypeValue}
           allowText={!isSystems}
           entityTypeIds={availableEntityTypes.map((entityType) => entityType.id)}
-          onCardTypeChange={graph.changeCardType}
+          onCardTypeChange={profile.id === 'api' ? undefined : graph.changeCardType}
           onGroup={graph.groupSelected}
           onReverse={graph.reverseSelectedEdges}
           relationValue={graph.selectedRelationValue}
