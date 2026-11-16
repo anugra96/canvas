@@ -90,7 +90,7 @@ export function toFlowNode(raw: CanvasNode): CanvasFlowNode {
       : raw.type,
     position: { x: raw.x, y: raw.y },
     data: nodeData(raw),
-    zIndex: raw.type === 'group' ? 0 : 1,
+    zIndex: raw.type === 'group' || meta?.entityType === 'resource' ? 0 : 1,
     style: {
       width: raw.width,
       ...(autoHeight ? {} : { height: raw.height }),

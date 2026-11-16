@@ -65,7 +65,7 @@ function EndpointPreview({ endpoint }: { endpoint: ApiReferenceEndpoint }) {
   )
 }
 
-function ResourcePreview({ resource }: { resource: ApiReferenceResource }) {
+function ResourcePreview({ resource, owner }: { resource: ApiReferenceResource; owner?: string }) {
   return (
     <div className="api-card-preview api-resource-preview">
       <header className="api-preview-head">
@@ -73,15 +73,7 @@ function ResourcePreview({ resource }: { resource: ApiReferenceResource }) {
         {resource.inferred && <span className="api-reference-inferred">Inferred</span>}
       </header>
       {resource.description && <p className="api-preview-summary">{resource.description}</p>}
-      <div className="api-resource-endpoints">
-        {resource.endpoints.map((endpoint) => (
-          <div className={`api-resource-endpoint${endpoint.deprecated ? ' deprecated' : ''}`} key={endpoint.id}>
-            <span className={`api-method ${methodClass(endpoint.method)}`}>{endpoint.method}</span>
-            <code>{endpoint.path}</code>
-          </div>
-        ))}
-        {resource.endpoints.length === 0 && <span className="api-preview-muted">No endpoints.</span>}
-      </div>
+      {owner && <span className="api-preview-muted">{owner}</span>}
     </div>
   )
 }
@@ -185,7 +177,7 @@ export function ApiCardPreview({
   }
   if (entityType === 'resource') {
     const resource = document.resources.find((candidate) => candidate.id === nodeId)
-    return resource ? <ResourcePreview resource={resource} /> : <div className="api-card-preview"><span className="api-preview-muted">Resource data unavailable.</span></div>
+    return resource ? <ResourcePreview resource={resource} owner={String(fields.owner ?? '')} /> : <div className="api-card-preview"><span className="api-preview-muted">Resource data unavailable.</span></div>
   }
   if (entityType === 'security_scheme') {
     return <SecurityPreview fields={fields} usedBy={document.securityUsage[String(fields.name ?? '')] ?? 0} />

@@ -70,13 +70,26 @@ function managedEdge(
   relationType: 'contains' | 'accepts' | 'returns' | 'authenticates_via' | 'uses',
   from: string,
   to: string,
-  options: { label?: string; status?: string; mediaType?: string; endpoint?: string; detail?: string } = {},
+  options: {
+    label?: string
+    status?: string
+    mediaType?: string
+    endpoint?: string
+    detail?: string
+    fromSide?: 'top' | 'right' | 'bottom' | 'left'
+    toSide?: 'top' | 'right' | 'bottom' | 'left'
+    fromEnd?: 'none' | 'arrow'
+    toEnd?: 'none' | 'arrow'
+  } = {},
 ): CanvasEdge {
   return {
     id: managedId(relationType, from, to, options.detail),
     fromNode: from,
     toNode: to,
-    toEnd: 'arrow',
+    ...(options.fromSide ? { fromSide: options.fromSide } : {}),
+    ...(options.toSide ? { toSide: options.toSide } : {}),
+    ...(options.fromEnd ? { fromEnd: options.fromEnd } : {}),
+    toEnd: options.toEnd ?? 'arrow',
     ...(options.label ? { label: options.label } : {}),
     app: {
       relationType,
@@ -144,6 +157,10 @@ export function deriveManagedRelations(canvas: Pick<JsonCanvas, 'nodes' | 'edges
           mediaType: ref.mediaType,
           endpoint: endpointKey,
           detail: ref.mediaType,
+          fromSide: 'left',
+          toSide: 'right',
+          fromEnd: 'arrow',
+          toEnd: 'none',
         }))
       }
     }
@@ -156,6 +173,9 @@ export function deriveManagedRelations(canvas: Pick<JsonCanvas, 'nodes' | 'edges
           mediaType: ref.mediaType,
           endpoint: endpointKey,
           detail: `${ref.status}:${ref.mediaType}`,
+          fromSide: 'right',
+          toSide: 'left',
+          toEnd: 'arrow',
         }))
       }
     }

@@ -11,6 +11,7 @@ import {
 import type { AlignmentGuide } from '../../model/alignment'
 import { nodeDimensions, type CanvasFlowNode } from '../../model/adapter'
 import { findBestCardSize } from '../autoFit'
+import { growResourceLanes } from './growLanes'
 import { moveGroupMembers } from './moveGroupMembers'
 import { snapPositionChanges } from './snapPositionChanges'
 
@@ -103,7 +104,7 @@ export function useCanvasNodes({
         .filter((change): change is Extract<NodeChange<CanvasFlowNode>, { type: 'position' }> =>
           change.type === 'position' && Boolean(change.position))
         .map((change) => ({ id: change.id, position: change.position! }))
-      return moveGroupMembers(current, next, positionChanges)
+      return growResourceLanes(moveGroupMembers(current, next, positionChanges))
     })
     const material = changes.some((change) =>
       change.type === 'remove'

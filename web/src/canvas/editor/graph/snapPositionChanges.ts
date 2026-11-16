@@ -27,7 +27,7 @@ export function snapPositionChanges(
       return { ...node, position: change?.position ?? node.position }
     })
 
-  if (movingNodes.some((node) => node.type === 'group')) {
+  if (movingNodes.some((node) => node.type === 'group' || node.data.entity?.entityType === 'resource')) {
     return { changes, guides: [] }
   }
 

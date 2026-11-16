@@ -54,7 +54,7 @@ export function useCanvasConnections({
   const connectNodes = useCallback((sourceId: string, targetId: string) => {
     const source = nodes.find((node) => node.id === sourceId)
     const target = nodes.find((node) => node.id === targetId)
-    if (!source || !target || source.type === 'group' || target.type === 'group') return
+    if (!source || !target || source.type === 'group' || target.type === 'group' || source.data.entity?.entityType === 'resource' || target.data.entity?.entityType === 'resource') return
     const sourceSize = nodeDimensions(source)
     const targetSize = nodeDimensions(target)
     const dx = (target.position.x + targetSize.width / 2) - (source.position.x + sourceSize.width / 2)

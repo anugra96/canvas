@@ -1,9 +1,10 @@
 import { createNodeId } from '../jsonCanvas'
 import { API_PROFILE, profileMetadata } from '../profile'
-import type { CanvasNode, JsonCanvas } from '../jsonCanvas'
-import { DEFAULT_ONTOLOGY, findEntityType, type EntityFields } from '../ontology'
+import type { CanvasNode } from '../jsonCanvas'
+import { DEFAULT_ONTOLOGY, findEntityType, getEntityMeta, type EntityFields } from '../ontology'
 import { isObject, objectOrEmpty, parseOpenApiSource } from './document'
-import { withManagedRelations } from './managedRelations'
+import { estimateApiSizes, layoutApiCanvas } from './layout'
+import { endpointResourceName, withManagedRelations } from './managedRelations'
 import type { JsonObject, OpenApiImportResult } from './types'
 
 const METHOD_ORDER = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace'] as const
@@ -124,7 +125,7 @@ export function importOpenApi(source: string | unknown): OpenApiImportResult {
   }
   const maxEndpoints = Math.max(0, ...[...endpointsByResource.values()].map((list) => list.length))
   let rowY = 80
-  for (const name of resourceOrder) {
+  for (const [resourceIndex, name] of resourceOrder.entries()) {
     const tag = tagByName.get(name)
     const inferred = !tag && inferredNames.has(name)
     const tagExtra = tag
@@ -137,6 +138,7 @@ export function importOpenApi(source: string | unknown): OpenApiImportResult {
     }, {
       ...(inferred ? { inferred: true, inferredName: name } : {}),
       ...(!inferred && !tag ? { declaredTag: false } : {}),
+      ...(tag ? { tagOrder: resourceIndex } : {}),
       ...(Object.keys(tagExtra).length > 0 ? { tagExtra } : {}),
     })
     nodes.push(node)
@@ -163,6 +165,10 @@ export function importOpenApi(source: string | unknown): OpenApiImportResult {
     servers: servers.join('\n'),
     owner: stringValue(objectOrEmpty(info.contact).name),
     status: 'active',
+    reviewStatus: 'needs_review',
+    reviewedVersion: '',
+    lastReviewed: '',
+    reviewIntervalDays: 90,
     extra: jsonText(apiExtra(document)),
   })
   nodes.push(api)
@@ -195,14 +201,18 @@ export function importOpenApi(source: string | unknown): OpenApiImportResult {
     }))
   }
 
-  const canvas: JsonCanvas = {
-    nodes,
-    edges: [],
-    app: profileMetadata(API_PROFILE),
+  for (const resource of resources.values()) {
+    const name = stringValue(getEntityMeta(resource)?.fields.name)
+    const memberIds = nodes
+      .filter((node) => getEntityMeta(node)?.entityType === 'endpoint' && endpointResourceName(node) === name)
+      .map((node) => node.id)
+    resource.app = { ...(resource.app ?? {}), groupMembers: memberIds }
   }
+  const managed = withManagedRelations({ nodes, edges: [], app: profileMetadata(API_PROFILE) })
+  const canvas = layoutApiCanvas(managed, estimateApiSizes(managed))
   return {
     title,
-    canvas: withManagedRelations(canvas),
+    canvas,
     warnings: [
       ...parsed.warnings,
       ...(resourceOrder.some((name) => !tagDefinitions.some((tag) => stringValue(tag.name) === name))

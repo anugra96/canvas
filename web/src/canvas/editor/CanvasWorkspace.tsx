@@ -110,10 +110,12 @@ export function CanvasWorkspace({
   const renderedEdges = useMemo(() => {
     if (!apiDesign) return edges
     const sourceTypes = new Map(nodes.map((node) => [node.id, node.data.entity?.entityType ?? '']))
+    const selectedIds = new Set(nodes.filter((node) => node.selected).map((node) => node.id))
     const endpoints = new Map(apiDesign.resources.flatMap((resource) => (
       resource.endpoints.map((endpoint) => [endpoint.id, endpoint] as const)
     )))
     return edges.filter((edge) => {
+      if (selectedIds.has(edge.source) || selectedIds.has(edge.target)) return true
       const raw = edge.data?.raw
       const meta = raw ? getEdgeMeta(raw) : undefined
       return shouldDrawApiEdge({

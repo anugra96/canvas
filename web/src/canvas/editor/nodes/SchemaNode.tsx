@@ -15,6 +15,7 @@ import { analyzeJsonSchema, schemaReviewReasons } from '../../schema/jsonSchema'
 import { useCanvasEditorActions } from '../CanvasEditorContext'
 import { FocusEditor } from '../FocusEditor'
 import { SchemaEditor } from '../SchemaEditor'
+import { useApiDesign } from '../../apiDesign/ApiDesignContext'
 import { NodeShell } from './NodeShell'
 
 function fieldValue(fields: Record<string, string | number | null>, key: string): string {
@@ -26,6 +27,7 @@ export function SchemaNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
   const actions = useCanvasEditorActions()
   const ontology = useOntology()
   const [editing, setEditing] = useState(false)
+  const apiDesign = useApiDesign()
   const meta = data.entity
   const entityType = meta ? findEntityType(ontology, meta.entityType) : undefined
   const source = meta ? fieldValue(meta.fields, 'source') : ''
@@ -71,10 +73,12 @@ export function SchemaNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
               {analysis.valid ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
               {analysis.valid ? 'Valid schema' : 'Invalid schema'}
             </span>
-            <span className={`schema-health ${reviewHealthy ? 'valid' : 'pending'}`}>
-              {reviewHealthy ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
-              {reviewHealthy ? 'Reviewed' : 'Review required'}
-            </span>
+            {!apiDesign && (
+              <span className={`schema-health ${reviewHealthy ? 'valid' : 'pending'}`}>
+                {reviewHealthy ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
+                {reviewHealthy ? 'Reviewed' : 'Review required'}
+              </span>
+            )}
             <span className={`schema-health ${status === 'active' ? 'valid' : 'pending'}`}>{status || 'draft'}</span>
           </div>
           {firstError && (

@@ -299,8 +299,6 @@ export function validateSchemaContracts(
     }
   }
 
-  let apiReviewCount = 0
-  const apiReviewReasons = new Set<string>()
   for (const schema of schemas) {
     const fields = getEntityMeta(schema)?.fields ?? {}
     const name = nodeName(schema)
@@ -315,18 +313,13 @@ export function validateSchemaContracts(
       })
     }
     const reviewReasons = schemaReviewReasons(fields, now)
-    if (reviewReasons.length > 0) {
-      if (mode === 'api') {
-        apiReviewCount += 1
-        for (const reason of reviewReasons) apiReviewReasons.add(reason)
-      } else {
-        issues.push({
-          code: 'schema_review',
-          severity: 'warning',
-          message: `Schema "${name}" needs review: ${reviewReasons.join(', ')}.`,
-          nodeId: schema.id,
-        })
-      }
+    if (reviewReasons.length > 0 && mode === 'systems') {
+      issues.push({
+        code: 'schema_review',
+        severity: 'warning',
+        message: `Schema "${name}" needs review: ${reviewReasons.join(', ')}.`,
+        nodeId: schema.id,
+      })
     }
     if (!linkedSchemas.has(schema.id)) {
       issues.push({
@@ -353,14 +346,19 @@ export function validateSchemaContracts(
     }
   }
 
-  if (mode === 'api' && apiReviewCount > 0) {
+  if (mode === 'api') {
     const api = nodes.find((node) => nodeEntityType(node) === 'api_definition')
-    issues.push({
-      code: 'schema_review',
-      severity: 'warning',
-      message: `${apiReviewCount} imported models need review: ${[...apiReviewReasons].join(', ')}.`,
-      ...(api ? { nodeId: api.id } : {}),
-    })
+    if (api) {
+      const reviewReasons = schemaReviewReasons(getEntityMeta(api)?.fields ?? {}, now)
+      if (reviewReasons.length > 0) {
+        issues.push({
+          code: 'schema_review',
+          severity: 'warning',
+          message: `API "${nodeName(api)}" needs review: ${reviewReasons.join(', ')}.`,
+          nodeId: api.id,
+        })
+      }
+    }
   }
 
   for (const node of nodes) {

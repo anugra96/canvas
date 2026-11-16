@@ -2,6 +2,10 @@ import { getGroupMembers } from '@canvas/contract'
 
 import { nodeDimensions, type CanvasFlowNode } from '../../model/adapter'
 
+function isLane(node: CanvasFlowNode): boolean {
+  return node.type === 'group' || node.data.entity?.entityType === 'resource'
+}
+
 export interface NodePositionChange {
   id: string
   position: { x: number; y: number }
@@ -18,7 +22,7 @@ export function moveGroupMembers(
 
   for (const change of positionChanges) {
     const group = current.find((node) => node.id === change.id)
-    if (!group || group.type !== 'group') continue
+    if (!group || !isLane(group)) continue
     const dx = change.position.x - group.position.x
     const dy = change.position.y - group.position.y
     if (dx === 0 && dy === 0) continue
@@ -27,7 +31,7 @@ export function moveGroupMembers(
     const memberIds = members ? new Set(members) : null
 
     for (const node of current) {
-      if (node.id === group.id || node.type === 'group' || movingIds.has(node.id)) continue
+      if (node.id === group.id || isLane(node) || movingIds.has(node.id)) continue
       if (memberIds) {
         if (!memberIds.has(node.id)) continue
       } else {

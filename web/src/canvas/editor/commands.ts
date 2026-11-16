@@ -63,6 +63,7 @@ interface CanvasCommandInput {
   onRedo: () => void
   onSave: () => void
   onTidy: () => void
+  onTidyApi: () => void
   onFitCards: () => void
   onFitView: () => void
   onDownload: () => void
@@ -201,8 +202,17 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       icon: LayoutGrid,
       surface: 'overflow',
       section: 'layout',
-      available: true,
+      available: input.profileId !== 'api',
       run: input.onTidy,
+    },
+    {
+      id: 'layout.tidy-api',
+      label: 'Tidy API layout',
+      icon: LayoutGrid,
+      surface: 'overflow',
+      section: 'layout',
+      available: input.profileId === 'api',
+      run: input.onTidyApi,
     },
     {
       id: 'layout.fit-cards',

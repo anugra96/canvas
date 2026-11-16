@@ -7752,3 +7752,18 @@ select {
   color: var(--ui-danger-text);
   font-size: 11px;
 }
+
+.canvas-node.api-lane-node {
+  border-color: color-mix(in srgb, var(--ui-accent) 42%, transparent);
+  background: color-mix(in srgb, var(--ui-panel-solid) 34%, transparent);
+  box-shadow: none;
+}
+
+.canvas-node.api-lane-node .api-card-preview {
+  align-content: start;
+  padding: 10px 12px;
+}
+
+.canvas-node.api-lane-node .api-preview-head {
+  padding-bottom: 4px;
+}

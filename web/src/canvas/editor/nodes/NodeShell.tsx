@@ -30,6 +30,7 @@ export function NodeShell({ node, selected, className, children }: NodeShellProp
   const hasError = issues.some((issue) => issue.severity === 'error')
   const accent = colorFor(node.data.raw.color)
   const isGroup = node.data.raw.type === 'group'
+  const isLane = node.data.entity?.entityType === 'resource'
   const background = isGroup ? groupBackgroundFor(node.data.raw.color) : undefined
   const style: CSSProperties = {}
   if (accent) (style as Record<string, string>)['--card-accent'] = accent
@@ -46,7 +47,7 @@ export function NodeShell({ node, selected, className, children }: NodeShellProp
         handleClassName="canvas-resize-handle"
         onResizeEnd={(_, params) => actions.resizeNode(node.id, params.width, params.height)}
       />
-      {SIDES.map((side) => (
+      {!isLane && SIDES.map((side) => (
         <Handle
           key={side.id}
           id={side.id}
@@ -60,7 +61,7 @@ export function NodeShell({ node, selected, className, children }: NodeShellProp
           }}
         />
       ))}
-      {!isGroup && (canvasLinks.length > 0 || selected) && (
+      {!isGroup && !isLane && (canvasLinks.length > 0 || selected) && (
         <button
           type="button"
           className={`canvas-link-badge nodrag nopan${canvasLinks.length > 0 ? ' has-links' : ''}`}
