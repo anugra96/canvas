@@ -39,7 +39,10 @@ import { MarkdownContent } from '../MarkdownContent'
 import { FocusEditor } from '../FocusEditor'
 import { MarkdownEditor } from '../MarkdownEditorLazy'
 import { NodeShell } from './NodeShell'
-import { ApiEndpointEditor } from '../../apiDesign/ApiEndpointEditor'
+import { ApiDefinitionEditor } from '../../apiDesign/ApiDefinitionEditor'
+import { ApiEndpointEditor, EndpointCopyCurlButton } from '../../apiDesign/ApiEndpointEditor'
+import { ResourceEditor } from '../../apiDesign/ResourceEditor'
+import { SecuritySchemeEditor } from '../../apiDesign/SecuritySchemeEditor'
 import { ApiCardPreview } from '../../apiDesign/ApiCardPreview'
 
 const ICONS = {
@@ -366,10 +369,31 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
         <FocusEditor
           label={`Edit ${entityType.label}`}
           title={title || `Untitled ${entityType.label.toLowerCase()}`}
+          badge={entityType.id === 'endpoint'
+            ? <span className={`api-method api-method-${String(meta.fields.method ?? 'get').toLowerCase()}`}>{String(meta.fields.method ?? 'GET')}</span>
+            : undefined}
+          actions={entityType.id === 'endpoint'
+            ? <EndpointCopyCurlButton fields={meta.fields} />
+            : undefined}
           onClose={() => setEditing(false)}
         >
           {entityType.id === 'endpoint' ? (
             <ApiEndpointEditor
+              fields={meta.fields}
+              onChange={(key, value) => actions.updateEntityField(id, key, value)}
+            />
+          ) : entityType.id === 'api_definition' ? (
+            <ApiDefinitionEditor
+              fields={meta.fields}
+              onChange={(key, value) => actions.updateEntityField(id, key, value)}
+            />
+          ) : entityType.id === 'security_scheme' ? (
+            <SecuritySchemeEditor
+              fields={meta.fields}
+              onChange={(key, value) => actions.updateEntityField(id, key, value)}
+            />
+          ) : entityType.id === 'resource' ? (
+            <ResourceEditor
               fields={meta.fields}
               onChange={(key, value) => actions.updateEntityField(id, key, value)}
             />

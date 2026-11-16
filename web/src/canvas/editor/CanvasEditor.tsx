@@ -6,7 +6,11 @@ import {
   applyStandardErrors,
   deriveManagedRelations,
   exportOpenApiDocument,
+  findEntityType,
+  getEntityMeta,
   OpenApiExportError,
+  renameApiResource,
+  renderEntityMarkdown,
   stringifyOpenApiYaml,
   type AddApiResourceInput,
 } from '@canvas/contract'
@@ -55,14 +59,16 @@ function downloadText(filename: string, text: string, mediaType: string): void {
 }
 
 function prefixFromPaths(nodes: CanvasFlowNode[]): string {
-  const counts = new Map<string, number>()
-  for (const node of nodes) {
+  const segments = nodes.flatMap((node) => {
     const path = String(node.data.entity?.fields.path ?? '')
     const segment = path.split('/').filter(Boolean)[0]
-    if (segment) counts.set(segment, (counts.get(segment) ?? 0) + 1)
-  }
-  const [common] = [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0] ?? []
-  return common ? `/${common}` : '/v1'
+    return segment ? [segment] : []
+  })
+  if (segments.length === 0) return ''
+  const first = segments[0]!
+  return segments.every((segment) => segment === first) && /^v\d+$/i.test(first)
+    ? `/${first}`
+    : ''
 }
 
 function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpenLinkedCanvas }: CanvasEditorProps) {
@@ -198,11 +204,45 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
 
   useEffect(() => observeHistory({ nodes, edges }), [edges, nodes, observeHistory])
 
+  const updateEntityField = useCallback((id: string, fieldKey: string, value: string) => {
+    const target = nodes.find((node) => node.id === id)
+    if (target?.data.entity?.entityType === 'resource' && fieldKey === 'name') {
+      if (!value.trim()) return
+      const canvas = fromFlowCanvas(nodes, edges, baseCanvas)
+      const renamed = renameApiResource(canvas, id, value)
+      const rawById = new Map(renamed.nodes.map((node) => [node.id, node]))
+      setNodes((current) => current.map((node) => {
+        const raw = rawById.get(node.id)
+        if (!raw) return node
+        const entity = getEntityMeta(raw)
+        const entityType = entity ? findEntityType(ontology, entity.entityType) : undefined
+        if (!entity || !entityType) return { ...node, data: { ...node.data, raw } }
+        const text = renderEntityMarkdown(entityType, entity.fields)
+        return {
+          ...node,
+          data: { ...node.data, entity, text, raw: { ...raw, text } },
+        }
+      }))
+      const managed = deriveManagedRelations({ nodes: renamed.nodes, edges: [] })
+      setEdges((current) => [
+        ...current.filter((edge) => (
+          edge.data?.raw?.app?.managed !== true
+          && edge.data?.relationType !== 'accepts'
+          && edge.data?.relationType !== 'returns'
+        )),
+        ...managed.map((edge) => toFlowEdge(edge)),
+      ])
+      markDirty()
+      return
+    }
+    graph.updateEntityField(id, fieldKey, value)
+  }, [baseCanvas, edges, graph, markDirty, nodes, ontology, setEdges, setNodes])
+
   const actions = useMemo<CanvasEditorActions>(
     () => ({
       updateText: graph.updateText,
       updateLabel: graph.updateLabel,
-      updateEntityField: graph.updateEntityField,
+      updateEntityField,
       resizeNode: graph.resizeNode,
       autoFitNode: graph.autoFitNode,
       editEdgeLabel: graph.openEdgeLabelEditor,
@@ -215,11 +255,11 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       graph.openEdgeLabelEditor,
       graph.resizeNode,
       graph.selectEdge,
-      graph.updateEntityField,
       graph.updateLabel,
       graph.updateText,
       links.createOrOpenApiCanvas,
       links.openCanvasLinks,
+      updateEntityField,
     ],
   )
 

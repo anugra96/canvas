@@ -162,6 +162,11 @@ describe('Phase 2 review fixes', () => {
         description: 'Updated description',
         servers: 'https://one.example.com\nhttps://two.example.com',
         owner: 'Tower',
+        status: 'planned',
+        reviewStatus: 'approved',
+        reviewedVersion: '2.0.0',
+        lastReviewed: '2026-01-02',
+        reviewIntervalDays: 60,
         extra: JSON.stringify({
           ...JSON.parse(String((getEntityMeta(api)?.fields.extra) || '{}')),
           'x-top': true,
@@ -185,6 +190,11 @@ describe('Phase 2 review fixes', () => {
       'https://one.example.com',
       'https://two.example.com',
     ])
+    expect(exported['x-status']).toBe('planned')
+    expect(exported['x-review-status']).toBe('approved')
+    expect(exported['x-reviewed-version']).toBe('2.0.0')
+    expect(exported['x-last-reviewed']).toBe('2026-01-02')
+    expect(exported['x-review-interval-days']).toBe(60)
     const schemes = (exported.components as JsonObject).securitySchemes as Record<string, JsonObject>
     expect(schemes.BearerAuth).toMatchObject({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT', description: 'Bearer tokens' })
     expect(schemes.KeyAuth).toMatchObject({ type: 'apiKey', in: 'header', name: 'X-Api-Key', description: 'Key auth' })
@@ -193,7 +203,14 @@ describe('Phase 2 review fixes', () => {
 
     const reimported = importOpenApi(exported).canvas
     const reimportedApi = reimported.nodes!.find((node) => getEntityMeta(node)?.entityType === 'api_definition')!
-    expect(getEntityMeta(reimportedApi)?.fields.owner).toBe('Tower')
+    expect(getEntityMeta(reimportedApi)?.fields).toMatchObject({
+      owner: 'Tower',
+      status: 'planned',
+      reviewStatus: 'approved',
+      reviewedVersion: '2.0.0',
+      lastReviewed: '2026-01-02',
+      reviewIntervalDays: 60,
+    })
     const reimportedSecurity = new Map(reimported.nodes!
       .filter((node) => getEntityMeta(node)?.entityType === 'security_scheme')
       .map((node) => [field(node, 'name'), getEntityMeta(node)?.fields]))

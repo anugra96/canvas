@@ -115,6 +115,11 @@ export function exportOpenApiDocument(canvas: JsonCanvas): JsonObject {
   delete topExtra.info
   delete topExtra.serverDetails
   delete topExtra.components
+  delete topExtra['x-status']
+  delete topExtra['x-review-status']
+  delete topExtra['x-reviewed-version']
+  delete topExtra['x-last-reviewed']
+  delete topExtra['x-review-interval-days']
   const title = stringField(api, 'title')
   const version = stringField(api, 'version')
   const description = stringField(api, 'description')
@@ -161,8 +166,20 @@ export function exportOpenApiDocument(canvas: JsonCanvas): JsonObject {
   }
   const tags = tagsFromResources(nodes)
   const servers = serversFor(api, extra)
+  const status = stringField(api, 'status') || 'active'
+  const reviewStatus = stringField(api, 'reviewStatus') || 'needs_review'
+  const reviewedVersion = stringField(api, 'reviewedVersion').trim()
+  const lastReviewed = stringField(api, 'lastReviewed').trim()
+  const reviewIntervalDays = Number(getEntityMeta(api)?.fields.reviewIntervalDays ?? 90)
   const document: JsonObject = {
     ...topExtra,
+    ...(status !== 'active' ? { 'x-status': status } : {}),
+    ...(reviewStatus !== 'needs_review' ? { 'x-review-status': reviewStatus } : {}),
+    ...(reviewedVersion ? { 'x-reviewed-version': reviewedVersion } : {}),
+    ...(lastReviewed ? { 'x-last-reviewed': lastReviewed } : {}),
+    ...(Number.isFinite(reviewIntervalDays) && reviewIntervalDays !== 90
+      ? { 'x-review-interval-days': reviewIntervalDays }
+      : {}),
     openapi: '3.1.0',
     info: {
       ...info,

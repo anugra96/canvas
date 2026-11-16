@@ -47,7 +47,10 @@ function inferResourceName(path: string): string {
 }
 
 function apiExtra(document: JsonObject): JsonObject {
-  const known = new Set(['openapi', 'info', 'servers', 'paths', 'components', 'tags', 'security'])
+  const known = new Set([
+    'openapi', 'info', 'servers', 'paths', 'components', 'tags', 'security',
+    'x-status', 'x-review-status', 'x-reviewed-version', 'x-last-reviewed', 'x-review-interval-days',
+  ])
   const extra: JsonObject = {}
   for (const [key, value] of Object.entries(document)) {
     if (!known.has(key)) extra[key] = value
@@ -164,11 +167,13 @@ export function importOpenApi(source: string | unknown): OpenApiImportResult {
     description: stringValue(info.description),
     servers: servers.join('\n'),
     owner: stringValue(objectOrEmpty(info.contact).name),
-    status: 'active',
-    reviewStatus: 'needs_review',
-    reviewedVersion: '',
-    lastReviewed: '',
-    reviewIntervalDays: 90,
+    status: stringValue(document['x-status']) || 'active',
+    reviewStatus: stringValue(document['x-review-status']) || 'needs_review',
+    reviewedVersion: stringValue(document['x-reviewed-version']),
+    lastReviewed: stringValue(document['x-last-reviewed']),
+    reviewIntervalDays: typeof document['x-review-interval-days'] === 'number'
+      ? document['x-review-interval-days']
+      : 90,
     extra: jsonText(apiExtra(document)),
   })
   nodes.push(api)

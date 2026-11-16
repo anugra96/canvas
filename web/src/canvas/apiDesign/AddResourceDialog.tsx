@@ -14,6 +14,7 @@ export function AddResourceDialog({
 }) {
   const [singular, setSingular] = useState('')
   const [plural, setPlural] = useState('')
+  const [pluralEdited, setPluralEdited] = useState(false)
   const [prefix, setPrefix] = useState(initialPrefix)
   const [idParameter, setIdParameter] = useState('')
   const [idEdited, setIdEdited] = useState(false)
@@ -32,8 +33,17 @@ export function AddResourceDialog({
     return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [onClose])
 
+  function pluralize(value: string): string {
+    const singularName = value.trim()
+    if (!singularName) return ''
+    if (/[^aeiou]y$/i.test(singularName)) return `${singularName.slice(0, -1)}ies`
+    if (/(s|x|z|ch|sh)$/i.test(singularName)) return `${singularName}es`
+    return `${singularName}s`
+  }
+
   function updateSingular(value: string) {
     setSingular(value)
+    if (!pluralEdited) setPlural(pluralize(value))
     if (!idEdited) {
       const singularName = value.trim().split(/[^A-Za-z0-9]+/).filter(Boolean).join('_').toLowerCase()
       setIdParameter(singularName ? `${singularName}_id` : '')
@@ -84,7 +94,10 @@ export function AddResourceDialog({
             Plural
             <input
               value={plural}
-              onChange={(event) => setPlural(event.target.value)}
+              onChange={(event) => {
+                setPluralEdited(true)
+                setPlural(event.target.value)
+              }}
               placeholder="projects"
               required
             />
@@ -115,6 +128,15 @@ export function AddResourceDialog({
           <div className="alert" role="alert">
             {errors.map((error) => <div key={error}>{error}</div>)}
           </div>
+        )}
+        {(!singular.trim() || !plural.trim() || !idParameter.trim()) && (
+          <p className="add-resource-hint" role="status">
+            {[
+              !singular.trim() ? 'Enter a singular name.' : '',
+              !plural.trim() ? 'Enter a plural name.' : '',
+              !idParameter.trim() ? 'Enter an id parameter name.' : '',
+            ].filter(Boolean).join(' ')}
+          </p>
         )}
 
         <div className="name-dialog-actions">

@@ -3,8 +3,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import {
   findEntityType,
-  getEntityMeta,
-  renameApiResource,
   renderEntityMarkdown,
   type EntityFields,
   type Ontology,
@@ -55,50 +53,23 @@ export function useCanvasNodes({
   }, [markDirty, setNodes])
 
   const updateEntityField = useCallback((id: string, fieldKey: string, value: string) => {
-    setNodes((current) => {
-      const target = current.find((node) => node.id === id)
-      if (target?.data.entity?.entityType === 'resource' && fieldKey === 'name') {
-        const renamed = renameApiResource({
-          nodes: current.map((node) => node.data.raw),
-          edges: [],
-        }, id, value)
-        const rawById = new Map(renamed.nodes.map((node) => [node.id, node]))
-        return current.map((node) => {
-          const raw = rawById.get(node.id)
-          if (!raw) return node
-          const entity = getEntityMeta(raw)
-          const entityType = entity ? findEntityType(ontology, entity.entityType) : undefined
-          if (!entity || !entityType) return { ...node, data: { ...node.data, raw } }
-          const text = renderEntityMarkdown(entityType, entity.fields)
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              entity,
-              text,
-              raw: { ...raw, text },
-            },
-          }
-        })
+    setNodes((current) => current.map((node) => {
+      if (node.id !== id || !node.data.entity) return node
+      const entityType = findEntityType(ontology, node.data.entity.entityType)
+      if (!entityType) return node
+      const fields: EntityFields = { ...node.data.entity.fields, [fieldKey]: value }
+      const text = renderEntityMarkdown(entityType, fields)
+      const entity = { ...node.data.entity, fields }
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          entity,
+          text,
+          raw: { ...node.data.raw, app: entity, text },
+        },
       }
-      return current.map((node) => {
-        if (node.id !== id || !node.data.entity) return node
-        const entityType = findEntityType(ontology, node.data.entity.entityType)
-        if (!entityType) return node
-        const fields: EntityFields = { ...node.data.entity.fields, [fieldKey]: value }
-        const text = renderEntityMarkdown(entityType, fields)
-        const entity = { ...node.data.entity, fields }
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            entity,
-            text,
-            raw: { ...node.data.raw, app: entity, text },
-          },
-        }
-      })
-    })
+    }))
     markDirty()
   }, [markDirty, ontology, setNodes])
 

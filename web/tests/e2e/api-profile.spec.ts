@@ -212,20 +212,50 @@ test('adds a resource, standard errors, and exports them as YAML', async ({ page
     openapi: '3.1.0',
     info: { title: 'Projects API', version: '1.0.0' },
     servers: [{ url: 'https://api.example.com' }],
+    components: {
+      securitySchemes: {
+        BearerAuth: { type: 'http', scheme: 'bearer', description: 'Bearer access' },
+      },
+    },
+    security: [{ BearerAuth: [] }],
   }))
   await importDialog.getByRole('button', { name: 'Read document' }).click()
   await importDialog.getByRole('button', { name: 'Create API canvas' }).click()
   await expect(page.locator('.canvas-flow')).toBeVisible()
+  await expect(page.locator('.api-security-preview')).toHaveCount(1)
+  await expect(page.locator('.api-endpoint-preview')).toHaveCount(0)
 
-  await page.getByRole('button', { name: 'More' }).click()
-  await page.getByRole('menuitem', { name: 'Add resource' }).click()
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Resource', exact: true }).click()
   const resourceDialog = page.getByRole('dialog', { name: 'Add resource' })
+  await expect(resourceDialog.getByLabel('Path prefix')).toHaveValue('')
+  await expect(resourceDialog.getByRole('button', { name: 'Add resource', exact: true })).toBeDisabled()
+  await expect(resourceDialog.getByRole('status')).toContainText('Enter a singular name.')
   await resourceDialog.getByLabel('Singular').fill('project')
-  await resourceDialog.getByLabel('Plural').fill('projects')
+  await expect(resourceDialog.getByLabel('Plural')).toHaveValue('projects')
+  await expect(resourceDialog.getByLabel('Id parameter')).toHaveValue('project_id')
+  await expect(resourceDialog.getByRole('status')).toHaveCount(0)
   await resourceDialog.getByLabel('Path prefix').fill('/v1')
   await resourceDialog.getByRole('button', { name: 'Add resource', exact: true }).click()
   await expect(page.locator('.api-endpoint-preview')).toHaveCount(5)
   await expect(page.locator('.schema-node')).toHaveCount(4)
+  await expect(page.locator('.api-resource-preview')).toHaveCount(1)
+
+  await page.getByRole('button', { name: 'More' }).click()
+  await page.getByRole('menuitem', { name: 'Zoom to fit' }).click()
+  await page.waitForTimeout(300)
+  const securityBox = await page.locator('.react-flow__node').filter({ has: page.locator('.api-security-preview') }).boundingBox()
+  const newCards = page.locator('.react-flow__node').filter({ has: page.locator('.api-endpoint-preview, .schema-node') })
+  const newCardCount = await newCards.count()
+  for (let index = 0; index < newCardCount; index += 1) {
+    const box = await newCards.nth(index).boundingBox()
+    if (!securityBox || !box) throw new Error('Missing card geometry')
+    const overlaps = box.x < securityBox.x + securityBox.width
+      && box.x + box.width > securityBox.x
+      && box.y < securityBox.y + securityBox.height
+      && box.y + box.height > securityBox.y
+    expect(overlaps, `card ${index} overlaps Security`).toBe(false)
+  }
 
   await page.locator('.canvas-flow').click({ position: { x: 20, y: 20 } })
   await page.keyboard.press('ControlOrMeta+A')

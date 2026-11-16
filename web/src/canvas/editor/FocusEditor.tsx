@@ -5,11 +5,15 @@ import { createPortal } from 'react-dom'
 export function FocusEditor({
   label,
   title,
+  badge,
+  actions,
   onClose,
   children,
 }: {
   label: string
   title: string
+  badge?: ReactNode
+  actions?: ReactNode
   onClose: () => void
   children: ReactNode
 }) {
@@ -47,9 +51,13 @@ export function FocusEditor({
         <header className="focus-head">
           <div>
             <span className="focus-kicker">{label}</span>
-            <h2>{title}</h2>
+            <div className="focus-title-line">
+              {badge}
+              <h2>{title}</h2>
+            </div>
           </div>
           <div className="focus-actions">
+            {actions}
             <button className="button primary" onClick={onClose}>Done</button>
             <button className="icon-button" onClick={onClose} aria-label="Close focus editor">
               <X size={15} />

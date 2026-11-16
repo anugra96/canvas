@@ -143,6 +143,7 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
     },
     ...input.availableEntityTypes
       .filter((entityType) => !(input.isSystems && entityType.id === 'note'))
+      .filter((entityType) => !(input.profileId === 'api' && entityType.id === 'resource'))
       .map((entityType) => ({
         id: `add.entity.${entityType.id}`,
         label: entityType.label,
@@ -151,6 +152,14 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
         available: true,
         run: () => input.onAddEntity(entityType.id),
       })),
+    {
+      id: 'add.api-resource',
+      label: 'Resource',
+      icon: Boxes,
+      surface: 'add',
+      available: input.profileId === 'api',
+      run: input.onAddResource,
+    },
     {
       id: 'add.process-canvas',
       label: 'Process with canvas',
@@ -202,14 +211,6 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       bindings: [{ key: 's', primary: true, allowInEditable: true }],
       available: true,
       run: input.onSave,
-    },
-    {
-      id: 'api.add-resource',
-      label: 'Add resource',
-      icon: Boxes,
-      surface: 'overflow',
-      available: input.profileId === 'api',
-      run: input.onAddResource,
     },
     {
       id: 'api.standard-errors',
