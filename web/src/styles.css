@@ -7259,7 +7259,7 @@ select {
 }
 
 .api-endpoint-response-row {
-  grid-template-columns: 82px minmax(0, 1fr) minmax(90px, auto) auto;
+  grid-template-columns: 82px minmax(0, 1fr) minmax(90px, auto) auto auto;
 }
 
 .api-endpoint-response-row input {

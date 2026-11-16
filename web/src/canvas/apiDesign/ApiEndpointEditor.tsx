@@ -171,6 +171,20 @@ export function ApiEndpointEditor({
     })
   }
 
+  function generateResponseExample(status: string) {
+    const response = object(responses[status])
+    const content = object(response.content)
+    const [mediaType, media] = Object.entries(content)[0] ?? []
+    const body = object(media)
+    if (!mediaType || !body.schema) return
+    updateResponse(status, {
+      content: {
+        ...content,
+        [mediaType]: { ...body, example: generateExample(body.schema, api?.schemaSources ?? {}) },
+      },
+    })
+  }
+
   function copyCurl() {
     if (!api) return
     const snippet = buildCurlSnippet({
@@ -323,6 +337,14 @@ export function ApiEndpointEditor({
                   />
                   <input aria-label="Response description" value={string(body.description)} onChange={(event) => updateResponse(status, { description: event.target.value })} />
                   <span>{model.join(', ') || 'No model'}</span>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label={`Generate example for response ${status}`}
+                    title={`Generate example for response ${status}`}
+                    onClick={() => generateResponseExample(status)}
+                    disabled={Object.values(object(body.content)).every((media) => !object(media).schema)}
+                  ><Sparkles size={13} /></button>
                   <button type="button" className="icon-button" aria-label={`Remove response ${status}`} onClick={() => removeResponse(status)}><Trash2 size={13} /></button>
                 </div>
               )
