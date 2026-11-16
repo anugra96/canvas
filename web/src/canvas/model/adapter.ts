@@ -75,13 +75,15 @@ function nodeData(raw: CanvasNode): CanvasNodeData {
 }
 
 export function toFlowNode(raw: CanvasNode): CanvasFlowNode {
+  const meta = getEntityMeta(raw)
+  const autoHeight = meta?.entityType === 'endpoint'
   return {
     id: raw.id,
-    type: raw.type === 'text' && getEntityMeta(raw)
+    type: raw.type === 'text' && meta
       ? (
-        getEntityMeta(raw)?.entityType === 'code'
+        meta.entityType === 'code'
           ? 'code'
-          : getEntityMeta(raw)?.entityType === 'schema'
+          : meta.entityType === 'schema'
             ? 'schema'
             : 'entity'
       )
@@ -91,7 +93,7 @@ export function toFlowNode(raw: CanvasNode): CanvasFlowNode {
     zIndex: raw.type === 'group' ? 0 : 1,
     style: {
       width: raw.width,
-      height: raw.height,
+      ...(autoHeight ? {} : { height: raw.height }),
     },
   }
 }

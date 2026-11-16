@@ -40,6 +40,7 @@ import { FocusEditor } from '../FocusEditor'
 import { MarkdownEditor } from '../MarkdownEditorLazy'
 import { NodeShell } from './NodeShell'
 import { ApiEndpointEditor } from '../../apiDesign/ApiEndpointEditor'
+import { ApiCardPreview } from '../../apiDesign/ApiCardPreview'
 
 const ICONS = {
   boxes: Boxes,
@@ -289,62 +290,73 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
 
   return (
     <NodeShell node={{ id, data, selected } as CanvasFlowNode} selected={Boolean(selected)} className="entity-node">
-      <div
-        className="entity-card"
-        onDoubleClick={() => {
-          if (!editing) startEditing()
-        }}
-      >
-        <header className="entity-head">
-          <span
-            className="entity-icon"
-            style={iconColor
-              ? {
-                color: iconColor,
-                borderColor: `${iconColor}66`,
-                background: `${iconColor}14`,
-              }
-              : undefined}
-          >
-            <TypeIcon name={entityType.icon} />
-          </span>
-          <div>
-            <span className="entity-type">{entityType.label}</span>
-            <strong>{title || `Untitled ${entityType.label.toLowerCase()}`}</strong>
-          </div>
-        </header>
-
-        <div className="entity-body">
-          {rows.length === 0 && !contentValue && (
-            <span className="entity-hint">
-              {entityType.id === 'note' ? `${isMobile ? 'Double-tap' : 'Double-click'} to write a note` : `${isMobile ? 'Double-tap' : 'Double-click'} to add fields`}
-            </span>
-          )}
-          {rows.map(({ field, value }) => (
-            <div className="entity-row" key={field.key}>
-              <span>{field.label}</span>
-              {field.type === 'url' ? (
-                <a
-                  className="nodrag"
-                  href={value}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  {value}
-                </a>
-              ) : (
-                <strong>{value}</strong>
-              )}
-            </div>
-          ))}
-          {contentValue && (
-            <div className="entity-content-preview">
-              <MarkdownContent text={contentValue} />
-            </div>
-          )}
+      {['api_definition', 'resource', 'endpoint', 'security_scheme'].includes(entityType.id) ? (
+        <div
+          className="entity-card api-card"
+          onDoubleClick={() => {
+            if (!editing) startEditing()
+          }}
+        >
+          <ApiCardPreview entityType={entityType.id} nodeId={id} fields={meta.fields} />
         </div>
-      </div>
+      ) : (
+        <div
+          className="entity-card"
+          onDoubleClick={() => {
+            if (!editing) startEditing()
+          }}
+        >
+          <header className="entity-head">
+            <span
+              className="entity-icon"
+              style={iconColor
+                ? {
+                  color: iconColor,
+                  borderColor: `${iconColor}66`,
+                  background: `${iconColor}14`,
+                }
+                : undefined}
+            >
+              <TypeIcon name={entityType.icon} />
+            </span>
+            <div>
+              <span className="entity-type">{entityType.label}</span>
+              <strong>{title || `Untitled ${entityType.label.toLowerCase()}`}</strong>
+            </div>
+          </header>
+
+          <div className="entity-body">
+            {rows.length === 0 && !contentValue && (
+              <span className="entity-hint">
+                {entityType.id === 'note' ? `${isMobile ? 'Double-tap' : 'Double-click'} to write a note` : `${isMobile ? 'Double-tap' : 'Double-click'} to add fields`}
+              </span>
+            )}
+            {rows.map(({ field, value }) => (
+              <div className="entity-row" key={field.key}>
+                <span>{field.label}</span>
+                {field.type === 'url' ? (
+                  <a
+                    className="nodrag"
+                    href={value}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    {value}
+                  </a>
+                ) : (
+                  <strong>{value}</strong>
+                )}
+              </div>
+            ))}
+            {contentValue && (
+              <div className="entity-content-preview">
+                <MarkdownContent text={contentValue} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {editing && (
         <FocusEditor
           label={`Edit ${entityType.label}`}

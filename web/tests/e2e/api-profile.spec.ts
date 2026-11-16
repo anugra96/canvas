@@ -24,8 +24,13 @@ test('imports the Engine fixture into API cards with zero review errors', async 
   await expect(page.locator('.profile-badge')).toHaveText('API')
   await expect(page.locator('.entity-node')).toHaveCount(11)
   await expect(page.locator('.schema-node')).toHaveCount(20)
-  for (const [type, count] of [['API', 1], ['Resource', 3], ['Endpoint', 6], ['Security', 1]] as const) {
-    await expect(page.locator('.entity-type').filter({ hasText: new RegExp(`^${type}$`) })).toHaveCount(count)
+  for (const [selector, count] of [
+    ['.api-definition-preview', 1],
+    ['.api-resource-preview', 3],
+    ['.api-endpoint-preview', 6],
+    ['.api-security-preview', 1],
+  ] as const) {
+    await expect(page.locator(selector)).toHaveCount(count)
   }
 
   await page.getByRole('button', { name: /^Review,/ }).click()
@@ -71,7 +76,7 @@ test('opens the Endpoint inspector and raw operation tab', async ({ page }) => {
   await dialog.getByRole('button', { name: 'Create API canvas' }).click()
   await expect(page.locator('.canvas-flow')).toBeVisible()
 
-  await page.locator('.entity-node').filter({ hasText: '/v1/jobs/{job_id}' }).first().dblclick()
+  await page.locator('.entity-node').filter({ has: page.locator('.api-endpoint-preview') }).filter({ hasText: '/v1/jobs/{job_id}' }).first().dblclick()
   const editor = page.getByRole('dialog', { name: 'Edit Endpoint' })
   await expect(editor.getByRole('tab', { name: 'Details' })).toHaveAttribute('aria-selected', 'true')
   await expect(editor.getByLabel('Method')).toHaveValue('GET')

@@ -7463,3 +7463,232 @@ select {
     padding: 12px;
   }
 }
+
+/* API card previews */
+.api-card {
+  min-height: 100%;
+}
+
+.api-card-preview {
+  display: grid;
+  min-height: 100%;
+  align-content: start;
+  gap: 8px;
+  padding: 11px 12px;
+  color: var(--ui-text);
+}
+
+.api-preview-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.api-preview-head strong {
+  min-width: 0;
+  color: var(--ui-strong);
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.api-preview-path {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ui-strong);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.api-preview-path.deprecated {
+  text-decoration: line-through;
+  opacity: 0.72;
+}
+
+.api-preview-summary,
+.api-preview-description {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.api-preview-description {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.api-version-badge,
+.api-preview-servers > span {
+  padding: 1px 6px;
+  border: 1px solid var(--ui-line);
+  border-radius: 999px;
+  color: var(--ui-muted);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 10px;
+}
+
+.api-preview-servers {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: var(--ui-faint);
+  font-size: 10px;
+}
+
+.api-preview-servers code {
+  overflow: hidden;
+  color: var(--ui-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.api-preview-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.api-preview-counts span {
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--ui-muted);
+  background: var(--ui-highlight);
+  font-size: 10px;
+}
+
+.api-preview-counts strong {
+  color: var(--ui-strong);
+}
+
+.api-preview-foot {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: auto;
+  padding-top: 6px;
+  border-top: 1px solid var(--ui-line);
+  color: var(--ui-faint);
+  font-size: 10px;
+}
+
+.api-preview-foot strong {
+  color: var(--ui-text);
+}
+
+.api-preview-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.api-preview-chip {
+  padding: 2px 6px;
+  border: 1px solid var(--ui-line);
+  border-radius: 4px;
+  color: var(--ui-muted);
+  background: var(--ui-input-bg);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.api-preview-chip.path {
+  border-color: color-mix(in srgb, var(--ui-warning-accent) 45%, transparent);
+  color: var(--ui-warning-text);
+}
+
+.api-preview-chip.query {
+  color: var(--ui-accent-bright);
+}
+
+.api-preview-chip.response {
+  border-color: var(--ui-line-strong);
+}
+
+.api-preview-chip.api-response-2 {
+  border-color: color-mix(in srgb, var(--ui-green) 50%, transparent);
+  color: var(--ui-green);
+}
+
+.api-preview-chip.api-response-3 {
+  border-color: color-mix(in srgb, var(--ui-accent) 50%, transparent);
+  color: var(--ui-accent-bright);
+}
+
+.api-preview-chip.api-response-4,
+.api-preview-chip.api-response-5 {
+  border-color: color-mix(in srgb, var(--ui-amber) 50%, transparent);
+  color: var(--ui-warning-text);
+}
+
+.api-preview-flow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ui-faint);
+  font-size: 10px;
+}
+
+.api-preview-flow code {
+  color: var(--ui-accent-bright);
+  font-size: 10px;
+}
+
+.api-resource-endpoints {
+  display: grid;
+  gap: 5px;
+}
+
+.api-resource-endpoint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.api-resource-endpoint code {
+  overflow: hidden;
+  color: var(--ui-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.api-resource-endpoint.deprecated code {
+  text-decoration: line-through;
+  opacity: 0.72;
+}
+
+.api-preview-muted {
+  color: var(--ui-faint);
+  font-size: 10px;
+}
+
+.api-security-kind {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ui-text);
+  font-size: 12px;
+}
+
+.api-security-kind svg {
+  color: var(--ui-muted);
+}
+
+.api-card .api-method {
+  min-width: 42px;
+  padding: 2px 5px;
+  font-size: 9px;
+}

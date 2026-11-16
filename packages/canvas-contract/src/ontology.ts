@@ -502,7 +502,7 @@ export const DEFAULT_ONTOLOGY: Ontology = {
       description: 'One HTTP method and path with its OpenAPI Operation object.',
       icon: 'workflow',
       color: '2',
-      defaultSize: { width: 420, height: 280 },
+      defaultSize: { width: 360, height: 220 },
       relationTypes: ['accepts', 'returns', 'authenticates_via', 'relates_to'],
       fields: [
         {

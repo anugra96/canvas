@@ -49,6 +49,24 @@ export interface ApiReferenceEndpoint {
   requestModels: string[]
   responses: ApiReferenceResponse[]
   security: string[]
+  securityOverride: boolean
+}
+
+export interface ApiReferenceSummary {
+  title: string
+  version: string
+  description?: string
+  servers: string[]
+  globalSecurity: string[]
+  resourceCount: number
+  endpointCount: number
+  schemaCount: number
+}
+
+export interface ApiReferenceDocument {
+  summary: ApiReferenceSummary
+  resources: ApiReferenceResource[]
+  securityUsage: Record<string, number>
 }
 
 export interface ApiReferenceResource {

@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import {
   Background,
   BackgroundVariant,
@@ -8,11 +9,12 @@ import {
   type Viewport,
 } from '@xyflow/react'
 
-import type { CanvasProfile, Ontology } from '@canvas/contract'
+import { getEdgeMeta, shouldDrawApiEdge, type CanvasProfile, type Ontology } from '@canvas/contract'
 
 import { CanvasBackdrop } from '../backdrop/CanvasBackdrop'
 import type { CanvasFlowEdge, CanvasFlowNode } from '../model/adapter'
 import { writeViewport } from './viewport'
+import { useApiDesign } from '../apiDesign/ApiDesignContext'
 import { ConnectionPreview } from './graph/ConnectionPreview'
 import type { CanvasGraphState } from './graph/useCanvasGraph'
 import type { CanvasCaptureState } from './capture/useCanvasCapture'
@@ -87,6 +89,25 @@ export function CanvasWorkspace({
   setNotice,
   onOpenHelp,
 }: CanvasWorkspaceProps) {
+  const apiDesign = useApiDesign()
+  const renderedEdges = useMemo(() => {
+    if (!apiDesign) return edges
+    const sourceTypes = new Map(nodes.map((node) => [node.id, node.data.entity?.entityType ?? '']))
+    const endpoints = new Map(apiDesign.resources.flatMap((resource) => (
+      resource.endpoints.map((endpoint) => [endpoint.id, endpoint] as const)
+    )))
+    return edges.filter((edge) => {
+      const raw = edge.data?.raw
+      const meta = raw ? getEdgeMeta(raw) : undefined
+      return shouldDrawApiEdge({
+        relationType: edge.data?.relationType ?? meta?.relationType,
+        status: meta?.status ?? raw?.label,
+        sourceType: sourceTypes.get(edge.source),
+        securityOverride: endpoints.get(edge.source)?.securityOverride,
+      })
+    })
+  }, [apiDesign, edges, nodes])
+
   return (
     <div
       className={`canvas-flow${graph.connectNodeId ? ' connect-mode' : ''}`}
@@ -96,7 +117,7 @@ export function CanvasWorkspace({
       <CanvasBackdrop />
       <ReactFlow
         nodes={nodes}
-        edges={edges}
+        edges={renderedEdges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodesChange={graph.onNodesChange}

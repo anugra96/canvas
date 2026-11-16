@@ -3,10 +3,12 @@ import type { CanvasNode } from '../jsonCanvas'
 import { isObject, objectOrEmpty, schemaNameFromRef } from './document'
 import { endpointResourceName } from './managedRelations'
 import type {
+  ApiReferenceDocument,
   ApiReferenceEndpoint,
   ApiReferenceParameter,
   ApiReferenceResource,
   ApiReferenceResponse,
+  ApiReferenceSummary,
 } from './types'
 
 function field(node: CanvasNode, key: string): string {
@@ -103,6 +105,7 @@ export function buildApiReference(nodes: CanvasNode[]): ApiReferenceResource[] {
       requestModels: requestModels(operation),
       responses: responses(operation),
       security: 'security' in operation ? securityNames(operation.security) : topSecurity,
+      securityOverride: 'security' in operation,
     }
     grouped.get(endpointResourceName(node))?.push(endpoint)
   }
@@ -116,4 +119,38 @@ export function buildApiReference(nodes: CanvasNode[]): ApiReferenceResource[] {
       endpoints: (grouped.get(name) ?? []).sort((left, right) => left.path.localeCompare(right.path) || left.method.localeCompare(right.method)),
     }
   })
+}
+
+
+export function buildApiReferenceDocument(nodes: CanvasNode[]): ApiReferenceDocument {
+  const resources = buildApiReference(nodes)
+  const api = nodes.find((node) => getEntityMeta(node)?.entityType === 'api_definition')
+  let globalSecurity: string[] = []
+  if (api) {
+    try {
+      const extra: unknown = JSON.parse(field(api, 'extra') || '{}')
+      if (isObject(extra)) globalSecurity = securityNames(extra.security)
+    } catch {
+      globalSecurity = []
+    }
+  }
+  const summary: ApiReferenceSummary = {
+    title: api ? field(api, 'title') : 'API',
+    version: api ? field(api, 'version') : '',
+    description: api ? field(api, 'description') || undefined : undefined,
+    servers: api ? field(api, 'servers').split(/\r?\n/).map((line) => line.trim()).filter(Boolean) : [],
+    globalSecurity,
+    resourceCount: resources.length,
+    endpointCount: resources.reduce((count, resource) => count + resource.endpoints.length, 0),
+    schemaCount: nodes.filter((node) => getEntityMeta(node)?.entityType === 'schema').length,
+  }
+  const securityUsage: Record<string, number> = {}
+  for (const resource of resources) {
+    for (const endpoint of resource.endpoints) {
+      for (const scheme of endpoint.security) {
+        securityUsage[scheme] = (securityUsage[scheme] ?? 0) + 1
+      }
+    }
+  }
+  return { summary, resources, securityUsage }
 }

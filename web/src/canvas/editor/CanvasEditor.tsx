@@ -17,6 +17,7 @@ import { useCanvasLinks } from './links/useCanvasLinks'
 import { useCanvasProfile } from './useCanvasProfile'
 import { useCanvasValidation } from './validation/useCanvasValidation'
 import { useApiManagedRelations } from '../apiDesign/useApiManagedRelations'
+import { ApiDesignProvider } from '../apiDesign/ApiDesignProvider'
 import { useCanvasHistory } from './useCanvasHistory'
 import { useEditorShortcuts } from './useEditorShortcuts'
 import { readValidationSuppressions, type ValidationSuppression } from './validationSuppressions'
@@ -242,7 +243,8 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
             onDismissNotice={() => setNotice('')}
             error={error}
           />
-          <CanvasWorkspace
+          <ApiDesignProvider nodes={nodes} enabled={isApi}>
+            <CanvasWorkspace
             documentId={document.id}
             nodes={nodes}
             edges={edges}
@@ -261,8 +263,9 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
             capture={capture}
             validation={validation}
             setNotice={setNotice}
-            onOpenHelp={() => setHelpOpen(true)}
-          />
+              onOpenHelp={() => setHelpOpen(true)}
+            />
+          </ApiDesignProvider>
           <EditorDialogs
             documentId={document.id}
             title={title}
