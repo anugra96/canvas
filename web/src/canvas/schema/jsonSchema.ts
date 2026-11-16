@@ -293,6 +293,9 @@ export function validateSchemaContracts(
     if (relation === 'defines' && schemaIds.has(edge.toNode)) {
       linkedSchemas.add(edge.toNode)
     }
+    if ((relation === 'accepts' || relation === 'returns') && schemaIds.has(edge.toNode)) {
+      linkedSchemas.add(edge.toNode)
+    }
   }
 
   for (const schema of schemas) {

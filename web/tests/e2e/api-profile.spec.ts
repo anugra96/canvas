@@ -33,10 +33,9 @@ test('imports the Engine fixture into API cards with zero review errors', async 
   await expect(panel).toBeVisible()
   await expect(panel.locator('.validation-group.error')).toHaveCount(0)
   await expect(panel.locator('.validation-item.error')).toHaveCount(0)
-  await expect(panel.locator('.validation-group.warning')).toHaveCount(2)
+  await expect(panel.locator('.validation-group.warning')).toHaveCount(1)
   await expect(panel.locator('.validation-group.warning').filter({ hasText: 'Schema review due' })).toContainText('20')
-  await expect(panel.locator('.validation-group.warning').filter({ hasText: 'Unlinked schema' })).toContainText('3')
-  await expect(panel.getByRole('tab', { name: /Issues/ })).toContainText('23')
+  await expect(panel.getByRole('tab', { name: /Issues/ })).toContainText('20')
 
   await panel.getByRole('button', { name: 'Close review' }).click()
   await page.getByRole('button', { name: 'Views', exact: true }).click()
