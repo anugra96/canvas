@@ -114,7 +114,7 @@ the docs cannot disagree.
 | --- | --- |
 | Endpoint | Title: method badge (one colour per method) and the path in monospace, with `{params}` highlighted. Then the summary; parameter chips (`{path}`, `?query`, `header:`; required marked); `body → Model` for a request body; response chips `status → Model`, coloured 2xx/3xx, 4xx, 5xx; a lock with the scheme name, or `public` for `security: []`; deprecated shows the path struck through with a badge. Default width 360, height fits content |
 | API | Title, version badge, servers, a two-line description, counts (resources, endpoints, schemas), and global security |
-| Resource | Description and its endpoints as compact `METHOD path` lines |
+| Resource | A lane: a frame around its endpoints with the name, description, and owner in its header. It does not list the endpoints again (see Layout) |
 | Security | Type and scheme in words (for example "HTTP bearer (JWT)") and "used by N endpoints" |
 | Schema | The existing Schema preview at a compact default size (360 wide). Review badges are not shown on API canvases (see Contract review) |
 
@@ -126,10 +126,11 @@ already show:
 
 | Relation | Drawn on the canvas |
 | --- | --- |
-| `contains` | Never. The layout shows membership: each Resource row holds its endpoints |
-| `authenticates_via` | API -> Security always. Endpoint or Resource -> Security only when it differs from the API's security. Otherwise the endpoint's lock shows it |
-| `returns` | Only for `1XX`, `2XX`, and `3XX` statuses. Error responses appear as chips on the Endpoint card |
-| `accepts`, `uses` | Always |
+| `contains` | Never. The Resource lane shows membership |
+| `authenticates_via` | Only from an Endpoint or Resource whose security differs from the API's. The API card and each endpoint's lock show the rest |
+| `returns` | Only for `1XX`, `2XX`, and `3XX` statuses, from the endpoint's right side to the model's left side, labelled with the status. Error responses appear as chips on the Endpoint card |
+| `accepts` | From the model's right side into the endpoint's left side. The stored edge stays Endpoint -> Schema; it sets `fromEnd: "arrow"` and `toEnd: "none"` so the arrow points into the endpoint |
+| `uses` | Always, left to right |
 | `relates_to` | Always |
 
 Selecting a card shows all its managed edges, including hidden ones, until the
@@ -140,9 +141,53 @@ selection changes.
 On an API canvas the API is the reviewed contract, not each model. The schema
 review fields and the "Schema review due" warning apply to the API card
 (version, review status, reviewed version, last reviewed, interval). Schema
-cards on API canvases do not raise review warnings; JSON Schema parse and
+cards on API canvases raise no review warnings and no combined warning on the
+API card for them; the API card's own review fields decide. JSON Schema parse and
 meta-validation errors still apply to every Schema card. This applies from
 Phase 1, so an import does not start with one review warning per model.
+
+### Layout
+
+An API canvas reads left to right as request, endpoint, response.
+
+```text
+┌ API: Simple Tasks API v1.0.0 · 🔒 BearerAuth ┐ ┌ Security: BearerAuth ┐       header row
+
+ REQUEST MODELS        ENDPOINTS (one lane per Resource)        RESPONSE MODELS
+                       ┌ Tasks ───────────────────────────┐
+                       │ GET    /tasks            ──200───┼──▶ TaskList ──uses──▶ Task
+ TaskCreate ──body──▶  │ POST   /tasks            ──201───┼──▶ Task
+                       │ GET    /tasks/{task_id}  ──200───┼──▶ Task
+ TaskUpdate ──body──▶  │ PATCH  /tasks/{task_id}  ──200───┼──▶ Task
+                       │ DELETE /tasks/{task_id}          │
+                       └──────────────────────────────────┘
+                       ┌ Health ──────────────────────────┐
+                       │ GET    /healthz          ──200───┼──▶ Health
+                       └──────────────────────────────────┘
+ Shared: ApiError                                                         shared row
+```
+
+(Each model card appears once; the diagram repeats `Task` only to show which
+rows point at it.)
+
+| Rule | Detail |
+| --- | --- |
+| Header row | API card, then Security cards to its right |
+| Columns | Request models; endpoint lanes; response models; then one extra column per `uses` depth (a model that another response model references goes one column further right) |
+| A model used both as a request and a response | Response column |
+| Shared row | A model referenced only by `4XX`/`5XX` responses, and by no success response or request, goes in a row below the lanes. It draws no edges |
+| Unused models | After the shared row, in name order |
+| Resource lanes | Tag order, then inferred Resources by name. The lane is the Resource card, sized to enclose its endpoints with 24 px padding and a header |
+| Endpoint order in a lane | Path segments in order with collection paths before item paths (`/tasks` before `/tasks/{task_id}`), then GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, TRACE |
+| Model order in a column | By the vertical position of the first endpoint (or model) that references it, so arrows stay short and near horizontal; ties by name |
+| Spacing | 80 px between columns, 24 px between endpoints in a lane, 40 px between lanes and between models. No overlaps |
+| Drag | Moving a Resource lane moves its endpoints, reusing the group-drag behaviour. An endpoint dropped into another lane does not change its tag; only the inspector does |
+
+The layout is a pure function, `layoutApiCanvas(canvas, sizes)`, in
+`packages/canvas-contract/src/openapi/layout.ts`. Import calls it with estimated
+card sizes (from the reference summary: title, summary, chip rows). The editor's
+**Tidy API layout** command calls it with measured sizes and applies the result
+as one undoable edit. It changes positions and lane sizes only.
 
 ## Profile metadata
 
@@ -164,10 +209,7 @@ server share it. UI lives in `web/src/canvas/apiDesign/`.
 
 1. **API profile and cards**, with the managed relations above.
 2. **Import OpenAPI 3.1** from a pasted document or a file, JSON or YAML (adds
-   the `yaml` package). Import creates a new canvas. It lays out one row per
-   Resource (the Resource card on the left, its Endpoints to the right), the API
-   card above the rows with Security beside it, and Schemas in a column to the
-   right, about 80 px apart with no overlaps. OpenAPI 3.0 is converted on import (`nullable`, `example`,
+   the `yaml` package). Import creates a new canvas laid out as in Layout. OpenAPI 3.0 is converted on import (`nullable`, `example`,
    `exclusiveMinimum`) with a summary of what changed. Swagger 2.0 is refused
    with a message.
    Untagged operations are grouped into an **inferred Resource** named after the
@@ -185,28 +227,29 @@ server share it. UI lives in `web/src/canvas/apiDesign/`.
    Endpoints are grouped by Resource with method badges, parameters, request
    and response models, and status codes. It reuses the derived views
    framework.
-5. **Create or open API canvas** command on a Systems card with kind `api`. It
+5. **Tidy API layout** command (see Layout).
+6. **Create or open API canvas** command on a Systems card with kind `api`. It
    creates an API canvas titled after the card and adds a canvas link.
 
 ### Phase 2: design faster
 
-6. **Export OpenAPI 3.1** as JSON or YAML, downloaded or copied. Export sorts
+7. **Export OpenAPI 3.1** as JSON or YAML, downloaded or copied. Export sorts
    paths by Resource order, then path, then method, so diffs stay small.
-7. **Add resource** command: asks for a singular and a plural name, then creates
+8. **Add resource** command: asks for a singular and a plural name, then creates
    a Resource, list, get, create, update, and delete endpoints, and the
    `<Name>`, `<Name>Create`, `<Name>Update`, and `<Name>List` schemas with
    cursor pagination. The user removes what is not needed.
-8. **Standard errors**: one command adds an RFC 9457 Problem Details schema and
+9. **Standard errors**: one command adds an RFC 9457 Problem Details schema and
    attaches it to `4XX` and `5XX` responses on the selected endpoints.
-9. **Examples**: generate an example from a schema (deterministic: first enum
+10. **Examples**: generate an example from a schema (deterministic: first enum
    value, `format`-aware placeholders, minimum lengths), and validate every
    example in the document against its schema with Ajv.
-10. **Request snippet**: copy a `curl` command for the selected endpoint using
+11. **Request snippet**: copy a `curl` command for the selected endpoint using
     the first server, its path parameters, and an example body.
 
 ### Phase 3: review and change safety
 
-11. **API checks** in the existing Review panel, with the same Issues, Fixes,
+12. **API checks** in the existing Review panel, with the same Issues, Fixes,
     and ignore-with-reason behaviour.
 
     | Code | Severity | Rule |
@@ -227,7 +270,7 @@ server share it. UI lives in `web/src/canvas/apiDesign/`.
     Fixes are offered where the repair is unambiguous: add the missing path
     parameter, attach standard errors, add `limit` and `cursor`, add a tag.
 
-12. **Breaking-change check**: compare the canvas with an OpenAPI file or with
+13. **Breaking-change check**: compare the canvas with an OpenAPI file or with
     another API canvas (version history can be a source once it exists). The
     result lists Breaking and Compatible changes per endpoint:
 
@@ -243,11 +286,11 @@ server share it. UI lives in `web/src/canvas/apiDesign/`.
 
 ### Phase 4: tie into Systems
 
-13. A Systems `uses` relation to a System with kind `api` gets an optional
+14. A Systems `uses` relation to a System with kind `api` gets an optional
     **Endpoint** picker that lists the endpoints of its linked API canvas and
     stores `app.endpoint: "POST /v1/jobs"`. The edge label shows it, and the
     Sequence view uses it as the message text.
-14. The Review panel warns when a stored endpoint no longer exists in the linked
+15. The Review panel warns when a stored endpoint no longer exists in the linked
     API canvas.
 
 ### Later, not in this spec
@@ -266,6 +309,7 @@ server share it. UI lives in `web/src/canvas/apiDesign/`.
 | --- | --- |
 | Import or export loses data | Round-trip test in the contract package: import, export, and deep-equal after key sorting, for both fixtures below and one synthetic document that uses every supported feature plus `webhooks` and `x-*` extensions |
 | Managed relations drift from operations | Table-driven test: operation edit -> expected managed edges |
+| Layout is unreadable | Table-driven layout test on both fixtures and the example: no overlaps; every endpoint inside its lane; request models left of lanes and response models right; no drawn edge points leftwards except `accepts` into an endpoint; same input gives the same positions |
 | Canvas shows noise or hides a fact | Table-driven test: relation, status, and security override -> drawn or hidden. Browser check: the imported sample at fit view and one Endpoint card at 100%, with no raw JSON on any card |
 | Checks are wrong | One table-driven test per rule family with a passing and a failing operation |
 | Breaking-change check misses a break | Table-driven test with one pair of documents per row in the table above |
@@ -288,7 +332,7 @@ normalization.
 - `packages/canvas-contract`: `API_PROFILE`; entity types `api_definition`,
   `resource`, `endpoint`, `security_scheme`; relation types `accepts`,
   `returns` (`contains` and `authenticates_via` already exist); edge meta fields
-  `managed`, `status`, `mediaType`, `endpoint`; node meta field `inferred`; `openapi/` module (import,
+  `managed`, `status`, `mediaType`, `endpoint`; node meta field `inferred`; `openapi/` module (import, layout,
   export, managed relations, checks, diff).
 - No change to stored Systems or Raw canvases. No migration.
 - The API stores and serves API canvases like any other document.
