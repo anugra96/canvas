@@ -45,7 +45,7 @@ and Security.
 
 | Card | Fields |
 | --- | --- |
-| API | Title, Version, Description, Servers (one URL per line), Owner, Status, Extra (JSON, read-only in v1) |
+| API | Title, Version, Description, Servers (one URL per line), Owner, Status, Review status, Reviewed version, Last reviewed, Review interval, Extra (JSON, read-only in v1) |
 | Resource | Name, Description, Owner |
 | Endpoint | Method (GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, TRACE), Path, Status (planned, active, deprecated), Operation (JSON) |
 | Schema | Unchanged. Contract kind defaults to `api` on API canvases |
@@ -94,6 +94,56 @@ disagree with it.
   inspector offers **Extract to model**, which creates a Schema card and
   replaces the inline schema with a `$ref`.
 
+### Card previews
+
+A card preview shows the design, never raw JSON. The `operation`, `extra`, and
+`definition` JSON fields appear only in the inspector (the Endpoint Raw tab and
+the read-only API and Security fields). Previews are built from
+`buildApiReference()`, the same summary the Reference view uses, so the card and
+the docs cannot disagree.
+
+```text
+┌ GET  /tasks ─────────────────── 🔒 BearerAuth ┐
+│ List tasks                                    │
+│ ?limit  ?cursor                               │
+│ 200 → TaskList    422 → ApiError              │
+└───────────────────────────────────────────────┘
+```
+
+| Card | Preview |
+| --- | --- |
+| Endpoint | Title: method badge (one colour per method) and the path in monospace, with `{params}` highlighted. Then the summary; parameter chips (`{path}`, `?query`, `header:`; required marked); `body → Model` for a request body; response chips `status → Model`, coloured 2xx/3xx, 4xx, 5xx; a lock with the scheme name, or `public` for `security: []`; deprecated shows the path struck through with a badge. Default width 360, height fits content |
+| API | Title, version badge, servers, a two-line description, counts (resources, endpoints, schemas), and global security |
+| Resource | Description and its endpoints as compact `METHOD path` lines |
+| Security | Type and scheme in words (for example "HTTP bearer (JWT)") and "used by N endpoints" |
+| Schema | The existing Schema preview at a compact default size (360 wide). Review badges are not shown on API canvases (see Contract review) |
+
+### Drawn edges
+
+Managed relations are all stored, so views and export see the full model. The
+canvas draws only the edges that carry information the cards and layout do not
+already show:
+
+| Relation | Drawn on the canvas |
+| --- | --- |
+| `contains` | Never. The layout shows membership: each Resource row holds its endpoints |
+| `authenticates_via` | API -> Security always. Endpoint or Resource -> Security only when it differs from the API's security. Otherwise the endpoint's lock shows it |
+| `returns` | Only for `1XX`, `2XX`, and `3XX` statuses. Error responses appear as chips on the Endpoint card |
+| `accepts`, `uses` | Always |
+| `relates_to` | Always |
+
+Selecting a card shows all its managed edges, including hidden ones, until the
+selection changes.
+
+### Contract review
+
+On an API canvas the API is the reviewed contract, not each model. The schema
+review fields and the "Schema review due" warning apply to the API card
+(version, review status, reviewed version, last reviewed, interval). Schema
+cards on API canvases do not raise review warnings; JSON Schema parse and
+meta-validation errors still apply to every Schema card. This applies from
+Phase 1, so an import does not start with one review warning per model.
+
 ## Profile metadata
 
 ```json
@@ -114,9 +164,10 @@ server share it. UI lives in `web/src/canvas/apiDesign/`.
 
 1. **API profile and cards**, with the managed relations above.
 2. **Import OpenAPI 3.1** from a pasted document or a file, JSON or YAML (adds
-   the `yaml` package). Import creates a new canvas. It lays out API, then
-   Resources in a column, their Endpoints in rows, Schemas to the right, and
-   Security below. OpenAPI 3.0 is converted on import (`nullable`, `example`,
+   the `yaml` package). Import creates a new canvas. It lays out one row per
+   Resource (the Resource card on the left, its Endpoints to the right), the API
+   card above the rows with Security beside it, and Schemas in a column to the
+   right, about 80 px apart with no overlaps. OpenAPI 3.0 is converted on import (`nullable`, `example`,
    `exclusiveMinimum`) with a summary of what changed. Swagger 2.0 is refused
    with a message.
    Untagged operations are grouped into an **inferred Resource** named after the
@@ -215,6 +266,7 @@ server share it. UI lives in `web/src/canvas/apiDesign/`.
 | --- | --- |
 | Import or export loses data | Round-trip test in the contract package: import, export, and deep-equal after key sorting, for both fixtures below and one synthetic document that uses every supported feature plus `webhooks` and `x-*` extensions |
 | Managed relations drift from operations | Table-driven test: operation edit -> expected managed edges |
+| Canvas shows noise or hides a fact | Table-driven test: relation, status, and security override -> drawn or hidden. Browser check: the imported sample at fit view and one Endpoint card at 100%, with no raw JSON on any card |
 | Checks are wrong | One table-driven test per rule family with a passing and a failing operation |
 | Breaking-change check misses a break | Table-driven test with one pair of documents per row in the table above |
 | UI flow breaks | One E2E test: import the Engine fixture, open an endpoint, add a response, export, and confirm the exported document contains it |
