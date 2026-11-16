@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Background,
   BackgroundVariant,
@@ -9,12 +9,23 @@ import {
   type Viewport,
 } from '@xyflow/react'
 
-import { getEdgeMeta, shouldDrawApiEdge, type CanvasProfile, type Ontology } from '@canvas/contract'
+import {
+  attachRequestModel,
+  attachResponseModel,
+  getEdgeMeta,
+  removeModelReference,
+  responseHasOtherContent,
+  shouldDrawApiEdge,
+  type CanvasProfile,
+  type Ontology,
+} from '@canvas/contract'
+import type { Connection, EdgeChange } from '@xyflow/react'
 
 import { CanvasBackdrop } from '../backdrop/CanvasBackdrop'
 import type { CanvasFlowEdge, CanvasFlowNode } from '../model/adapter'
 import { writeViewport } from './viewport'
 import { useApiDesign } from '../apiDesign/ApiDesignContext'
+import { ManagedEdgeChooser } from '../apiDesign/ManagedEdgeChooser'
 import { ConnectionPreview } from './graph/ConnectionPreview'
 import type { CanvasGraphState } from './graph/useCanvasGraph'
 import type { CanvasCaptureState } from './capture/useCanvasCapture'
@@ -90,6 +101,12 @@ export function CanvasWorkspace({
   onOpenHelp,
 }: CanvasWorkspaceProps) {
   const apiDesign = useApiDesign()
+  const [managedConnection, setManagedConnection] = useState<{
+    sourceId: string
+    targetId: string
+    sourceLabel: string
+    modelName: string
+  } | null>(null)
   const renderedEdges = useMemo(() => {
     if (!apiDesign) return edges
     const sourceTypes = new Map(nodes.map((node) => [node.id, node.data.entity?.entityType ?? '']))
@@ -108,6 +125,78 @@ export function CanvasWorkspace({
     })
   }, [apiDesign, edges, nodes])
 
+  function nodeField(id: string, key: string): string {
+    const node = nodes.find((candidate) => candidate.id === id)
+    const value = node?.data.entity?.fields[key]
+    return value == null ? '' : String(value)
+  }
+
+  function handleConnect(connection: Connection) {
+    if (!apiDesign) {
+      graph.onConnect(connection)
+      return
+    }
+    const source = nodes.find((node) => node.id === connection.source)
+    const target = nodes.find((node) => node.id === connection.target)
+    if (source?.data.entity?.entityType === 'endpoint' && target?.data.entity?.entityType === 'schema') {
+      const sourceLabel = `${nodeField(source.id, 'method')} ${nodeField(source.id, 'path')}`.trim()
+      setManagedConnection({
+        sourceId: source.id,
+        targetId: target.id,
+        sourceLabel,
+        modelName: nodeField(target.id, 'name') || 'Model',
+      })
+      return
+    }
+    graph.onConnect(connection)
+  }
+
+  function chooseManagedConnection(choice: { kind: 'request' } | { kind: 'response'; status: string }) {
+    if (!managedConnection) return
+    try {
+      const operation = JSON.parse(nodeField(managedConnection.sourceId, 'operation') || '{}')
+      const next = choice.kind === 'request'
+        ? attachRequestModel(operation, managedConnection.modelName)
+        : attachResponseModel(operation, choice.status, managedConnection.modelName)
+      graph.updateEntityField(managedConnection.sourceId, 'operation', JSON.stringify(next, null, 2))
+    } catch {
+      setNotice('Fix the endpoint operation JSON before drawing a managed relation.')
+    }
+    setManagedConnection(null)
+  }
+
+  function handleEdgesChange(changes: EdgeChange<CanvasFlowEdge>[]) {
+    if (!apiDesign) {
+      graph.onEdgesChange(changes)
+      return
+    }
+    const removals = changes
+      .filter((change) => change.type === 'remove')
+      .map((change) => edges.find((edge) => edge.id === change.id))
+      .filter((edge): edge is CanvasFlowEdge => Boolean(edge))
+      .filter((edge) => {
+        const meta = edge.data?.raw ? getEdgeMeta(edge.data.raw) : undefined
+        return meta?.managed && (meta.relationType === 'accepts' || meta.relationType === 'returns')
+      })
+    if (removals.length > 0) {
+      for (const edge of removals) {
+        const meta = getEdgeMeta(edge.data!.raw!)
+        const target = nodes.find((node) => node.id === edge.target)
+        const modelName = target?.data.entity?.fields.name
+        if (!modelName) continue
+        const operation = JSON.parse(nodeField(edge.source, 'operation') || '{}')
+        if (meta?.relationType === 'returns' && meta.status && responseHasOtherContent(operation, meta.status, meta.mediaType)) {
+          if (!window.confirm(`Response ${meta.status} also has other content. Remove ${modelName}?`)) return
+        }
+        if (meta?.relationType) {
+          const next = removeModelReference(operation, meta.relationType, String(modelName), meta.status, meta.mediaType)
+          graph.updateEntityField(edge.source, 'operation', JSON.stringify(next, null, 2))
+        }
+      }
+    }
+    graph.onEdgesChange(changes)
+  }
+
   return (
     <div
       className={`canvas-flow${graph.connectNodeId ? ' connect-mode' : ''}`}
@@ -121,8 +210,8 @@ export function CanvasWorkspace({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodesChange={graph.onNodesChange}
-        onEdgesChange={graph.onEdgesChange}
-        onConnect={graph.onConnect}
+        onEdgesChange={handleEdgesChange}
+        onConnect={handleConnect}
         onConnectStart={() => {
           graph.setPendingConnection(null)
           graph.setEdgeLabelEditor(null)
@@ -273,6 +362,14 @@ export function CanvasWorkspace({
           initialValue={graph.edgeLabelEditor.label}
           onSave={graph.saveEdgeLabel}
           onCancel={() => graph.setEdgeLabelEditor(null)}
+        />
+      )}
+      {managedConnection && (
+        <ManagedEdgeChooser
+          sourceLabel={managedConnection.sourceLabel}
+          modelName={managedConnection.modelName}
+          onChoose={chooseManagedConnection}
+          onClose={() => setManagedConnection(null)}
         />
       )}
       {isSystems && validation.reviewOpen && (

@@ -39,8 +39,9 @@ function operationRefs(operation: Record<string, unknown>, key: 'request' | 'res
   if (key === 'request') {
     const content = objectOrEmpty(objectOrEmpty(operation.requestBody).content)
     for (const [mediaType, media] of Object.entries(content)) {
-      const name = schemaNameFromRef(objectOrEmpty(media).schema && objectOrEmpty(objectOrEmpty(media).schema).$ref)
-      if (name) refs.push({ name, mediaType })
+      for (const name of refsForSchema(objectOrEmpty(media).schema)) {
+        refs.push({ name, mediaType })
+      }
     }
     return refs
   }
@@ -48,8 +49,9 @@ function operationRefs(operation: Record<string, unknown>, key: 'request' | 'res
   for (const [status, response] of Object.entries(responses)) {
     const content = objectOrEmpty(objectOrEmpty(response).content)
     for (const [mediaType, media] of Object.entries(content)) {
-      const name = schemaNameFromRef(objectOrEmpty(objectOrEmpty(media).schema).$ref)
-      if (name) refs.push({ name, status, mediaType })
+      for (const name of refsForSchema(objectOrEmpty(media).schema)) {
+        refs.push({ name, status, mediaType })
+      }
     }
   }
   return refs

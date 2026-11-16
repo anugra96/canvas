@@ -126,7 +126,7 @@ export function importOpenApi(source: string | unknown): OpenApiImportResult {
   let rowY = 80
   for (const name of resourceOrder) {
     const tag = tagByName.get(name)
-    const inferred = inferredNames.has(name)
+    const inferred = !tag && inferredNames.has(name)
     const tagExtra = tag
       ? Object.fromEntries(Object.entries(tag).filter(([key]) => !['name', 'description'].includes(key)))
       : {}

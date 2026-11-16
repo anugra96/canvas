@@ -27,7 +27,11 @@ export function useApiManagedRelations({
         .filter((edge) => edge.data?.raw?.app?.managed === true)
         .map((edge) => edge.data?.raw)
       if (JSON.stringify(managedNow) === JSON.stringify(managed)) return current
-      const manual = current.filter((edge) => edge.data?.raw?.app?.managed !== true)
+      const manual = current.filter((edge) => (
+        edge.data?.raw?.app?.managed !== true
+        && edge.data?.relationType !== 'accepts'
+        && edge.data?.relationType !== 'returns'
+      ))
       return [
         ...manual,
         ...managed.map((edge) => toFlowEdge(edge)),

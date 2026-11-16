@@ -7692,3 +7692,63 @@ select {
   padding: 2px 5px;
   font-size: 9px;
 }
+
+.managed-edge-chooser {
+  position: absolute;
+  top: 18%;
+  left: 50%;
+  z-index: 80;
+  display: grid;
+  width: 220px;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--ui-line-strong);
+  border-radius: var(--radius);
+  background: var(--ui-panel-solid);
+  box-shadow: var(--ui-shadow);
+  transform: translateX(-50%);
+}
+
+.managed-edge-chooser header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 5px 8px;
+  border-bottom: 1px solid var(--ui-line);
+}
+
+.managed-edge-chooser header div {
+  display: grid;
+  gap: 2px;
+}
+
+.managed-edge-chooser header span {
+  color: var(--ui-faint);
+  font-size: 9px;
+}
+
+.managed-edge-chooser header strong {
+  color: var(--ui-strong);
+  font-size: 12px;
+}
+
+.managed-edge-chooser > button {
+  min-height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--ui-text);
+  background: transparent;
+  font-size: 12px;
+  text-align: left;
+}
+
+.managed-edge-chooser > button:hover {
+  background: var(--ui-highlight);
+}
+
+.api-endpoint-error {
+  color: var(--ui-danger-text);
+  font-size: 11px;
+}

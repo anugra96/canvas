@@ -9,14 +9,23 @@ function object(value: unknown): JsonObject {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as JsonObject : {}
 }
 
-function parseOperation(source: string): JsonObject {
+function parseOperation(source: string): { value: JsonObject; error?: string } {
+  if (!source.trim()) return { value: {}, error: 'Operation JSON is empty.' }
   try {
-    const value: unknown = JSON.parse(source || '{}')
-    return object(value)
-  } catch {
-    return {}
+    const value: unknown = JSON.parse(source)
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return { value: {}, error: 'Operation JSON must be an object.' }
+    }
+    return { value: value as JsonObject }
+  } catch (cause) {
+    return {
+      value: {},
+      error: cause instanceof Error ? cause.message : 'Operation JSON is invalid.',
+    }
   }
 }
+
+const RESPONSE_CODES = [200, 201, 204, 400, 401, 403, 404, 409, 422, 500]
 
 function string(value: unknown): string {
   return value == null ? '' : String(value)
@@ -31,6 +40,15 @@ function pathParameters(path: string): string[] {
   return [...path.matchAll(/\{([^}]+)\}/g)].flatMap((match) => match[1] ? [match[1]] : [])
 }
 
+function modelNames(media: JsonObject): string[] {
+  const schema = object(media.schema)
+  const name = schemaNameFromRef(schema.$ref)
+  if (name) return [name]
+  if (Array.isArray(schema.items)) return []
+  const item = schemaNameFromRef(object(schema.items).$ref)
+  return item ? [item] : []
+}
+
 export function ApiEndpointEditor({
   fields,
   onChange,
@@ -39,13 +57,19 @@ export function ApiEndpointEditor({
   onChange: (key: string, value: string) => void
 }) {
   const [tab, setTab] = useState<'details' | 'raw'>('details')
+  const [statusDrafts, setStatusDrafts] = useState<Record<string, string>>({})
+  const [statusError, setStatusError] = useState('')
   const source = string(fields.operation)
-  const operation = parseOperation(source)
+  const parsed = parseOperation(source)
+  const operation = parsed.value
+  const invalid = Boolean(parsed.error)
   const path = string(fields.path)
   const parameters = Array.isArray(operation.parameters) ? operation.parameters.map(object) : []
   const responses = object(operation.responses)
   const declaredPath = new Set(parameters.filter((parameter) => parameter.in === 'path').map((parameter) => string(parameter.name)))
   const missingPath = pathParameters(path).filter((name) => !declaredPath.has(name))
+  const requestContent = object(object(operation.requestBody).content)
+  const requestModels = [...new Set(Object.values(requestContent).flatMap((media) => modelNames(object(media))))]
 
   function updateOperation(next: JsonObject) {
     onChange('operation', JSON.stringify(next, null, 2))
@@ -78,7 +102,39 @@ export function ApiEndpointEditor({
   }
 
   function addResponse() {
-    updateOperation({ ...operation, responses: { ...responses, '200': { description: 'Success' } } })
+    const status = RESPONSE_CODES.find((code) => !(String(code) in responses))
+    if (!status) return
+    updateOperation({ ...operation, responses: { ...responses, [String(status)]: { description: 'Success' } } })
+  }
+
+  function commitStatus(status: string) {
+    const next = (statusDrafts[status] ?? status).trim().toUpperCase()
+    setStatusError('')
+    if (!next) {
+      setStatusDrafts((current) => ({ ...current, [status]: status }))
+      setStatusError('Response status is required.')
+      return
+    }
+    if (!/^[1-5](\d\d|XX)$/.test(next)) {
+      setStatusDrafts((current) => ({ ...current, [status]: status }))
+      setStatusError(`Response status "${next}" is not valid.`)
+      return
+    }
+    if (next === status) {
+      setStatusDrafts((current) => ({ ...current, [status]: status }))
+      return
+    }
+    if (Object.hasOwn(responses, next)) {
+      setStatusDrafts((current) => ({ ...current, [status]: status }))
+      setStatusError(`Response status ${next} already exists.`)
+      return
+    }
+    const renamed: JsonObject = {}
+    for (const [key, value] of Object.entries(responses)) {
+      renamed[key === status ? next : key] = value
+    }
+    setStatusDrafts((current) => ({ ...current, [status]: next }))
+    updateOperation({ ...operation, responses: renamed })
   }
 
   function updateResponse(status: string, patch: JsonObject) {
@@ -91,47 +147,45 @@ export function ApiEndpointEditor({
     updateOperation({ ...operation, responses: next })
   }
 
-  const requestContent = object(object(operation.requestBody).content)
-  const requestModels = [...new Set(Object.values(requestContent).flatMap((media) => {
-    const name = schemaNameFromRef(object(object(media).schema).$ref)
-    return name ? [name] : []
-  }))]
-
   return (
     <div className="api-endpoint-editor">
       <div className="api-endpoint-tabs" role="tablist" aria-label="Endpoint editor">
-        <button role="tab" aria-selected={tab === 'details'} className={tab === 'details' ? 'active' : ''} onClick={() => setTab('details')}>Details</button>
+        <button role="tab" aria-selected={tab === 'details'} className={tab === 'details' ? 'active' : ''} disabled={invalid} onClick={() => setTab('details')}>Details</button>
         <button role="tab" aria-selected={tab === 'raw'} className={tab === 'raw' ? 'active' : ''} onClick={() => setTab('raw')}>Raw</button>
       </div>
 
-      <div className="api-endpoint-fields">
-        <label className="entity-field">
-          <span>Method</span>
-          <select value={string(fields.method)} onChange={(event) => onChange('method', event.target.value)}>
-            {['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'TRACE'].map((method) => (
-              <option key={method} value={method}>{method}</option>
-            ))}
-          </select>
-        </label>
-        <label className="entity-field">
-          <span>Path</span>
-          <input value={path} onChange={(event) => onChange('path', event.target.value)} />
-        </label>
-        <label className="entity-field">
-          <span>Status</span>
-          <select value={string(fields.status)} onChange={(event) => onChange('status', event.target.value)}>
-            {['planned', 'active', 'deprecated'].map((status) => <option key={status} value={status}>{status}</option>)}
-          </select>
-        </label>
-      </div>
+      {invalid && (
+        <div className="alert" role="alert">Operation JSON is invalid: {parsed.error} Fix it in the Raw tab.</div>
+      )}
 
       {tab === 'raw' ? (
         <label className="entity-field api-endpoint-raw">
           <span>Operation JSON</span>
           <textarea rows={18} value={source} onChange={(event) => onChange('operation', event.target.value)} spellCheck={false} />
         </label>
-      ) : (
+      ) : !invalid && (
         <>
+          <div className="api-endpoint-fields">
+            <label className="entity-field">
+              <span>Method</span>
+              <select value={string(fields.method)} onChange={(event) => onChange('method', event.target.value)}>
+                {['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'TRACE'].map((method) => (
+                  <option key={method} value={method}>{method}</option>
+                ))}
+              </select>
+            </label>
+            <label className="entity-field">
+              <span>Path</span>
+              <input value={path} onChange={(event) => onChange('path', event.target.value)} />
+            </label>
+            <label className="entity-field">
+              <span>Status</span>
+              <select value={string(fields.status)} onChange={(event) => onChange('status', event.target.value)}>
+                {['planned', 'active', 'deprecated'].map((status) => <option key={status} value={status}>{status}</option>)}
+              </select>
+            </label>
+          </div>
+
           <label className="entity-field">
             <span>Summary</span>
             <input value={string(operation.summary)} onChange={(event) => updateOperation({ ...operation, summary: event.target.value })} />
@@ -176,7 +230,7 @@ export function ApiEndpointEditor({
             ) : Object.entries(requestContent).map(([mediaType, media]) => (
               <div className="api-endpoint-model-row" key={mediaType}>
                 <code>{mediaType}</code>
-                <span>{schemaNameFromRef(object(object(media).schema).$ref) ?? 'Inline schema'}</span>
+                <span>{modelNames(object(media)).join(', ') || 'Inline schema'}</span>
               </div>
             ))}
             {requestModels.length > 1 && <p className="api-endpoint-muted">Multiple models share this body. Edit Raw for exact control.</p>}
@@ -187,20 +241,30 @@ export function ApiEndpointEditor({
               <h3>Responses</h3>
               <button type="button" className="button ghost" onClick={addResponse}><Plus size={14} /> Add response</button>
             </div>
+            {statusError && <p className="api-endpoint-error" role="alert">{statusError}</p>}
             {Object.entries(responses).map(([status, response]) => {
               const body = object(response)
-              const model = [...new Set(Object.values(object(body.content)).flatMap((media) => {
-                const name = schemaNameFromRef(object(object(media).schema).$ref)
-                return name ? [name] : []
-              }))]
+              const model = [...new Set(Object.values(object(body.content)).flatMap((media) => modelNames(object(media))))]
               return (
                 <div className="api-endpoint-response-row" key={status}>
-                  <input aria-label="Response status" value={status} onChange={(event) => {
-                    const next = { ...responses }
-                    next[event.target.value] = response
-                    delete next[status]
-                    updateOperation({ ...operation, responses: next })
-                  }} />
+                  <input
+                    aria-label="Response status"
+                    value={statusDrafts[status] ?? status}
+                    onChange={(event) => {
+                      setStatusDrafts((current) => ({ ...current, [status]: event.target.value }))
+                      setStatusError('')
+                    }}
+                    onBlur={() => commitStatus(status)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        commitStatus(status)
+                      } else if (event.key === 'Escape') {
+                        setStatusDrafts((current) => ({ ...current, [status]: status }))
+                        setStatusError('')
+                      }
+                    }}
+                  />
                   <input aria-label="Response description" value={string(body.description)} onChange={(event) => updateResponse(status, { description: event.target.value })} />
                   <span>{model.join(', ') || 'No model'}</span>
                   <button type="button" className="icon-button" aria-label={`Remove response ${status}`} onClick={() => removeResponse(status)}><Trash2 size={13} /></button>

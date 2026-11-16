@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 import { getEntityMeta } from '../ontology'
+import { exportOpenApiCanvas } from './exportOpenApi'
 import { importOpenApi } from './importOpenApi'
 
 const engineSource = readFileSync(new URL('./fixtures/skyward-engine-v1.json', import.meta.url), 'utf8')
@@ -74,5 +75,157 @@ describe('OpenAPI import', () => {
     expect(source.examples).toEqual(['legacy'])
     expect(source.exclusiveMinimum).toBe(1)
     expect(imported.warnings[0]).toContain('Converted OpenAPI 3.0 to 3.1')
+  })
+})
+
+function at(value: unknown, path: Array<string | number>): unknown {
+  let current = value
+  for (const key of path) {
+    if (current == null || typeof current !== 'object') return undefined
+    current = (current as Record<string | number, unknown>)[key]
+  }
+  return current
+}
+
+describe('OpenAPI 3.0 conversion positions', () => {
+  it.each([
+    {
+      name: 'wraps nullable without a type once',
+      document: {
+        openapi: '3.0.3',
+        info: { title: 'T', version: '1' },
+        paths: {},
+        components: { schemas: { A: { nullable: true, allOf: [{ $ref: '#/components/schemas/B' }] }, B: { type: 'object' } } },
+      },
+      assert: (exported: unknown) => {
+        expect(at(exported, ['components', 'schemas', 'A', 'nullable'])).toBeUndefined()
+        expect(at(exported, ['components', 'schemas', 'A', 'anyOf'])).toEqual([
+          { allOf: [{ $ref: '#/components/schemas/B' }] },
+          { type: 'null' },
+        ])
+      },
+    },
+    {
+      name: 'converts a schema example keyword',
+      document: {
+        openapi: '3.0.3',
+        info: { title: 'T', version: '1' },
+        paths: {},
+        components: { schemas: { A: { type: 'string', example: 'hello' } } },
+      },
+      assert: (exported: unknown) => {
+        expect(at(exported, ['components', 'schemas', 'A'])).toMatchObject({ type: 'string', examples: ['hello'] })
+        expect(at(exported, ['components', 'schemas', 'A', 'example'])).toBeUndefined()
+      },
+    },
+    {
+      name: 'does not touch a property named example',
+      document: {
+        openapi: '3.0.3',
+        info: { title: 'T', version: '1' },
+        paths: {},
+        components: { schemas: { A: { type: 'object', properties: { example: { type: 'string' } } } } },
+      },
+      assert: (exported: unknown) => {
+        expect(at(exported, ['components', 'schemas', 'A', 'properties'])).toEqual({ example: { type: 'string' } })
+      },
+    },
+    {
+      name: 'does not convert Media Type, Parameter, or Header examples',
+      document: {
+        openapi: '3.0.3',
+        info: { title: 'T', version: '1' },
+        paths: {
+          '/a': {
+            get: {
+              parameters: [{ name: 'q', in: 'query', example: 'keep', schema: { type: 'string' } }],
+              responses: {
+                '200': {
+                  description: 'ok',
+                  headers: { 'x-example': { schema: { type: 'string' }, example: 'header' } },
+                  content: { 'application/json': { example: { id: 1 }, schema: { type: 'object' } } },
+                },
+              },
+            },
+          },
+        },
+      },
+      assert: (exported: unknown) => {
+        const operation = at(exported, ['paths', '/a', 'get'])
+        expect(at(operation, ['parameters', 0, 'example'])).toBe('keep')
+        expect(at(operation, ['responses', '200', 'headers', 'x-example', 'example'])).toBe('header')
+        expect(at(operation, ['responses', '200', 'content', 'application/json', 'example'])).toEqual({ id: 1 })
+      },
+    },
+    {
+      name: 'converts exclusive bounds only in schema positions',
+      document: {
+        openapi: '3.0.3',
+        info: { title: 'T', version: '1' },
+        paths: {},
+        components: {
+          schemas: {
+            A: { type: 'number', minimum: 1, exclusiveMinimum: true, maximum: 5, exclusiveMaximum: true },
+            B: { type: 'string', default: { exclusiveMinimum: true }, enum: [{ example: 'value' }] },
+          },
+        },
+      },
+      assert: (exported: unknown) => {
+        expect(at(exported, ['components', 'schemas', 'A', 'exclusiveMinimum'])).toBe(1)
+        expect(at(exported, ['components', 'schemas', 'A', 'exclusiveMaximum'])).toBe(5)
+        expect(at(exported, ['components', 'schemas', 'B', 'default'])).toEqual({ exclusiveMinimum: true })
+        expect(at(exported, ['components', 'schemas', 'B', 'enum'])).toEqual([{ example: 'value' }])
+      },
+    },
+    {
+      name: 'leaves examples inside additionalProperties values alone',
+      document: {
+        openapi: '3.0.3',
+        info: { title: 'T', version: '1' },
+        paths: {},
+        components: {
+          schemas: {
+            A: { type: 'object', additionalProperties: { type: 'string', example: 'x' } },
+          },
+        },
+      },
+      assert: (exported: unknown) => {
+        expect(at(exported, ['components', 'schemas', 'A', 'additionalProperties', 'examples'])).toEqual(['x'])
+      },
+    },
+  ])('$name', ({ document, assert }) => {
+    assert(exportOpenApiCanvas(importOpenApi(document).canvas))
+  })
+
+  it('keeps a declared tag when an untagged path infers the same name', () => {
+    const exported = exportOpenApiCanvas(importOpenApi({
+      openapi: '3.1.0',
+      info: { title: 'T', version: '1' },
+      tags: [{ name: 'jobs' }],
+      paths: {
+        '/v1/jobs': { get: { tags: ['jobs'], responses: {} } },
+        '/v1/jobs/{id}': { get: { responses: {} } },
+      },
+    }).canvas)
+    expect(at(exported, ['tags'])).toEqual([{ name: 'jobs' }])
+  })
+
+  it('draws returns and accepts edges for array schemas whose items are a $ref', () => {
+    const imported = importOpenApi({
+      openapi: '3.1.0',
+      info: { title: 'T', version: '1' },
+      paths: {
+        '/jobs': {
+          post: {
+            requestBody: { content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/JobCreate' } } } } },
+            responses: { '200': { description: 'ok', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/Job' } } } } } },
+          },
+        },
+      },
+      components: { schemas: { Job: { type: 'object' }, JobCreate: { type: 'object' } } },
+    })
+    const relations = (imported.canvas.edges ?? []).map((edge) => edge.app?.relationType).filter(Boolean)
+    expect(relations).toContain('accepts')
+    expect(relations).toContain('returns')
   })
 })

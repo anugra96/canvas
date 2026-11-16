@@ -131,3 +131,75 @@ test('creates and links an API canvas from a System card', async ({ page, reques
   await expect(page.getByRole('status').filter({ hasText: 'Created API canvas' })).toBeVisible()
   await expect(page.locator('.save-status')).toHaveText('Saved', { timeout: 5000 })
 })
+
+test('draws an Endpoint to Schema relation through the managed chooser', async ({ page, request }) => {
+  const response = await request.post('/v1/canvases/import', {
+    headers: { authorization: 'Bearer local-dev' },
+    data: {
+      title: 'Managed edge chooser',
+      canvas: {
+        nodes: [
+          {
+            id: 'api', type: 'text', x: 0, y: 0, width: 420, height: 300, text: '',
+            app: { entityType: 'api_definition', fields: { title: 'Chooser API', version: '1.0.0', status: 'active', extra: '{}' } },
+          },
+          {
+            id: 'resource', type: 'text', x: 0, y: 360, width: 320, height: 200, text: '',
+            app: { entityType: 'resource', fields: { name: 'Tasks' } },
+          },
+          {
+            id: 'endpoint', type: 'text', x: 480, y: 0, width: 360, height: 220, text: '',
+            app: {
+              entityType: 'endpoint',
+              fields: {
+                method: 'POST',
+                path: '/tasks',
+                status: 'active',
+                operation: JSON.stringify({ tags: ['Tasks'], responses: { '204': { description: 'Created' } } }, null, 2),
+              },
+            },
+          },
+          {
+            id: 'schema', type: 'text', x: 1040, y: 0, width: 360, height: 240, text: '',
+            app: {
+              entityType: 'schema',
+              fields: {
+                name: 'TaskCreate',
+                kind: 'api',
+                version: '1.0.0',
+                status: 'active',
+                reviewStatus: 'approved',
+                source: JSON.stringify({ type: 'object', properties: { title: { type: 'string' } }, required: ['title'] }, null, 2),
+              },
+            },
+          },
+        ],
+        edges: [],
+        app: { profile: 'api', profileVersion: 1 },
+      },
+    },
+  })
+  expect(response.ok()).toBe(true)
+  const canvas = await response.json()
+  await page.setViewportSize({ width: 1600, height: 1000 })
+  await page.goto(`/canvas/${canvas.id}`)
+  await expect(page.locator('.canvas-flow')).toBeVisible()
+  await page.getByRole('button', { name: 'Fit View' }).click()
+  await page.waitForTimeout(300)
+
+  const endpoint = page.locator('.react-flow__node').filter({ has: page.locator('.api-endpoint-preview') }).first()
+  const schema = page.locator('.react-flow__node').filter({ has: page.locator('.schema-node') }).first()
+  const from = await endpoint.locator('.react-flow__handle-right').boundingBox()
+  const to = await schema.locator('.react-flow__handle-left').boundingBox()
+  if (!from || !to) throw new Error('Missing connection handles')
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 })
+  await page.mouse.up()
+
+  const chooser = page.getByRole('dialog', { name: 'Managed relation' })
+  await expect(chooser).toBeVisible()
+  await chooser.getByRole('button', { name: 'Request body' }).click()
+  await expect(endpoint.locator('.api-preview-flow')).toContainText('body')
+  await expect(endpoint.locator('.api-preview-flow')).toContainText('TaskCreate')
+})

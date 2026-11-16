@@ -53,44 +53,87 @@ function convertOpenApi30(document: JsonObject): OpenApiParseResult {
   const counts: ConversionCounts = { nullable: 0, example: 0, exclusive: 0 }
   const converted = cloneJson(document)
   converted.openapi = '3.1.0'
+  const schemaObjects = new WeakSet<object>()
+  const skipKeys = new Set(['example', 'examples', 'default', 'enum'])
+
+  function convertSchema(schema: unknown): void {
+    if (!isObject(schema) || schemaObjects.has(schema)) return
+    schemaObjects.add(schema)
+    if (schema.nullable === true) {
+      counts.nullable += 1
+      if (typeof schema.type === 'string') {
+        schema.type = [schema.type, 'null']
+      } else if (Array.isArray(schema.type)) {
+        if (!schema.type.includes('null')) schema.type.push('null')
+      } else {
+        const wrapped = { ...schema }
+        delete wrapped.nullable
+        for (const key of Object.keys(schema)) delete schema[key]
+        schema.anyOf = [wrapped, { type: 'null' }]
+      }
+    }
+    delete schema.nullable
+    if ('example' in schema) {
+      counts.example += 1
+      if (!('examples' in schema)) schema.examples = [schema.example]
+      delete schema.example
+    }
+    if (schema.exclusiveMinimum === true && typeof schema.minimum === 'number') {
+      counts.exclusive += 1
+      schema.exclusiveMinimum = schema.minimum
+      delete schema.minimum
+    } else if (schema.exclusiveMinimum === false) {
+      delete schema.exclusiveMinimum
+    }
+    if (schema.exclusiveMaximum === true && typeof schema.maximum === 'number') {
+      counts.exclusive += 1
+      schema.exclusiveMaximum = schema.maximum
+      delete schema.maximum
+    } else if (schema.exclusiveMaximum === false) {
+      delete schema.exclusiveMaximum
+    }
+
+    if (isObject(schema.properties)) {
+      for (const child of Object.values(schema.properties)) convertSchema(child)
+    }
+    if (isObject(schema.patternProperties)) {
+      for (const child of Object.values(schema.patternProperties)) convertSchema(child)
+    }
+    if (isObject(schema.dependentSchemas)) {
+      for (const child of Object.values(schema.dependentSchemas)) convertSchema(child)
+    }
+    if (isObject(schema.$defs)) {
+      for (const child of Object.values(schema.$defs)) convertSchema(child)
+    }
+    for (const key of ['items', 'not', 'additionalProperties', 'contains', 'propertyNames']) {
+      convertSchema(schema[key])
+    }
+    for (const key of ['allOf', 'anyOf', 'oneOf', 'prefixItems']) {
+      if (Array.isArray(schema[key])) {
+        for (const child of schema[key] as unknown[]) convertSchema(child)
+      }
+    }
+  }
+
+  const components = objectOrEmpty(converted.components)
+  if (isObject(components.schemas)) {
+    for (const schema of Object.values(components.schemas)) convertSchema(schema)
+  }
 
   function walk(value: unknown): void {
     if (Array.isArray(value)) {
       for (const item of value) walk(item)
       return
     }
-    if (!isObject(value)) return
-    if (value.nullable === true) {
-      counts.nullable += 1
-      if (typeof value.type === 'string') value.type = [value.type, 'null']
-      else if (Array.isArray(value.type) && !value.type.includes('null')) value.type.push('null')
-      else {
-        const wrapped = { ...value }
-        for (const key of Object.keys(value)) delete value[key]
-        value.anyOf = [wrapped, { type: 'null' }]
+    if (!isObject(value) || schemaObjects.has(value)) return
+    for (const [key, child] of Object.entries(value)) {
+      if (skipKeys.has(key)) continue
+      if (key === 'schema') {
+        convertSchema(child)
+        continue
       }
-      delete value.nullable
+      walk(child)
     }
-    if ('example' in value) {
-      counts.example += 1
-      if (!('examples' in value)) value.examples = [value.example]
-      delete value.example
-    }
-    if (value.exclusiveMinimum === true && typeof value.minimum === 'number') {
-      counts.exclusive += 1
-      value.exclusiveMinimum = value.minimum
-      delete value.minimum
-    } else if (value.exclusiveMinimum === false) {
-      delete value.exclusiveMinimum
-    }
-    if (value.exclusiveMaximum === true && typeof value.maximum === 'number') {
-      counts.exclusive += 1
-      value.exclusiveMaximum = value.maximum
-      delete value.maximum
-    } else if (value.exclusiveMaximum === false) {
-      delete value.exclusiveMaximum
-    }
-    for (const child of Object.values(value)) walk(child)
   }
 
   walk(converted)
