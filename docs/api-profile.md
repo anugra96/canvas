@@ -127,10 +127,10 @@ already show:
 | Relation | Drawn on the canvas |
 | --- | --- |
 | `contains` | Never. The Resource lane shows membership |
-| `authenticates_via` | Only from an Endpoint or Resource whose security differs from the API's. The API card and each endpoint's lock show the rest |
+| `authenticates_via` | Only from an Endpoint or Resource whose security differs from the API's **default security**: the top-level `security`, or, when the document has none, the requirement used by most operations (ties: the first in lane order). The API card shows the default and each endpoint's lock shows its own, so a document that repeats one scheme on every operation draws no security edges |
 | `returns` | Only for `1XX`, `2XX`, and `3XX` statuses, from the endpoint's right side to the model's left side, labelled with the status. Error responses appear as chips on the Endpoint card |
 | `accepts` | From the model's right side into the endpoint's left side. The stored edge stays Endpoint -> Schema; it sets `fromEnd: "arrow"` and `toEnd: "none"` so the arrow points into the endpoint |
-| `uses` | Always, drawn away from the endpoints: rightwards on the response side, leftwards on the request side. Between two models in the same column, from the upper card's bottom to the lower card's top |
+| `uses` | Only when the target sits in the next nested column on the same side as its source (one column further from the lanes), drawn away from the endpoints. Not drawn to a model in the Shared models row or in the same column; the source card's field type names the referenced model instead |
 | `relates_to` | Always |
 
 Selecting a card shows all its managed edges, including hidden ones, until the
@@ -172,10 +172,10 @@ rows point at it.)
 
 | Rule | Detail |
 | --- | --- |
-| Header row | API card, then Security cards to its right |
-| Columns | Request models; endpoint lanes; response models. Nested models get one extra column per `uses` depth, moving away from the lanes: a model referenced by a response model goes one column further right; a model referenced by a request model goes one column further left (the lanes and response columns shift right to make room). A model reachable from both sides goes on the response side |
+| Header row | API card, then Security cards, then annotation cards (Note, Decision, Risk) to its right. Annotations never sit in the model columns or lanes |
+| Columns | Request models; endpoint lanes; response models. Nested models get one extra column per `uses` depth, moving away from the lanes: a model referenced by a response model goes one column further right; a model referenced by a request model goes one column further left (the lanes and response columns shift right to make room). A model reachable from both sides goes in the Shared models row |
 | A model used both as a request and a response | Response column |
-| Shared row | A model referenced only by `4XX`/`5XX` responses, and by no success response or request, goes in a row below the lanes. It draws no response edges. Models it references go in the same row to its right |
+| Shared models row | Below the lanes, in name order: models referenced only by `4XX`/`5XX` responses; models reachable through `uses` from both request and response models (shared vocabularies such as enums); and the models those reference. Edges into this row are not drawn |
 | Unused models | After the shared row, in name order |
 | Resource lanes | Tag order, then inferred Resources by name. The lane is the Resource card, sized to enclose its endpoints with 24 px padding and a header |
 | Endpoint order in a lane | Path segments in order with collection paths before item paths (`/tasks` before `/tasks/{task_id}`), then GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, TRACE |
@@ -356,7 +356,7 @@ Proof for Phase 2 (at most six new tests): export ordering and refusal on invali
 | --- | --- |
 | Import or export loses data | Round-trip test in the contract package: import, export, and deep-equal after key sorting, for both fixtures below and one synthetic document that uses every supported feature plus `webhooks` and `x-*` extensions |
 | Managed relations drift from operations | Table-driven test: operation edit -> expected managed edges |
-| Layout is unreadable | Table-driven layout test on both fixtures and the example: every referenced model's top is at or below its first user's top and within one card height plus 40 px of it unless pushed by the card above; nested request models are left of their parent; on the Engine fixture no referenced model is below the shared row. Plus placing a new endpoint and a new schema (nothing else moves) and dropping an endpoint outside its lane (the lane grows): no overlaps; every endpoint inside its lane; request models left of lanes and response models right; no drawn edge points leftwards except `accepts` into an endpoint; same input gives the same positions |
+| Layout is unreadable | Table-driven layout test on both fixtures, the example, and a FastAPI-style document (security repeated on every operation, shared enum models used by request and response models): no drawn edge passes through a card other than its own endpoints; every referenced model's top is at or below its first user's top and within one card height plus 40 px of it unless pushed by the card above; nested request models are left of their parent; on the Engine fixture no referenced model is below the shared row. Plus placing a new endpoint and a new schema (nothing else moves) and dropping an endpoint outside its lane (the lane grows): no overlaps; every endpoint inside its lane; request models left of lanes and response models right; no drawn edge points leftwards except `accepts` into an endpoint; same input gives the same positions |
 | Canvas shows noise or hides a fact | Table-driven test: relation, status, and security override -> drawn or hidden. Browser check: the imported sample at fit view and one Endpoint card at 100%, with no raw JSON on any card |
 | Checks are wrong | One table-driven test per rule family with a passing and a failing operation |
 | Breaking-change check misses a break | Table-driven test with one pair of documents per row in the table above |
