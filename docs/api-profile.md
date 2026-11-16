@@ -182,12 +182,19 @@ rows point at it.)
 | Model order in a column | By the vertical position of the first endpoint (or model) that references it, so arrows stay short and near horizontal; ties by name |
 | Spacing | 80 px between columns, 24 px between endpoints in a lane, 40 px between lanes and between models. No overlaps |
 | Drag | Moving a Resource lane moves its endpoints, reusing the group-drag behaviour. An endpoint dropped into another lane does not change its tag; only the inspector does |
+| New cards | A new Endpoint goes at the end of its Resource's lane; a new Schema goes at the end of the column its references put it in (unreferenced: the unused area); a new Resource lane goes below the last lane. Nothing else moves, except that the lane grows to enclose a new endpoint |
+| Endpoint outside its lane | When an endpoint is dropped partly or fully outside its Resource lane, the lane grows to enclose it again. A lane never shrinks on its own; **Tidy API layout** compacts it |
 
 The layout is a pure function, `layoutApiCanvas(canvas, sizes)`, in
 `packages/canvas-contract/src/openapi/layout.ts`. Import calls it with estimated
 card sizes (from the reference summary: title, summary, chip rows). The editor's
 **Tidy API layout** command calls it with measured sizes and applies the result
 as one undoable edit. It changes positions and lane sizes only.
+
+The layout is a suggestion, not a constraint. It runs only on import and when
+the user runs **Tidy API layout**. Every card can be moved freely, positions are
+saved, and nothing is rearranged without that command. There is no automatic
+re-layout after edits.
 
 ## Profile metadata
 
@@ -309,7 +316,7 @@ server share it. UI lives in `web/src/canvas/apiDesign/`.
 | --- | --- |
 | Import or export loses data | Round-trip test in the contract package: import, export, and deep-equal after key sorting, for both fixtures below and one synthetic document that uses every supported feature plus `webhooks` and `x-*` extensions |
 | Managed relations drift from operations | Table-driven test: operation edit -> expected managed edges |
-| Layout is unreadable | Table-driven layout test on both fixtures and the example: no overlaps; every endpoint inside its lane; request models left of lanes and response models right; no drawn edge points leftwards except `accepts` into an endpoint; same input gives the same positions |
+| Layout is unreadable | Table-driven layout test on both fixtures and the example, plus placing a new endpoint and a new schema (nothing else moves) and dropping an endpoint outside its lane (the lane grows): no overlaps; every endpoint inside its lane; request models left of lanes and response models right; no drawn edge points leftwards except `accepts` into an endpoint; same input gives the same positions |
 | Canvas shows noise or hides a fact | Table-driven test: relation, status, and security override -> drawn or hidden. Browser check: the imported sample at fit view and one Endpoint card at 100%, with no raw JSON on any card |
 | Checks are wrong | One table-driven test per rule family with a passing and a failing operation |
 | Breaking-change check misses a break | Table-driven test with one pair of documents per row in the table above |
