@@ -109,6 +109,17 @@ describe('Phase 2 review fixes', () => {
           expect(schema.y, `${label}: ${field(schema, 'name')} level`).toBe(user!.y)
         }
       }
+      const model = schemas.find((node) => field(node, 'name') === 'Project')!
+      const create = schemas.find((node) => field(node, 'name') === 'ProjectCreate')!
+      const modelSource = JSON.parse(field(model, 'source'))
+      const createSource = JSON.parse(field(create, 'source'))
+      expect(Object.keys(modelSource.properties), label).toEqual(expect.arrayContaining([
+        ...Object.keys(createSource.properties),
+        'id',
+        'created_at',
+        'updated_at',
+      ]))
+      expect(modelSource.required, label).toEqual(expect.arrayContaining(createSource.required ?? []))
       const lane = result.nodes.find((node) => getEntityMeta(node)?.entityType === 'resource')!
       expect(lane.y, label).toBeGreaterThan(Math.max(0, ...(canvas.nodes ?? []).map((node) => node.y + node.height)))
     }
@@ -142,7 +153,7 @@ describe('Phase 2 review fixes', () => {
   it('round-trips all API and Security form fields through export and import', () => {
     const { canvas } = importOpenApi({
       openapi: '3.1.0',
-      info: { title: 'Forms API', version: '1.0.0', contact: { email: 'ops@example.com' } },
+      info: { title: 'Forms API', version: '1.0.0', contact: { name: 'Imported Owner', email: 'ops@example.com' } },
       components: {
         securitySchemes: {
           BearerAuth: { type: 'http', scheme: 'bearer' },
@@ -221,5 +232,13 @@ describe('Phase 2 review fixes', () => {
       authorizationCode: { authorizationUrl: 'https://example.com/auth', tokenUrl: 'https://example.com/token', scopes: { read: 'Read' } },
     })
     expect(exportOpenApiDocument(reimported)).toEqual(exported)
+
+    const cleared = structuredClone(canvas)
+    const clearedApi = cleared.nodes!.find((node) => getEntityMeta(node)?.entityType === 'api_definition')!
+    clearedApi.app = {
+      ...(clearedApi.app ?? {}),
+      fields: { ...(getEntityMeta(clearedApi)?.fields ?? {}), owner: '' },
+    }
+    expect((exportOpenApiDocument(cleared).info as JsonObject).contact).toEqual({ email: 'ops@example.com' })
   })
 })

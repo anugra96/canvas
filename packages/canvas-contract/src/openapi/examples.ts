@@ -30,6 +30,7 @@ export function generateExample(
   schema: unknown,
   schemas: Record<string, unknown>,
   depth = 0,
+  includeOptional = true,
 ): unknown {
   if (depth > 8 || !isObject(schema)) return null
   if ('const' in schema) return schema.const
@@ -38,25 +39,25 @@ export function generateExample(
   const ref = schemaNameFromRef(schema.$ref)
   if (ref) {
     const target = schemas[ref]
-    return target === undefined ? null : generateExample(target, schemas, depth + 1)
+    return target === undefined ? null : generateExample(target, schemas, depth + 1, includeOptional)
   }
-  if (Array.isArray(schema.oneOf) && schema.oneOf.length > 0) return generateExample(schema.oneOf[0], schemas, depth + 1)
-  if (Array.isArray(schema.anyOf) && schema.anyOf.length > 0) return generateExample(schema.anyOf[0], schemas, depth + 1)
-  if (Array.isArray(schema.allOf) && schema.allOf.length > 0) return generateExample(schema.allOf[0], schemas, depth + 1)
+  if (Array.isArray(schema.oneOf) && schema.oneOf.length > 0) return generateExample(schema.oneOf[0], schemas, depth + 1, includeOptional)
+  if (Array.isArray(schema.anyOf) && schema.anyOf.length > 0) return generateExample(schema.anyOf[0], schemas, depth + 1, includeOptional)
+  if (Array.isArray(schema.allOf) && schema.allOf.length > 0) return generateExample(schema.allOf[0], schemas, depth + 1, includeOptional)
   const type = firstType(schema.type)
   if (type === 'object' || (!type && (schema.properties || schema.required))) {
     const properties = objectOrEmpty(schema.properties)
     const required = new Set(Array.isArray(schema.required) ? schema.required.map(String) : [])
     const result: JsonObject = {}
     for (const [name, value] of Object.entries(properties)) {
-      if (!required.has(name) && depth > 0) continue
-      result[name] = generateExample(value, schemas, depth + 1)
+      if (!required.has(name) && !includeOptional) continue
+      result[name] = generateExample(value, schemas, depth + 1, false)
     }
     return result
   }
   if (type === 'array' || (!type && schema.items)) {
     const minimum = typeof schema.minItems === 'number' ? schema.minItems : 1
-    return Array.from({ length: Math.max(1, minimum) }, () => generateExample(schema.items, schemas, depth + 1))
+    return Array.from({ length: Math.max(1, minimum) }, () => generateExample(schema.items, schemas, depth + 1, false))
   }
   if (type === 'integer') {
     return typeof schema.minimum === 'number' ? Math.ceil(schema.minimum) : 1

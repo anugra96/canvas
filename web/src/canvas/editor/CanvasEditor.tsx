@@ -316,10 +316,16 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     const sizes = Object.fromEntries(nodes.map((node) => [node.id, nodeDimensions(node)]))
     const result = addApiResource(canvas, input, sizes)
     if (result.errors.length > 0) return result.errors
-    const additions = result.nodes.map(toFlowNode)
+    const additions = result.nodes.map((node) => ({
+      ...toFlowNode(node),
+      selected: node.app?.entityType === 'resource',
+    }))
     const rawNodes = [...(canvas.nodes ?? []), ...result.nodes]
     const managed = deriveManagedRelations({ nodes: rawNodes, edges: [] })
-    setNodes((current) => [...current, ...additions])
+    setNodes((current) => [
+      ...current.map((node) => ({ ...node, selected: false })),
+      ...additions,
+    ])
     setEdges((current) => [
       ...current.filter((edge) => (
         edge.data?.raw?.app?.managed !== true
@@ -330,8 +336,16 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     ])
     markDirty()
     setNotice(`Added ${result.nodes.filter((node) => node.app?.entityType === 'endpoint').length} endpoints and ${result.nodes.filter((node) => node.app?.entityType === 'schema').length} schemas.`)
+    window.setTimeout(() => {
+      void fitView({
+        nodes: additions.map((node) => ({ id: node.id })),
+        padding: 0.2,
+        maxZoom: 1.2,
+        duration: 300,
+      })
+    }, 0)
     return []
-  }, [baseCanvas, edges, markDirty, nodes, setEdges, setNodes, setNotice])
+  }, [baseCanvas, edges, fitView, markDirty, nodes, setEdges, setNodes, setNotice])
 
   const standardErrors = useCallback(() => {
     const canvas = fromFlowCanvas(nodes, edges, baseCanvas)

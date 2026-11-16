@@ -259,19 +259,22 @@ export function addApiResource(
     reviewIntervalDays: 90,
     source: json(value),
   })
+  const createProperties = { name: { type: 'string', minLength: 1 } }
+  const createRequired = ['name']
   const model = schema({
     type: 'object',
     properties: {
+      ...createProperties,
       id: { type: 'string' },
       created_at: { type: 'string', format: 'date-time' },
       updated_at: { type: 'string', format: 'date-time' },
     },
-    required: ['id'],
+    required: ['id', ...createRequired],
   })
   const createSchema = schema({
     type: 'object',
-    properties: { name: { type: 'string', minLength: 1 } },
-    required: ['name'],
+    properties: createProperties,
+    required: createRequired,
   })
   const updateSchema = schema({
     type: 'object',

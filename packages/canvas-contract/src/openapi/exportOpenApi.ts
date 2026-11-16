@@ -105,6 +105,9 @@ export function exportOpenApiDocument(canvas: JsonCanvas): JsonObject {
   const securityDefinitions = new Map<string, unknown>()
   for (const security of nodes.filter((node) => nodeType(node) === 'security_scheme')) {
     securityDefinitions.set(security.id, parseCardJson(security, 'definition', issues))
+    if (stringField(security, 'type') === 'oauth2' && stringField(security, 'flows').trim()) {
+      parseCardJson(security, 'flows', issues)
+    }
   }
   if (issues.length > 0) throw new OpenApiExportError(issues)
 
@@ -125,7 +128,9 @@ export function exportOpenApiDocument(canvas: JsonCanvas): JsonObject {
   const description = stringField(api, 'description')
   const owner = stringField(api, 'owner').trim()
   const contact = objectOrEmpty(info.contact)
-  const infoContact = owner ? { ...contact, name: owner } : contact
+  const infoContact = owner
+    ? { ...contact, name: owner }
+    : Object.fromEntries(Object.entries(contact).filter(([key]) => key !== 'name'))
   const paths: JsonObject = {}
 
   const endpoints = orderedApiEndpoints(nodes)

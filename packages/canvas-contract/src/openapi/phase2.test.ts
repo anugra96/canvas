@@ -49,7 +49,7 @@ describe('Phase 2 API tools', () => {
     const operation = endpoint(broken, '/a', 'POST')
     api.app = { ...(api.app ?? {}), fields: { ...(getEntityMeta(api)?.fields ?? {}), extra: '{' } }
     schema.app = { ...(schema.app ?? {}), fields: { ...(getEntityMeta(schema)?.fields ?? {}), source: '[' } }
-    security.app = { ...(security.app ?? {}), fields: { ...(getEntityMeta(security)?.fields ?? {}), definition: 'bad' } }
+    security.app = { ...(security.app ?? {}), fields: { ...(getEntityMeta(security)?.fields ?? {}), type: 'oauth2', definition: 'bad', flows: '{' } }
     operation.app = { ...(operation.app ?? {}), fields: { ...(getEntityMeta(operation)?.fields ?? {}), operation: 'op' } }
 
     expect(() => exportOpenApiDocument({ nodes: broken, edges: [] })).toThrow(OpenApiExportError)
@@ -58,10 +58,10 @@ describe('Phase 2 API tools', () => {
     } catch (cause) {
       expect(cause).toBeInstanceOf(OpenApiExportError)
       expect((cause as OpenApiExportError).issues.map((issue) => issue.field)).toEqual([
-        'extra', 'operation', 'source', 'definition',
+        'extra', 'operation', 'source', 'definition', 'flows',
       ])
       expect((cause as OpenApiExportError).issues.map((issue) => issue.label)).toEqual([
-        'Orders', '/a', 'Thing', 'BearerAuth',
+        'Orders', '/a', 'Thing', 'BearerAuth', 'BearerAuth',
       ])
     }
   })
@@ -99,7 +99,14 @@ describe('Phase 2 API tools', () => {
   })
 
   it('generates deterministic examples from schema keywords', () => {
-    const schemas = { Child: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } }
+    const schemas = {
+      Child: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] },
+      OptionalChild: {
+        type: 'object',
+        properties: { id: { type: 'string' }, optional: { type: 'string' } },
+        required: ['id'],
+      },
+    }
     const cases: Array<[unknown, unknown]> = [
       [{ const: 'fixed' }, 'fixed'],
       [{ type: 'string', enum: ['first', 'second'] }, 'first'],
@@ -110,6 +117,7 @@ describe('Phase 2 API tools', () => {
       [{ type: 'integer', minimum: 5 }, 5],
       [{ type: 'array', minItems: 2, items: { type: 'boolean' } }, [true, true]],
       [{ $ref: '#/components/schemas/Child' }, { id: 'string' }],
+      [{ $ref: '#/components/schemas/OptionalChild' }, { id: 'string', optional: 'string' }],
       [{
         type: 'object',
         properties: { id: { type: 'string' }, optional: { type: 'string' } },
