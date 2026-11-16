@@ -57,6 +57,29 @@ function endpointOrder(a: { path: string; method: string }, b: { path: string; m
 
 
 
+export function orderedApiEndpoints(nodes: CanvasNode[]): CanvasNode[] {
+  const reference = buildApiReferenceDocument(nodes)
+  const resources = nodes
+    .filter((node) => getEntityMeta(node)?.entityType === 'resource')
+    .sort(resourceOrder)
+  const endpoints = nodes.filter((node) => getEntityMeta(node)?.entityType === 'endpoint')
+  const ordered: CanvasNode[] = []
+  for (const resource of resources) {
+    const lane = reference.resources.find((candidate) => candidate.id === resource.id)
+    for (const endpoint of [...(lane?.endpoints ?? [])].sort((a, b) => endpointOrder(a, b))) {
+      const node = endpoints.find((candidate) => candidate.id === endpoint.id)
+      if (node && !ordered.includes(node)) ordered.push(node)
+    }
+  }
+  for (const endpoint of endpoints.filter((node) => !ordered.includes(node)).sort((a, b) => endpointOrder(
+    { path: field(a, 'path'), method: field(a, 'method') },
+    { path: field(b, 'path'), method: field(b, 'method') },
+  ))) {
+    ordered.push(endpoint)
+  }
+  return ordered
+}
+
 export function estimateApiSizes(canvas: JsonCanvas): ApiSizeMap {
   const reference = buildApiReferenceDocument(canvas.nodes ?? [])
   const sizes: ApiSizeMap = {}

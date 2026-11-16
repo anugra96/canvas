@@ -203,3 +203,48 @@ test('draws an Endpoint to Schema relation through the managed chooser', async (
   await expect(endpoint.locator('.api-preview-flow')).toContainText('body')
   await expect(endpoint.locator('.api-preview-flow')).toContainText('TaskCreate')
 })
+
+test('adds a resource, standard errors, and exports them as YAML', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Import OpenAPI' }).click()
+  const importDialog = page.getByRole('dialog', { name: 'Import OpenAPI' })
+  await importDialog.getByLabel('OpenAPI 3.1 document').fill(JSON.stringify({
+    openapi: '3.1.0',
+    info: { title: 'Projects API', version: '1.0.0' },
+    servers: [{ url: 'https://api.example.com' }],
+  }))
+  await importDialog.getByRole('button', { name: 'Read document' }).click()
+  await importDialog.getByRole('button', { name: 'Create API canvas' }).click()
+  await expect(page.locator('.canvas-flow')).toBeVisible()
+
+  await page.getByRole('button', { name: 'More' }).click()
+  await page.getByRole('menuitem', { name: 'Add resource' }).click()
+  const resourceDialog = page.getByRole('dialog', { name: 'Add resource' })
+  await resourceDialog.getByLabel('Singular').fill('project')
+  await resourceDialog.getByLabel('Plural').fill('projects')
+  await resourceDialog.getByLabel('Path prefix').fill('/v1')
+  await resourceDialog.getByRole('button', { name: 'Add resource', exact: true }).click()
+  await expect(page.locator('.api-endpoint-preview')).toHaveCount(5)
+  await expect(page.locator('.schema-node')).toHaveCount(4)
+
+  await page.locator('.canvas-flow').click({ position: { x: 20, y: 20 } })
+  await page.keyboard.press('ControlOrMeta+A')
+  await expect(page.locator('.react-flow__node.selected').first()).toBeVisible()
+  await page.getByRole('button', { name: 'More' }).click()
+  await page.getByRole('menuitem', { name: 'Standard errors' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'standard error' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'More' }).click()
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('menuitem', { name: 'Export OpenAPI YAML' }).click()
+  const download = await downloadPromise
+  const path = await download.path()
+  if (!path) throw new Error('Missing downloaded OpenAPI file')
+  const yaml = readFileSync(path, 'utf8')
+  expect(yaml).toContain('/v1/projects:')
+  expect(yaml).toContain('/v1/projects/{project_id}:')
+  expect(yaml).toContain('4XX:')
+  expect(yaml).toContain('5XX:')
+  expect(yaml).toContain('Problem')
+  expect(yaml).toMatch(/^    Problem:$/m)
+})

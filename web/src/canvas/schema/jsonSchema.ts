@@ -6,6 +6,7 @@ import {
   type CanvasEdge,
   type CanvasNode,
   type CanvasProfileIssue,
+  objectOrEmpty,
 } from '@canvas/contract'
 
 export interface SchemaOutlineNode {
@@ -376,5 +377,130 @@ export function validateSchemaContracts(
   }
 
 
+  return issues
+}
+
+
+function schemaMap(nodes: CanvasNode[]): Record<string, unknown> {
+  const schemas: Record<string, unknown> = {}
+  for (const node of nodes) {
+    if (getEntityMeta(node)?.entityType !== 'schema') continue
+    const name = stringField(getEntityMeta(node)?.fields.name)
+    if (!name) continue
+    try {
+      schemas[name] = JSON.parse(stringField(getEntityMeta(node)?.fields.source))
+    } catch {
+      // Invalid schema source is reported separately.
+    }
+  }
+  return schemas
+}
+
+function validatesExample(example: unknown, schema: unknown, schemas: Record<string, unknown>): boolean | undefined {
+  if (!schema || typeof schema !== 'object' || Array.isArray(schema)) return undefined
+  try {
+    const root = {
+      ...(schema as Record<string, unknown>),
+      components: { ...objectOrEmpty((schema as Record<string, unknown>).components), schemas },
+    }
+    return ajv2020.compile(root)(example) as boolean
+  } catch {
+    return undefined
+  }
+}
+
+function mediaIssues(
+  media: Record<string, unknown>,
+  schemas: Record<string, unknown>,
+  label: string,
+  nodeId: string,
+): CanvasProfileIssue[] {
+  const issues: CanvasProfileIssue[] = []
+  const examples: Array<[string, unknown]> = []
+  if ('example' in media) examples.push(['example', media.example])
+  const named = media.examples && typeof media.examples === 'object' && !Array.isArray(media.examples)
+    ? media.examples as Record<string, unknown>
+    : {}
+  for (const [name, entry] of Object.entries(named)) {
+    if (entry && typeof entry === 'object' && !Array.isArray(entry) && 'value' in entry) {
+      examples.push([`examples.${name}.value`, (entry as Record<string, unknown>).value])
+    }
+  }
+  for (const [path, example] of examples) {
+    if (validatesExample(example, media.schema, schemas) === false) {
+      issues.push({
+        code: 'example_invalid',
+        severity: 'error',
+        message: `${label} ${path} does not match its schema.`,
+        nodeId,
+      })
+    }
+  }
+  return issues
+}
+
+export function validateApiExamples(nodes: CanvasNode[]): CanvasProfileIssue[] {
+  const schemas = schemaMap(nodes)
+  const issues: CanvasProfileIssue[] = []
+  for (const node of nodes) {
+    const meta = getEntityMeta(node)
+    if (!meta) continue
+    if (meta.entityType === 'schema') {
+      const name = stringField(meta.fields.name)
+      let source: unknown
+      try {
+        source = JSON.parse(stringField(meta.fields.source))
+      } catch {
+        continue
+      }
+      if (!source || typeof source !== 'object' || Array.isArray(source)) continue
+      const examples = (source as Record<string, unknown>).examples
+      if (!Array.isArray(examples)) continue
+      for (const [index, example] of examples.entries()) {
+        if (validatesExample(example, source, schemas) === false) {
+          issues.push({
+            code: 'example_invalid',
+            severity: 'error',
+            message: `Schema "${name}" examples[${index}] does not match the schema.`,
+            nodeId: node.id,
+          })
+        }
+      }
+      continue
+    }
+    if (meta.entityType !== 'endpoint') continue
+    let operation: Record<string, unknown>
+    try {
+      const parsed: unknown = JSON.parse(stringField(meta.fields.operation))
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) continue
+      operation = parsed as Record<string, unknown>
+    } catch {
+      continue
+    }
+    const label = `${stringField(meta.fields.method)} ${stringField(meta.fields.path)}`
+    const requestContent = objectOrEmpty(objectOrEmpty(operation.requestBody).content)
+    for (const [mediaType, media] of Object.entries(requestContent)) {
+      issues.push(...mediaIssues(objectOrEmpty(media), schemas, `${label} request ${mediaType}`, node.id))
+    }
+    for (const [status, response] of Object.entries(objectOrEmpty(operation.responses))) {
+      const content = objectOrEmpty(objectOrEmpty(response).content)
+      for (const [mediaType, media] of Object.entries(content)) {
+        issues.push(...mediaIssues(objectOrEmpty(media), schemas, `${label} ${status} ${mediaType}`, node.id))
+      }
+    }
+    const parameters = Array.isArray(operation.parameters) ? operation.parameters : []
+    for (const value of parameters) {
+      const parameter = objectOrEmpty(value)
+      if (!('example' in parameter)) continue
+      if (validatesExample(parameter.example, parameter.schema, schemas) === false) {
+        issues.push({
+          code: 'example_invalid',
+          severity: 'error',
+          message: `${label} parameter "${stringField(parameter.name)}" example does not match its schema.`,
+          nodeId: node.id,
+        })
+      }
+    }
+  }
   return issues
 }

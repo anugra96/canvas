@@ -1,7 +1,23 @@
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { toFlowCanvas, type CanvasFlowEdge, type CanvasFlowNode } from '../model/adapter'
+import {
+  addApiResource,
+  applyStandardErrors,
+  deriveManagedRelations,
+  exportOpenApiDocument,
+  OpenApiExportError,
+  stringifyOpenApiYaml,
+  type AddApiResourceInput,
+} from '@canvas/contract'
+import {
+  fromFlowCanvas,
+  toFlowCanvas,
+  toFlowEdge,
+  toFlowNode,
+  type CanvasFlowEdge,
+  type CanvasFlowNode,
+} from '../model/adapter'
 import { useOntology } from '../../ontology/OntologyContext'
 import { useCoarsePointer, useIsMobile } from '../../useMediaQuery'
 import { CanvasEditorActionsContext, type CanvasEditorActions, type CanvasEditorProps } from './CanvasEditorContext'
@@ -18,10 +34,35 @@ import { useCanvasProfile } from './useCanvasProfile'
 import { useCanvasValidation } from './validation/useCanvasValidation'
 import { useApiManagedRelations } from '../apiDesign/useApiManagedRelations'
 import { ApiDesignProvider } from '../apiDesign/ApiDesignProvider'
+import { AddResourceDialog } from '../apiDesign/AddResourceDialog'
 import { useCanvasHistory } from './useCanvasHistory'
 import { useEditorShortcuts } from './useEditorShortcuts'
 import { readValidationSuppressions, type ValidationSuppression } from './validationSuppressions'
 import { readViewport } from './viewport'
+
+function titleSlug(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'api'
+}
+
+function downloadText(filename: string, text: string, mediaType: string): void {
+  const url = URL.createObjectURL(new Blob([text], { type: mediaType }))
+  const anchor = window.document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
+function prefixFromPaths(nodes: CanvasFlowNode[]): string {
+  const counts = new Map<string, number>()
+  for (const node of nodes) {
+    const path = String(node.data.entity?.fields.path ?? '')
+    const segment = path.split('/').filter(Boolean)[0]
+    if (segment) counts.set(segment, (counts.get(segment) ?? 0) + 1)
+  }
+  const [common] = [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0] ?? []
+  return common ? `/${common}` : '/v1'
+}
 
 function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpenLinkedCanvas }: CanvasEditorProps) {
   const ontology = useOntology()
@@ -44,6 +85,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const [edges, setEdges] = useState<CanvasFlowEdge[]>(initial.edges)
   const [helpOpen, setHelpOpen] = useState(false)
   const [viewsOpen, setViewsOpen] = useState(false)
+  const [addResourceOpen, setAddResourceOpen] = useState(false)
   const [suppressions, setSuppressions] = useState<ValidationSuppression[]>(() => (
     readValidationSuppressions(document.canvas)
   ))
@@ -186,6 +228,104 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     enabled: isApi,
   })
 
+  const selectedEndpointCount = graph.selectedNodes.filter((node) => (
+    node.data.entity?.entityType === 'endpoint'
+  )).length
+
+  const exportDocument = useCallback((format: 'json' | 'yaml') => {
+    const canvas = fromFlowCanvas(nodes, edges, baseCanvas)
+    const exported = exportOpenApiDocument(canvas)
+    return {
+      text: format === 'yaml' ? stringifyOpenApiYaml(exported) : JSON.stringify(exported, null, 2),
+      filename: `${titleSlug(title)}.openapi.${format}`,
+    }
+  }, [baseCanvas, edges, nodes, title])
+
+  const reportExportFailure = useCallback((cause: unknown) => {
+    if (cause instanceof OpenApiExportError) {
+      setError(`OpenAPI export stopped. ${cause.issues.map((issue) => `${issue.label}: invalid ${issue.field} JSON`).join('; ')}`)
+    } else {
+      setError(cause instanceof Error ? cause.message : 'OpenAPI export failed.')
+    }
+  }, [setError])
+
+  const onExportOpenApi = useCallback((format: 'json' | 'yaml') => {
+    try {
+      const output = exportDocument(format)
+      downloadText(output.filename, output.text, format === 'yaml' ? 'application/yaml' : 'application/json')
+      setNotice(`Exported ${output.filename}.`)
+    } catch (cause) {
+      reportExportFailure(cause)
+    }
+  }, [exportDocument, reportExportFailure, setNotice])
+
+  const onCopyOpenApi = useCallback((format: 'json' | 'yaml') => {
+    try {
+      const output = exportDocument(format)
+      void navigator.clipboard.writeText(output.text)
+        .then(() => setNotice(`Copied OpenAPI ${format.toUpperCase()}.`))
+        .catch(() => setError('Clipboard access was denied.'))
+    } catch (cause) {
+      reportExportFailure(cause)
+    }
+  }, [exportDocument, reportExportFailure, setError, setNotice])
+
+  const addResource = useCallback((input: AddApiResourceInput): string[] => {
+    const canvas = fromFlowCanvas(nodes, edges, baseCanvas)
+    const result = addApiResource(canvas, input)
+    if (result.errors.length > 0) return result.errors
+    const additions = result.nodes.map(toFlowNode)
+    const rawNodes = [...(canvas.nodes ?? []), ...result.nodes]
+    const managed = deriveManagedRelations({ nodes: rawNodes, edges: [] })
+    setNodes((current) => [...current, ...additions])
+    setEdges((current) => [
+      ...current.filter((edge) => (
+        edge.data?.raw?.app?.managed !== true
+        && edge.data?.relationType !== 'accepts'
+        && edge.data?.relationType !== 'returns'
+      )),
+      ...managed.map((edge) => toFlowEdge(edge)),
+    ])
+    markDirty()
+    setNotice(`Added ${result.nodes.filter((node) => node.app?.entityType === 'endpoint').length} endpoints and ${result.nodes.filter((node) => node.app?.entityType === 'schema').length} schemas.`)
+    return []
+  }, [baseCanvas, edges, markDirty, nodes, setEdges, setNodes, setNotice])
+
+  const standardErrors = useCallback(() => {
+    const canvas = fromFlowCanvas(nodes, edges, baseCanvas)
+    const endpointIds = graph.selectedNodes
+      .filter((node) => node.data.entity?.entityType === 'endpoint')
+      .map((node) => node.id)
+    const result = applyStandardErrors(canvas, endpointIds)
+    if (result.errors.length > 0) {
+      setError(result.errors.join(' '))
+      return
+    }
+    const byId = new Map(result.nodes.map((node) => [node.id, node]))
+    setNodes((current) => {
+      const currentIds = new Set(current.map((node) => node.id))
+      return [
+        ...current.map((node) => {
+          const raw = byId.get(node.id)
+          if (!raw) return node
+          return { ...node, data: toFlowNode(raw).data }
+        }),
+        ...result.nodes.filter((node) => !currentIds.has(node.id)).map(toFlowNode),
+      ]
+    })
+    const managed = deriveManagedRelations({ nodes: result.nodes, edges: [] })
+    setEdges((current) => [
+      ...current.filter((edge) => (
+        edge.data?.raw?.app?.managed !== true
+        && edge.data?.relationType !== 'accepts'
+        && edge.data?.relationType !== 'returns'
+      )),
+      ...managed.map((edge) => toFlowEdge(edge)),
+    ])
+    markDirty()
+    setNotice(result.added > 0 ? `Added ${result.added} standard error responses.` : 'Standard error responses were already present.')
+  }, [baseCanvas, edges, graph.selectedNodes, markDirty, nodes, setEdges, setNodes, setError, setNotice])
+
   const commands = useCanvasCommands({
     backLabel: trail.length > 1 ? 'Back' : 'All canvases',
     isSystems: isStructured,
@@ -212,6 +352,11 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     onFitView: graph.fitCanvas,
     onDownload: () => void download(),
     onScreenshot: capture.openScreenshot,
+    onAddResource: () => setAddResourceOpen(true),
+    onStandardErrors: standardErrors,
+    selectedEndpointCount,
+    onExportOpenApi,
+    onCopyOpenApi,
     onHelp: () => setHelpOpen(true),
     onDuplicate: graph.duplicateSelection,
     onSelectAll: graph.selectAll,
@@ -293,6 +438,13 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
             renameBusy={renameBusy}
             renameCanvas={renameCanvas}
           />
+          {addResourceOpen && (
+            <AddResourceDialog
+              initialPrefix={prefixFromPaths(nodes)}
+              onSubmit={addResource}
+              onClose={() => setAddResourceOpen(false)}
+            />
+          )}
         </div>
       </CanvasValidationContext.Provider>
     </CanvasEditorActionsContext.Provider>

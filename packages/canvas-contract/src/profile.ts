@@ -61,6 +61,7 @@ export type ProfileIssueCode =
   | 'schema_contract'
   | 'artifact_without_producer'
   | 'process_without_runner'
+  | 'example_invalid'
 
 export interface CanvasProfileIssue {
   code: ProfileIssueCode

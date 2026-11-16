@@ -122,10 +122,15 @@ const ISSUE_COPY: Record<CanvasProfileIssue['code'], { label: string; why: strin
     label: 'Process has no runner',
     why: 'Add an Actor or System with a runs link.',
   },
+  example_invalid: {
+    label: 'Invalid example',
+    why: 'Replace the example or fix the schema.',
+  },
 }
 
 function issueCategory(code: CanvasProfileIssue['code']): string {
   if (code.startsWith('schema_')) return 'Schema'
+  if (code.startsWith('example_')) return 'Examples'
   if (code.includes('relation')) return 'Relation'
   if (code.includes('without')) return 'Semantics'
   if (code.includes('group')) return 'Group'

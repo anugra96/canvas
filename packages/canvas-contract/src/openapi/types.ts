@@ -67,6 +67,8 @@ export interface ApiReferenceDocument {
   summary: ApiReferenceSummary
   resources: ApiReferenceResource[]
   securityUsage: Record<string, number>
+  schemaSources: Record<string, unknown>
+  securitySchemes: Record<string, JsonObject>
 }
 
 export interface ApiReferenceResource {

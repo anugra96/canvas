@@ -1,7 +1,13 @@
-import { Plus, Trash2 } from 'lucide-react'
+import { Copy, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
-import { schemaNameFromRef, type EntityFields } from '@canvas/contract'
+import {
+  buildCurlSnippet,
+  generateExample,
+  schemaNameFromRef,
+  type EntityFields,
+} from '@canvas/contract'
+import { useApiDesign } from './ApiDesignContext'
 
 type JsonObject = Record<string, unknown>
 
@@ -59,6 +65,8 @@ export function ApiEndpointEditor({
   const [tab, setTab] = useState<'details' | 'raw'>('details')
   const [statusDrafts, setStatusDrafts] = useState<Record<string, string>>({})
   const [statusError, setStatusError] = useState('')
+  const [copyStatus, setCopyStatus] = useState('')
+  const api = useApiDesign()
   const source = string(fields.operation)
   const parsed = parseOperation(source)
   const operation = parsed.value
@@ -147,6 +155,37 @@ export function ApiEndpointEditor({
     updateOperation({ ...operation, responses: next })
   }
 
+  function generateRequestExample(mediaType: string) {
+    const media = object(requestContent[mediaType])
+    if (!media.schema) return
+    const example = generateExample(media.schema, api?.schemaSources ?? {})
+    updateOperation({
+      ...operation,
+      requestBody: {
+        ...object(operation.requestBody),
+        content: {
+          ...requestContent,
+          [mediaType]: { ...media, example },
+        },
+      },
+    })
+  }
+
+  function copyCurl() {
+    if (!api) return
+    const snippet = buildCurlSnippet({
+      method: string(fields.method),
+      path,
+      operation,
+      servers: api.summary.servers,
+      globalSecurity: api.summary.globalSecurity,
+      securitySchemes: api.securitySchemes,
+    })
+    void navigator.clipboard.writeText(snippet)
+      .then(() => setCopyStatus('Copied'))
+      .catch(() => setCopyStatus('Clipboard denied'))
+  }
+
   return (
     <div className="api-endpoint-editor">
       <div className="api-endpoint-tabs" role="tablist" aria-label="Endpoint editor">
@@ -156,6 +195,15 @@ export function ApiEndpointEditor({
 
       {invalid && (
         <div className="alert" role="alert">Operation JSON is invalid: {parsed.error} Fix it in the Raw tab.</div>
+      )}
+
+      {!invalid && (
+        <div className="api-endpoint-tools">
+          <button type="button" className="button ghost" onClick={copyCurl} disabled={!api}>
+            <Copy size={14} /> Copy curl
+          </button>
+          {copyStatus && <span className="api-endpoint-muted" role="status">{copyStatus}</span>}
+        </div>
       )}
 
       {tab === 'raw' ? (
@@ -231,6 +279,14 @@ export function ApiEndpointEditor({
               <div className="api-endpoint-model-row" key={mediaType}>
                 <code>{mediaType}</code>
                 <span>{modelNames(object(media)).join(', ') || 'Inline schema'}</span>
+                <button
+                  type="button"
+                  className="button ghost"
+                  onClick={() => generateRequestExample(mediaType)}
+                  disabled={!object(media).schema}
+                >
+                  <Sparkles size={13} /> Generate example
+                </button>
               </div>
             ))}
             {requestModels.length > 1 && <p className="api-endpoint-muted">Multiple models share this body. Edit Raw for exact control.</p>}

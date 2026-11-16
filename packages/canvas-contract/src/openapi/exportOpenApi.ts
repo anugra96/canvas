@@ -1,19 +1,13 @@
 import { getEntityMeta } from '../ontology'
 import type { CanvasNode, JsonCanvas } from '../jsonCanvas'
+import { stringify as stringifyYaml } from 'yaml'
 import { isObject, objectOrEmpty } from './document'
+import { orderedApiEndpoints } from './layout'
 import type { JsonObject } from './types'
 
 function stringField(node: CanvasNode, key: string): string {
   const value = getEntityMeta(node)?.fields[key]
   return value == null ? '' : String(value)
-}
-
-function parseJson(value: string): unknown {
-  try {
-    return JSON.parse(value)
-  } catch {
-    return undefined
-  }
 }
 
 function nodeType(node: CanvasNode): string {
@@ -58,11 +52,62 @@ function serversFor(api: CanvasNode, extra: JsonObject): unknown[] | undefined {
   })
 }
 
-export function exportOpenApiCanvas(canvas: JsonCanvas): JsonObject {
+export interface OpenApiExportIssue {
+  cardId: string
+  label: string
+  field: string
+  message: string
+}
+
+export class OpenApiExportError extends Error {
+  readonly issues: OpenApiExportIssue[]
+
+  constructor(issues: OpenApiExportIssue[]) {
+    super(`Cannot export OpenAPI: ${issues.length} card${issues.length === 1 ? '' : 's'} contain invalid JSON.`)
+    this.issues = issues
+  }
+}
+
+function cardLabel(node: CanvasNode): string {
+  const fields = getEntityMeta(node)?.fields ?? {}
+  return String(fields.name ?? fields.title ?? fields.path ?? node.id)
+}
+
+function parseCardJson(node: CanvasNode, fieldKey: string, issues: OpenApiExportIssue[]): unknown {
+  try {
+    return JSON.parse(stringField(node, fieldKey))
+  } catch {
+    issues.push({
+      cardId: node.id,
+      label: cardLabel(node),
+      field: fieldKey,
+      message: `${cardLabel(node)} has invalid ${fieldKey} JSON.`,
+    })
+    return undefined
+  }
+}
+
+export function exportOpenApiDocument(canvas: JsonCanvas): JsonObject {
   const nodes = canvas.nodes ?? []
   const api = nodes.find((node) => nodeType(node) === 'api_definition')
   if (!api) throw new Error('The canvas has no API card.')
-  const extra = objectOrEmpty(parseJson(stringField(api, 'extra')))
+  const issues: OpenApiExportIssue[] = []
+  const apiExtra = parseCardJson(api, 'extra', issues)
+  const operations = new Map<string, unknown>()
+  for (const endpoint of nodes.filter((node) => nodeType(node) === 'endpoint')) {
+    operations.set(endpoint.id, parseCardJson(endpoint, 'operation', issues))
+  }
+  const schemaSources = new Map<string, unknown>()
+  for (const schema of nodes.filter((node) => nodeType(node) === 'schema')) {
+    schemaSources.set(schema.id, parseCardJson(schema, 'source', issues))
+  }
+  const securityDefinitions = new Map<string, unknown>()
+  for (const security of nodes.filter((node) => nodeType(node) === 'security_scheme')) {
+    securityDefinitions.set(security.id, parseCardJson(security, 'definition', issues))
+  }
+  if (issues.length > 0) throw new OpenApiExportError(issues)
+
+  const extra = objectOrEmpty(apiExtra)
   const topExtra = { ...extra }
   const info = objectOrEmpty(topExtra.info)
   const componentExtra = topExtra.components
@@ -74,16 +119,12 @@ export function exportOpenApiCanvas(canvas: JsonCanvas): JsonObject {
   const description = stringField(api, 'description')
   const paths: JsonObject = {}
 
-  const endpoints = nodes
-    .filter((node) => nodeType(node) === 'endpoint')
-    .sort((left, right) => stringField(left, 'path').localeCompare(stringField(right, 'path'))
-      || stringField(left, 'method').localeCompare(stringField(right, 'method'))
-      || left.id.localeCompare(right.id))
+  const endpoints = orderedApiEndpoints(nodes)
   for (const endpoint of endpoints) {
     const path = stringField(endpoint, 'path')
     const method = stringField(endpoint, 'method').toLowerCase()
     if (!path || !method) continue
-    const operation = objectOrEmpty(parseJson(stringField(endpoint, 'operation')))
+    const operation = objectOrEmpty(operations.get(endpoint.id))
     if (stringField(endpoint, 'status') === 'deprecated') operation.deprecated = true
     else if (operation.deprecated === true) delete operation.deprecated
     const item = isObject(paths[path]) ? paths[path] as JsonObject : {}
@@ -95,16 +136,14 @@ export function exportOpenApiCanvas(canvas: JsonCanvas): JsonObject {
   for (const schema of nodes.filter((node) => nodeType(node) === 'schema')) {
     const name = stringField(schema, 'name')
     if (!name) continue
-    const source = parseJson(stringField(schema, 'source'))
-    if (source !== undefined) schemas[name] = source
+    schemas[name] = schemaSources.get(schema.id)
   }
 
   const securitySchemes: JsonObject = {}
   for (const security of nodes.filter((node) => nodeType(node) === 'security_scheme')) {
     const name = stringField(security, 'name')
     if (!name) continue
-    const definition = parseJson(stringField(security, 'definition'))
-    if (definition !== undefined) securitySchemes[name] = definition
+    securitySchemes[name] = securityDefinitions.get(security.id)
   }
 
   const components = {
@@ -129,4 +168,12 @@ export function exportOpenApiCanvas(canvas: JsonCanvas): JsonObject {
     ...(tags.length > 0 ? { tags } : {}),
   }
   return document
+}
+
+export function exportOpenApiCanvas(canvas: JsonCanvas): JsonObject {
+  return exportOpenApiDocument(canvas)
+}
+
+export function stringifyOpenApiYaml(document: JsonObject): string {
+  return stringifyYaml(document)
 }

@@ -7767,3 +7767,36 @@ select {
 .canvas-node.api-lane-node .api-preview-head {
   padding-bottom: 4px;
 }
+
+.add-resource-dialog {
+  width: min(520px, 100%);
+}
+
+.add-resource-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.add-resource-fields .name-dialog-field input {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+@media (max-width: 560px) {
+  .add-resource-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+.api-endpoint-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.api-endpoint-tools .button {
+  min-height: 28px;
+  padding: 0 8px;
+  font-size: 11px;
+}

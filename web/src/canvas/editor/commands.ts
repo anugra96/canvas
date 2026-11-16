@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   ArrowLeft,
+  Boxes,
   Box,
   Camera,
   Copy,
@@ -13,6 +14,7 @@ import {
   Move,
   PanelsTopLeft,
   PenLine,
+  ShieldAlert,
   Redo2,
   Save,
   ShieldCheck,
@@ -68,6 +70,11 @@ interface CanvasCommandInput {
   onFitView: () => void
   onDownload: () => void
   onScreenshot: () => void
+  onAddResource: () => void
+  onStandardErrors: () => void
+  selectedEndpointCount: number
+  onExportOpenApi: (format: 'json' | 'yaml') => void
+  onCopyOpenApi: (format: 'json' | 'yaml') => void
   onHelp: () => void
   onDuplicate: () => void
   onSelectAll: () => void
@@ -197,6 +204,23 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       run: input.onSave,
     },
     {
+      id: 'api.add-resource',
+      label: 'Add resource',
+      icon: Boxes,
+      surface: 'overflow',
+      available: input.profileId === 'api',
+      run: input.onAddResource,
+    },
+    {
+      id: 'api.standard-errors',
+      label: 'Standard errors',
+      icon: ShieldAlert,
+      surface: 'overflow',
+      available: input.profileId === 'api',
+      disabled: input.selectedEndpointCount === 0,
+      run: input.onStandardErrors,
+    },
+    {
       id: 'layout.tidy',
       label: 'Tidy layout',
       icon: LayoutGrid,
@@ -232,6 +256,42 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       bindings: [{ code: 'Digit1', shift: true }],
       available: true,
       run: input.onFitView,
+    },
+    {
+      id: 'export.openapi-yaml',
+      label: 'Export OpenAPI YAML',
+      icon: Download,
+      surface: 'overflow',
+      section: 'export',
+      available: input.profileId === 'api',
+      run: () => input.onExportOpenApi('yaml'),
+    },
+    {
+      id: 'export.openapi-json',
+      label: 'Export OpenAPI JSON',
+      icon: Download,
+      surface: 'overflow',
+      section: 'export',
+      available: input.profileId === 'api',
+      run: () => input.onExportOpenApi('json'),
+    },
+    {
+      id: 'export.copy-openapi-yaml',
+      label: 'Copy OpenAPI YAML',
+      icon: Copy,
+      surface: 'overflow',
+      section: 'export',
+      available: input.profileId === 'api',
+      run: () => input.onCopyOpenApi('yaml'),
+    },
+    {
+      id: 'export.copy-openapi-json',
+      label: 'Copy OpenAPI JSON',
+      icon: Copy,
+      surface: 'overflow',
+      section: 'export',
+      available: input.profileId === 'api',
+      run: () => input.onCopyOpenApi('json'),
     },
     {
       id: 'export.canvas',

@@ -3,6 +3,7 @@ import type { CanvasNode } from '../jsonCanvas'
 import { isObject, objectOrEmpty, schemaNameFromRef } from './document'
 import { endpointResourceName } from './managedRelations'
 import type {
+  JsonObject,
   ApiReferenceDocument,
   ApiReferenceEndpoint,
   ApiReferenceParameter,
@@ -152,5 +153,26 @@ export function buildApiReferenceDocument(nodes: CanvasNode[]): ApiReferenceDocu
       }
     }
   }
-  return { summary, resources, securityUsage }
+  const schemaSources: Record<string, unknown> = {}
+  for (const node of nodes.filter((candidate) => getEntityMeta(candidate)?.entityType === 'schema')) {
+    const name = field(node, 'name')
+    if (!name) continue
+    try {
+      schemaSources[name] = JSON.parse(field(node, 'source'))
+    } catch {
+      // Invalid schema JSON is reported by Review and export.
+    }
+  }
+  const securitySchemes: Record<string, JsonObject> = {}
+  for (const node of nodes.filter((candidate) => getEntityMeta(candidate)?.entityType === 'security_scheme')) {
+    const name = field(node, 'name')
+    if (!name) continue
+    try {
+      const parsed: unknown = JSON.parse(field(node, 'definition'))
+      if (isObject(parsed)) securitySchemes[name] = parsed
+    } catch {
+      // Invalid security JSON is reported by export.
+    }
+  }
+  return { summary, resources, securityUsage, schemaSources, securitySchemes }
 }

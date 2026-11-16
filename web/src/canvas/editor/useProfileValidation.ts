@@ -8,7 +8,7 @@ import {
 } from '@canvas/contract'
 
 import { fromFlowCanvas, type CanvasFlowEdge, type CanvasFlowNode } from '../model/adapter'
-import { validateSchemaContracts } from '../schema/jsonSchema'
+import { validateApiExamples, validateSchemaContracts } from '../schema/jsonSchema'
 import { validateSemanticRules } from '../semantics/semanticRules'
 
 export function useProfileValidation({
@@ -34,6 +34,7 @@ export function useProfileValidation({
     return [
       ...validateProfileCanvas(canvas, profile, ontology),
       ...validateSchemaContracts(canvas.nodes ?? [], canvas.edges ?? [], new Date(), isApi ? 'api' : 'systems'),
+      ...(isApi ? validateApiExamples(canvas.nodes ?? []) : []),
       ...validateSemanticRules(canvas.nodes ?? [], canvas.edges ?? []),
     ]
   }, [baseCanvas, edges, isApi, isSystems, nodes, ontology, profile])
