@@ -1,6 +1,7 @@
-import { getEdgeMeta, getEntityMeta } from '../ontology'
+import { getEntityMeta } from '../ontology'
 import type { CanvasNode, JsonCanvas } from '../jsonCanvas'
 import { buildApiReferenceDocument } from './reference'
+import { schemaReferences } from './managedRelations'
 
 export interface ApiCardSize {
   width: number
@@ -108,18 +109,21 @@ export function layoutApiCanvas(canvas: JsonCanvas, sizes: ApiSizeMap = {}): Jso
   const reference = buildApiReferenceDocument(nodes)
   const api = nodes.find((node) => getEntityMeta(node)?.entityType === 'api_definition')
   const security = nodes.filter((node) => getEntityMeta(node)?.entityType === 'security_scheme')
+  const annotations = nodes
+    .filter((node) => ['note', 'decision', 'risk'].includes(getEntityMeta(node)?.entityType ?? ''))
+    .sort((left, right) => left.x - right.x || left.y - right.y || left.id.localeCompare(right.id))
   const resources = nodes
     .filter((node) => getEntityMeta(node)?.entityType === 'resource')
     .sort(resourceOrder)
   const schemas = nodes.filter((node) => getEntityMeta(node)?.entityType === 'schema')
   const endpoints = nodes.filter((node) => getEntityMeta(node)?.entityType === 'endpoint')
   const schemaByName = new Map(schemas.map((node) => [field(node, 'name'), node]))
-  const nameById = new Map(schemas.map((node) => [node.id, field(node, 'name')]))
   const positions = new Map<string, { x: number; y: number }>()
   const modelY = new Map<string, number>()
   const apiSize = api ? nodeSize(api, resolvedSizes) : { width: 420, height: 220 }
   const securityHeight = security.reduce((max, node) => Math.max(max, nodeSize(node, resolvedSizes).height), 0)
-  const headerHeight = Math.max(apiSize.height, securityHeight)
+  const annotationHeight = annotations.reduce((max, node) => Math.max(max, nodeSize(node, resolvedSizes).height), 0)
+  const headerHeight = Math.max(apiSize.height, securityHeight, annotationHeight)
   const top = headerHeight + COLUMN_GAP
 
   if (api) positions.set(api.id, { x: 0, y: 0 })
@@ -128,59 +132,25 @@ export function layoutApiCanvas(canvas: JsonCanvas, sizes: ApiSizeMap = {}): Jso
     positions.set(scheme.id, { x: securityX, y: 0 })
     securityX += nodeSize(scheme, resolvedSizes).width + COLUMN_GAP
   }
+  for (const annotation of annotations) {
+    positions.set(annotation.id, { x: securityX, y: 0 })
+    securityX += nodeSize(annotation, resolvedSizes).width + COLUMN_GAP
+  }
 
-  const accepts = (canvas.edges ?? []).filter((edge) => getEdgeMeta(edge)?.relationType === 'accepts')
-  const returns = (canvas.edges ?? []).filter((edge) => getEdgeMeta(edge)?.relationType === 'returns')
-  const uses = (canvas.edges ?? []).filter((edge) => getEdgeMeta(edge)?.relationType === 'uses')
-  const requestSeeds = new Set(accepts.flatMap((edge) => {
-    const name = nameById.get(edge.toNode)
-    return name ? [name] : []
-  }))
-  const successSeeds = new Set(returns.flatMap((edge) => {
-    const status = getEdgeMeta(edge)?.status ?? edge.label ?? ''
-    const name = nameById.get(edge.toNode)
-    return /^[123]/.test(status) && name ? [name] : []
-  }))
-  const errorSeeds = new Set(returns.flatMap((edge) => {
-    const status = getEdgeMeta(edge)?.status ?? edge.label ?? ''
-    const name = nameById.get(edge.toNode)
-    return /^[45]/.test(status) && name ? [name] : []
-  }))
   const usesTargets = new Map<string, string[]>()
-  for (const edge of uses) {
-    const from = nameById.get(edge.fromNode)
-    const to = nameById.get(edge.toNode)
-    if (!from || !to) continue
-    const list = usesTargets.get(from) ?? []
-    list.push(to)
-    usesTargets.set(from, list)
+  for (const [name, source] of Object.entries(reference.schemaSources)) {
+    const targets = schemaReferences(source).filter((target) => target !== name)
+    if (targets.length > 0) usesTargets.set(name, targets)
   }
-
-  function reachable(seeds: Iterable<string>, blocked = new Set<string>()): Map<string, number> {
-    const result = new Map<string, number>()
-    const queue = [...seeds].filter((name) => !blocked.has(name)).map((name) => ({ name, depth: 0 }))
-    while (queue.length > 0) {
-      const next = queue.shift()
-      if (!next || result.has(next.name) || blocked.has(next.name)) continue
-      result.set(next.name, next.depth)
-      for (const target of usesTargets.get(next.name) ?? []) {
-        if (!result.has(target) && !blocked.has(target)) queue.push({ name: target, depth: next.depth + 1 })
-      }
-    }
-    return result
-  }
-
-  const responseReach = reachable(successSeeds)
-  const requestReach = reachable([...requestSeeds].filter((name) => !responseReach.has(name)), new Set(responseReach.keys()))
-  const sharedBlocked = new Set([...requestReach.keys(), ...responseReach.keys()])
-  const sharedSeeds = [...errorSeeds].filter((name) => !sharedBlocked.has(name))
-  const sharedReach = reachable(sharedSeeds, sharedBlocked)
-
+  const placement = reference.modelPlacement
   const endpointPositions = new Map<string, { x: number; y: number }>()
   const endpointByName = new Map<string, number>()
-  const requestColumnCount = requestReach.size > 0 ? Math.max(...requestReach.values()) + 1 : 0
+  const requestColumnCount = Math.max(0, ...schemas
+    .filter((node) => placement[field(node, 'name')]?.region === 'request')
+    .map((node) => (placement[field(node, 'name')]?.depth ?? 0) + 1))
   const requestWidths = Array.from({ length: requestColumnCount }, (_, depth) => (
-    schemas.filter((node) => requestReach.get(field(node, 'name')) === depth)
+    schemas.filter((node) => placement[field(node, 'name')]?.region === 'request'
+      && placement[field(node, 'name')]?.depth === depth)
       .reduce((max, node) => Math.max(max, nodeSize(node, resolvedSizes).width), 0)
   ))
   const requestTotalWidth = requestWidths.reduce((sum, width) => sum + width, 0)
@@ -259,11 +229,11 @@ export function layoutApiCanvas(canvas: JsonCanvas, sizes: ApiSizeMap = {}): Jso
   let responseBottom = top - MODEL_GAP
   const requestNamesByDepth = new Map<number, CanvasNode[]>()
   for (const node of schemas) {
-    const depth = requestReach.get(field(node, 'name'))
-    if (depth == null) continue
-    const list = requestNamesByDepth.get(depth) ?? []
+    const info = placement[field(node, 'name')]
+    if (info?.region !== 'request') continue
+    const list = requestNamesByDepth.get(info.depth) ?? []
     list.push(node)
-    requestNamesByDepth.set(depth, list)
+    requestNamesByDepth.set(info.depth, list)
   }
   const requestPlaced = new Map<string, number>()
   for (let depth = 0; depth < requestColumnCount; depth += 1) {
@@ -297,9 +267,12 @@ export function layoutApiCanvas(canvas: JsonCanvas, sizes: ApiSizeMap = {}): Jso
     }
   }
 
-  const responseColumnCount = responseReach.size > 0 ? Math.max(...responseReach.values()) + 1 : 0
+  const responseColumnCount = Math.max(0, ...schemas
+    .filter((node) => placement[field(node, 'name')]?.region === 'response')
+    .map((node) => (placement[field(node, 'name')]?.depth ?? 0) + 1))
   const responseWidths = Array.from({ length: responseColumnCount }, (_, depth) => (
-    schemas.filter((node) => responseReach.get(field(node, 'name')) === depth)
+    schemas.filter((node) => placement[field(node, 'name')]?.region === 'response'
+      && placement[field(node, 'name')]?.depth === depth)
       .reduce((max, node) => Math.max(max, nodeSize(node, resolvedSizes).width), 0)
   ))
   const responseStartX = laneX + laneWidth + COLUMN_GAP
@@ -311,11 +284,11 @@ export function layoutApiCanvas(canvas: JsonCanvas, sizes: ApiSizeMap = {}): Jso
   }
   const responseNamesByDepth = new Map<number, CanvasNode[]>()
   for (const node of schemas) {
-    const depth = responseReach.get(field(node, 'name'))
-    if (depth == null) continue
-    const list = responseNamesByDepth.get(depth) ?? []
+    const info = placement[field(node, 'name')]
+    if (info?.region !== 'response') continue
+    const list = responseNamesByDepth.get(info.depth) ?? []
     list.push(node)
-    responseNamesByDepth.set(depth, list)
+    responseNamesByDepth.set(info.depth, list)
   }
   const responsePlaced = new Map<string, number>()
   for (let depth = 0; depth < responseColumnCount; depth += 1) {
@@ -341,19 +314,10 @@ export function layoutApiCanvas(canvas: JsonCanvas, sizes: ApiSizeMap = {}): Jso
     ))
   }
 
-  const sharedOrder: string[] = []
-  const sharedQueue = [...sharedSeeds].sort((a, b) => (
-    (endpointByName.get(a) ?? Number.MAX_SAFE_INTEGER) - (endpointByName.get(b) ?? Number.MAX_SAFE_INTEGER)
-    || a.localeCompare(b)
-  ))
-  while (sharedQueue.length > 0) {
-    const name = sharedQueue.shift()!
-    if (!sharedReach.has(name) || sharedOrder.includes(name)) continue
-    sharedOrder.push(name)
-    for (const target of usesTargets.get(name) ?? []) {
-      if (sharedReach.has(target) && !sharedOrder.includes(target)) sharedQueue.push(target)
-    }
-  }
+  const sharedOrder = schemas
+    .filter((node) => placement[field(node, 'name')]?.region === 'shared')
+    .map((node) => field(node, 'name'))
+    .sort((left, right) => left.localeCompare(right))
   const sharedTop = Math.max(lanesBottom, responseBottom, requestBottom) + COLUMN_GAP
   let sharedX = laneX
   let sharedHeight = 0
@@ -367,9 +331,7 @@ export function layoutApiCanvas(canvas: JsonCanvas, sizes: ApiSizeMap = {}): Jso
     sharedHeight = Math.max(sharedHeight, size.height)
   }
   const unused = schemas
-    .filter((node) => !requestReach.has(field(node, 'name'))
-      && !responseReach.has(field(node, 'name'))
-      && !sharedReach.has(field(node, 'name')))
+    .filter((node) => placement[field(node, 'name')]?.region === 'unused')
     .sort((a, b) => field(a, 'name').localeCompare(field(b, 'name')))
   let unusedX = 0
   const unusedTop = Math.max(sharedTop + sharedHeight + (sharedOrder.length ? COLUMN_GAP : 0), lanesBottom + COLUMN_GAP)

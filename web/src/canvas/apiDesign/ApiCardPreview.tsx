@@ -182,5 +182,5 @@ export function ApiCardPreview({
   if (entityType === 'security_scheme') {
     return <SecurityPreview fields={fields} usedBy={document.securityUsage[String(fields.name ?? '')] ?? 0} />
   }
-  return <ApiPreview {...document.summary} />
+  return <ApiPreview {...document.summary} globalSecurity={document.summary.defaultSecurity} />
 }

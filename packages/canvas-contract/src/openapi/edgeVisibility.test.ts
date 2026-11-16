@@ -14,7 +14,9 @@ describe('API edge visibility', () => {
     { name: 'hides 4xx returns', input: { relationType: 'returns', status: '404' }, drawn: false },
     { name: 'hides 5xx returns', input: { relationType: 'returns', status: '503' }, drawn: false },
     { name: 'draws accepts', input: { relationType: 'accepts' }, drawn: true },
-    { name: 'draws schema uses', input: { relationType: 'uses' }, drawn: true },
+    { name: 'draws next-column schema uses', input: { relationType: 'uses', usesNextColumn: true }, drawn: true },
+    { name: 'hides same-column schema uses', input: { relationType: 'uses', usesNextColumn: false }, drawn: false },
+    { name: 'hides shared-row schema uses', input: { relationType: 'uses', usesNextColumn: true, usesShared: true }, drawn: false },
     { name: 'draws manual annotations', input: { relationType: 'relates_to' }, drawn: true },
   ])('$name', ({ input, drawn }) => {
     expect(shouldDrawApiEdge(input)).toBe(drawn)

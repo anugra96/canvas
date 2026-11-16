@@ -114,15 +114,27 @@ export function CanvasWorkspace({
     const endpoints = new Map(apiDesign.resources.flatMap((resource) => (
       resource.endpoints.map((endpoint) => [endpoint.id, endpoint] as const)
     )))
+    const modelNames = new Map(nodes.map((node) => [node.id, String(node.data.entity?.fields.name ?? '')]))
     return edges.filter((edge) => {
       if (selectedIds.has(edge.source) || selectedIds.has(edge.target)) return true
       const raw = edge.data?.raw
       const meta = raw ? getEdgeMeta(raw) : undefined
+      const relationType = edge.data?.relationType ?? meta?.relationType
+      const sourcePlacement = apiDesign.modelPlacement[modelNames.get(edge.source) ?? '']
+      const targetPlacement = apiDesign.modelPlacement[modelNames.get(edge.target) ?? '']
+      const usesNextColumn = Boolean(sourcePlacement
+        && targetPlacement
+        && sourcePlacement.region === targetPlacement.region
+        && sourcePlacement.region !== 'shared'
+        && targetPlacement.depth === sourcePlacement.depth + 1)
+      const usesShared = targetPlacement?.region === 'shared'
       return shouldDrawApiEdge({
-        relationType: edge.data?.relationType ?? meta?.relationType,
+        relationType,
         status: meta?.status ?? raw?.label,
         sourceType: sourceTypes.get(edge.source),
         securityOverride: endpoints.get(edge.source)?.securityOverride,
+        usesNextColumn,
+        usesShared,
       })
     }).map((edge) => {
       if (edge.data?.relationType !== 'uses') return edge

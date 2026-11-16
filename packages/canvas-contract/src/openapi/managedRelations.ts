@@ -101,6 +101,10 @@ function managedEdge(
   }
 }
 
+export function schemaReferences(schema: unknown): string[] {
+  return [...refsForSchema(schema)]
+}
+
 function inferredResourceName(path: string): string {
   const segments = path.split('/').filter(Boolean)
   return segments.find((segment) => !/^v\d+(?:\.\d+)*$/i.test(segment))?.replace(/[{}]/g, '') || 'root'

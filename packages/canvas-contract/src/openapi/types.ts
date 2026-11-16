@@ -52,12 +52,20 @@ export interface ApiReferenceEndpoint {
   securityOverride: boolean
 }
 
+export type ApiModelRegion = 'request' | 'response' | 'shared' | 'unused'
+
+export interface ApiModelPlacement {
+  region: ApiModelRegion
+  depth: number
+}
+
 export interface ApiReferenceSummary {
   title: string
   version: string
   description?: string
   servers: string[]
   globalSecurity: string[]
+  defaultSecurity: string[]
   resourceCount: number
   endpointCount: number
   schemaCount: number
@@ -69,6 +77,7 @@ export interface ApiReferenceDocument {
   securityUsage: Record<string, number>
   schemaSources: Record<string, unknown>
   securitySchemes: Record<string, JsonObject>
+  modelPlacement: Record<string, ApiModelPlacement>
 }
 
 export interface ApiReferenceResource {

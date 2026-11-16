@@ -5,10 +5,13 @@ import { describe, expect, it } from 'vitest'
 import { getEdgeMeta, getEntityMeta, getGroupMembers } from '../ontology'
 import { importOpenApi } from './importOpenApi'
 import { estimateApiSizes, layoutApiCanvas } from './layout'
+import { shouldDrawApiEdge } from './edgeVisibility'
+import { buildApiReferenceDocument } from './reference'
 
 const engine = readFileSync(new URL('./fixtures/skyward-engine-v1.json', import.meta.url), 'utf8')
 const alaska = readFileSync(new URL('./fixtures/openapi-alaska.yaml', import.meta.url), 'utf8')
 const sample = readFileSync(new URL('../../../../examples/simple-tasks-api.yaml', import.meta.url), 'utf8')
+const registry = readFileSync(new URL('./fixtures/registry-v0.json', import.meta.url), 'utf8')
 
 function box(node: { x: number; y: number; width: number; height: number }) {
   return { left: node.x, top: node.y, right: node.x + node.width, bottom: node.y + node.height }
@@ -22,12 +25,56 @@ function typeOf(node: { app?: unknown }): string {
   return getEntityMeta(node)?.entityType ?? ''
 }
 
+
+
+function segmentIntersectsBox(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  rect: { left: number; top: number; right: number; bottom: number },
+  inset = 0.5,
+): boolean {
+  const left = rect.left + inset
+  const right = rect.right - inset
+  const top = rect.top + inset
+  const bottom = rect.bottom - inset
+  if (right <= left || bottom <= top) return false
+  const dx = to.x - from.x
+  const dy = to.y - from.y
+  let start = 0
+  let end = 1
+  const checks: Array<[number, number]> = [
+    [-dx, from.x - left],
+    [dx, right - from.x],
+    [-dy, from.y - top],
+    [dy, bottom - from.y],
+  ]
+  for (const [p, q] of checks) {
+    if (p === 0) {
+      if (q < 0) return false
+      continue
+    }
+    const ratio = q / p
+    if (p < 0) start = Math.max(start, ratio)
+    else end = Math.min(end, ratio)
+    if (start > end) return false
+  }
+  return true
+}
+
+function handlePoint(node: { x: number; y: number; width: number; height: number }, side: string) {
+  if (side === 'left') return { x: node.x, y: node.y + node.height / 2 }
+  if (side === 'right') return { x: node.x + node.width, y: node.y + node.height / 2 }
+  if (side === 'top') return { x: node.x + node.width / 2, y: node.y }
+  return { x: node.x + node.width / 2, y: node.y + node.height }
+}
+
 describe('API layout', () => {
   it.each([
-    { name: 'Engine fixture', source: engine },
-    { name: 'Alaska fixture', source: alaska },
-    { name: 'Simple Tasks sample', source: sample },
-  ])('$name is deterministic and readable', ({ source }) => {
+    { name: 'Engine fixture', source: engine, checkEdges: false, tightAccepts: true },
+    { name: 'Alaska fixture', source: alaska, checkEdges: false, tightAccepts: true },
+    { name: 'Simple Tasks sample', source: sample, checkEdges: false, tightAccepts: true },
+    { name: 'Registry fixture', source: registry, checkEdges: true, tightAccepts: false },
+  ])('$name is deterministic and readable', ({ source, checkEdges, tightAccepts }) => {
     const imported = importOpenApi(source).canvas
     const sizes = estimateApiSizes(imported)
     const sizeSnapshot = JSON.stringify(sizes)
@@ -90,7 +137,7 @@ describe('API layout', () => {
       const source = nodes.find((node) => node.id === edge.fromNode)
       const target = nodes.find((node) => node.id === edge.toNode)
       expect(target?.x ?? 0).toBeLessThan(source?.x ?? 0)
-      expect(Math.abs((target?.y ?? 0) - (source?.y ?? 0))).toBeLessThanOrEqual(80)
+      if (tightAccepts) expect(Math.abs((target?.y ?? 0) - (source?.y ?? 0))).toBeLessThanOrEqual(80)
       expect(edge.fromEnd).toBe('arrow')
       expect(edge.toEnd).toBe('none')
     }
@@ -98,7 +145,59 @@ describe('API layout', () => {
       const source = nodes.find((node) => node.id === edge.fromNode)
       const target = nodes.find((node) => node.id === edge.toNode)
       if (!source || !target) continue
-      if (Math.abs(source.x - target.x) < 1) expect(source.y).toBeLessThan(target.y)
+      if (!checkEdges && Math.abs(source.x - target.x) < 1) expect(source.y).toBeLessThan(target.y)
+    }
+
+    if (checkEdges) {
+      const reference = buildApiReferenceDocument(nodes)
+      const endpointById = new Map(reference.resources.flatMap((resource) => (
+        resource.endpoints.map((endpoint) => [endpoint.id, endpoint] as const)
+      )))
+      const modelNames = new Map(nodes.map((node) => [node.id, String(getEntityMeta(node)?.fields.name ?? '')]))
+      const cards = rectangles.filter((item) => item.type !== 'resource' && item.type !== 'group')
+      const byId = new Map(nodes.map((node) => [node.id, node]))
+      const drawn = (first.edges ?? []).filter((edge) => {
+        const meta = getEdgeMeta(edge)
+        const sourcePlacement = reference.modelPlacement[modelNames.get(edge.fromNode) ?? '']
+        const targetPlacement = reference.modelPlacement[modelNames.get(edge.toNode) ?? '']
+        return shouldDrawApiEdge({
+          relationType: meta?.relationType,
+          status: meta?.status ?? edge.label,
+          sourceType: typeOf(byId.get(edge.fromNode) ?? {}),
+          securityOverride: endpointById.get(edge.fromNode)?.securityOverride,
+          usesNextColumn: Boolean(sourcePlacement
+            && targetPlacement
+            && sourcePlacement.region === targetPlacement.region
+            && sourcePlacement.region !== 'shared'
+            && targetPlacement.depth === sourcePlacement.depth + 1),
+          usesShared: targetPlacement?.region === 'shared',
+        })
+      })
+      for (const edge of drawn) {
+        const source = byId.get(edge.fromNode)
+        const target = byId.get(edge.toNode)
+        if (!source || !target) continue
+        let fromSide = edge.fromSide
+        let toSide = edge.toSide
+        if (!fromSide || !toSide) {
+          if (Math.abs(source.x - target.x) < 1) {
+            fromSide = source.y < target.y ? 'bottom' : 'top'
+            toSide = source.y < target.y ? 'top' : 'bottom'
+          } else {
+            fromSide = target.x > source.x ? 'right' : 'left'
+            toSide = target.x > source.x ? 'left' : 'right'
+          }
+        }
+        const from = handlePoint(source, fromSide)
+        const to = handlePoint(target, toSide)
+        for (const card of cards) {
+          if (card.id === source.id || card.id === target.id) continue
+          expect(
+            segmentIntersectsBox(from, to, card.box),
+            `${edge.fromNode} -> ${edge.toNode} crosses ${card.id}`,
+          ).toBe(false)
+        }
+      }
     }
   })
 })
