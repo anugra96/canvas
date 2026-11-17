@@ -202,26 +202,44 @@ export function displayCardTypes(nodes: CanvasNode[], ontology: Ontology): Displ
     .sort((left, right) => left.label.localeCompare(right.label) || left.id.localeCompare(right.id))
 }
 
-function apiEdgeDrawn(
-  edge: CanvasEdge,
+interface ApiEdgeLookups {
+  modelPlacement: ApiReferenceDocument['modelPlacement']
+  endpoints: Map<string, ApiReferenceDocument['resources'][number]['endpoints'][number]>
+  modelNames: Map<string, string>
+  entityTypes: Map<string, string | undefined>
+}
+
+function buildApiEdgeLookups(
   nodeById: Map<string, CanvasNode>,
   apiReference: ApiReferenceDocument,
-): boolean {
-  const source = nodeById.get(edge.fromNode)
-  const meta = getEdgeMeta(edge)
+): ApiEdgeLookups {
   const endpoints = new Map(apiReference.resources.flatMap((resource) => (
     resource.endpoints.map((endpoint) => [endpoint.id, endpoint] as const)
   )))
-  const modelNames = new Map([...nodeById.values()].map((node) => (
-    [node.id, String(getEntityMeta(node)?.fields.name ?? '')]
-  )))
-  const sourcePlacement = apiReference.modelPlacement[modelNames.get(edge.fromNode) ?? '']
-  const targetPlacement = apiReference.modelPlacement[modelNames.get(edge.toNode) ?? '']
+  const modelNames = new Map<string, string>()
+  const entityTypes = new Map<string, string | undefined>()
+  for (const node of nodeById.values()) {
+    const meta = getEntityMeta(node)
+    modelNames.set(node.id, String(meta?.fields.name ?? ''))
+    entityTypes.set(node.id, meta?.entityType)
+  }
+  return {
+    modelPlacement: apiReference.modelPlacement,
+    endpoints,
+    modelNames,
+    entityTypes,
+  }
+}
+
+function apiEdgeDrawn(edge: CanvasEdge, lookups: ApiEdgeLookups): boolean {
+  const meta = getEdgeMeta(edge)
+  const sourcePlacement = lookups.modelPlacement[lookups.modelNames.get(edge.fromNode) ?? '']
+  const targetPlacement = lookups.modelPlacement[lookups.modelNames.get(edge.toNode) ?? '']
   return shouldDrawApiEdge({
     relationType: meta?.relationType,
     status: meta?.status ?? edge.label,
-    sourceType: source ? getEntityMeta(source)?.entityType : undefined,
-    securityOverride: endpoints.get(edge.fromNode)?.securityOverride,
+    sourceType: lookups.entityTypes.get(edge.fromNode),
+    securityOverride: lookups.endpoints.get(edge.fromNode)?.securityOverride,
     usesNextColumn: Boolean(sourcePlacement
       && targetPlacement
       && sourcePlacement.region === targetPlacement.region
@@ -257,14 +275,17 @@ export function computeDisplay({
   }
 
   const nodeById = new Map(nodes.map((node) => [node.id, node]))
+  const apiLookups = state.preset !== 'all' && apiReference
+    ? buildApiEdgeLookups(nodeById, apiReference)
+    : null
   const drawnEdges = edges.filter((edge) => {
     if (!visibleNodeIds.has(edge.fromNode) || !visibleNodeIds.has(edge.toNode)) return false
     if (selectedIds.has(edge.fromNode) || selectedIds.has(edge.toNode)) return true
     const source = nodeById.get(edge.fromNode)
     const target = nodeById.get(edge.toNode)
     if (!displayClassVisible(state, edgeClass(edge, source, target, ontology))) return false
-    if (state.preset !== 'all' && apiReference) {
-      return apiEdgeDrawn(edge, nodeById, apiReference)
+    if (apiLookups) {
+      return apiEdgeDrawn(edge, apiLookups)
     }
     return true
   })
