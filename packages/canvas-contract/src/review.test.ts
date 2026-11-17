@@ -4,7 +4,9 @@ import {
   ISSUE_TIERS,
   PROFILE_ISSUE_CODES,
   visibleIssueCodes,
+  withCanvasReviewMode,
   type IssueTier,
+  type JsonCanvas,
   type ProfileIssueCode,
   type ReviewMode,
 } from './index'
@@ -53,6 +55,38 @@ const MODE_EXPECTED: Array<{ mode: ReviewMode; tiers: IssueTier[] }> = [
   { mode: 'publish', tiers: ['integrity', 'design', 'publish'] },
 ]
 
+const REVIEW_WRITE_EXPECTED: Array<{
+  name: string
+  canvas: JsonCanvas
+  mode: ReviewMode
+  app: JsonCanvas['app']
+}> = [
+  {
+    name: 'raw canvas leaves design implicit',
+    canvas: { nodes: [] },
+    mode: 'design',
+    app: undefined,
+  },
+  {
+    name: 'raw canvas never stores publish',
+    canvas: { nodes: [] },
+    mode: 'publish',
+    app: undefined,
+  },
+  {
+    name: 'profiled canvas leaves design implicit',
+    canvas: { nodes: [], app: { profile: 'systems', profileVersion: 4 } },
+    mode: 'design',
+    app: { profile: 'systems', profileVersion: 4 },
+  },
+  {
+    name: 'profiled canvas stores sketch',
+    canvas: { nodes: [], app: { profile: 'systems', profileVersion: 4 } },
+    mode: 'sketch',
+    app: { profile: 'systems', profileVersion: 4, reviewMode: 'sketch' },
+  },
+]
+
 describe('review modes', () => {
   it('gives every profile issue code a tier', () => {
     for (const code of PROFILE_ISSUE_CODES) {
@@ -63,5 +97,9 @@ describe('review modes', () => {
   it.each(MODE_EXPECTED)('$mode shows only its tiers', ({ mode, tiers }) => {
     const expected = tiers.flatMap((tier) => TIER_CODES[tier]).sort()
     expect(visibleIssueCodes(mode).sort()).toEqual(expected)
+  })
+
+  it.each(REVIEW_WRITE_EXPECTED)('$name', ({ canvas, mode, app }) => {
+    expect(withCanvasReviewMode(canvas, mode).app).toEqual(app)
   })
 })

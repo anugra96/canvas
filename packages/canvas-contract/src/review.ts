@@ -76,8 +76,12 @@ export function canvasReviewMode(canvas: Pick<JsonCanvas, 'app'>): ReviewMode {
 }
 
 export function withCanvasReviewMode(canvas: JsonCanvas, mode: ReviewMode): JsonCanvas {
+  if (!canvas.app?.profile) return canvas
+  const app = { ...canvas.app }
+  if (mode === 'design') delete app.reviewMode
+  else app.reviewMode = mode
   return {
     ...canvas,
-    app: { ...(canvas.app ?? {}), reviewMode: mode },
+    app: Object.keys(app).length > 0 ? app : undefined,
   } as JsonCanvas
 }
