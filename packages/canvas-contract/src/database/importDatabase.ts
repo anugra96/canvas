@@ -186,7 +186,7 @@ function ownedSequenceTarget(options: any[] | undefined): { schema: string; tabl
     if (parts.length < 3) continue
     const column = parts[parts.length - 1]!
     const table = parts[parts.length - 2]!
-    const schema = parts.length > 3 ? parts.slice(0, -2).join('.') : 'public'
+    const schema = parts.slice(0, -2).join('.') || 'public'
     return { schema, table, column }
   }
   return undefined
