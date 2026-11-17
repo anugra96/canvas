@@ -69,7 +69,8 @@ export function visibleIssueCodes(mode: ReviewMode): ProfileIssueCode[] {
 }
 
 export function canvasReviewMode(canvas: Pick<JsonCanvas, 'app'>): ReviewMode {
-  const mode = canvas.app?.reviewMode
+  if (!canvas.app?.profile) return DEFAULT_REVIEW_MODE
+  const mode = canvas.app.reviewMode
   return mode === 'sketch' || mode === 'publish' || mode === 'design'
     ? mode
     : DEFAULT_REVIEW_MODE

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   ISSUE_TIERS,
   PROFILE_ISSUE_CODES,
+  canvasReviewMode,
   visibleIssueCodes,
   withCanvasReviewMode,
   type IssueTier,
@@ -87,6 +88,19 @@ const REVIEW_WRITE_EXPECTED: Array<{
   },
 ]
 
+const REVIEW_READ_EXPECTED: Array<{ name: string; canvas: JsonCanvas; mode: ReviewMode }> = [
+  {
+    name: 'raw canvas ignores a stored mode',
+    canvas: { nodes: [], app: { reviewMode: 'publish' } } as unknown as JsonCanvas,
+    mode: 'design',
+  },
+  {
+    name: 'profiled canvas reads its stored mode',
+    canvas: { nodes: [], app: { profile: 'systems', profileVersion: 4, reviewMode: 'sketch' } },
+    mode: 'sketch',
+  },
+]
+
 describe('review modes', () => {
   it('gives every profile issue code a tier', () => {
     for (const code of PROFILE_ISSUE_CODES) {
@@ -97,6 +111,10 @@ describe('review modes', () => {
   it.each(MODE_EXPECTED)('$mode shows only its tiers', ({ mode, tiers }) => {
     const expected = tiers.flatMap((tier) => TIER_CODES[tier]).sort()
     expect(visibleIssueCodes(mode).sort()).toEqual(expected)
+  })
+
+  it.each(REVIEW_READ_EXPECTED)('$name', ({ canvas, mode }) => {
+    expect(canvasReviewMode(canvas)).toBe(mode)
   })
 
   it.each(REVIEW_WRITE_EXPECTED)('$name', ({ canvas, mode, app }) => {

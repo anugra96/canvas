@@ -25,6 +25,7 @@ interface UseCanvasDocumentInput {
   nodes: CanvasFlowNode[]
   edges: CanvasFlowEdge[]
   suppressions: ValidationSuppression[]
+  reviewModesEnabled: boolean
   setNodes: (update: (current: CanvasFlowNode[]) => CanvasFlowNode[]) => void
   setEdges: (update: (current: CanvasFlowEdge[]) => CanvasFlowEdge[]) => void
   setSuppressions: (update: (current: ValidationSuppression[]) => ValidationSuppression[]) => void
@@ -40,6 +41,7 @@ export function useCanvasDocument({
   nodes,
   edges,
   suppressions,
+  reviewModesEnabled,
   setNodes,
   setEdges,
   setSuppressions,
@@ -52,6 +54,7 @@ export function useCanvasDocument({
   const [renameBusy, setRenameBusy] = useState(false)
   const [baseCanvas, setBaseCanvas] = useState<JsonCanvas>(document.canvas)
   const [reviewMode, setReviewMode] = useState<ReviewMode>(() => canvasReviewMode(document.canvas))
+  const effectiveReviewMode: ReviewMode = reviewModesEnabled ? reviewMode : 'design'
   const [etag, setEtag] = useState(document.etag)
   const [dirty, setDirty] = useState(false)
   const [status, setStatus] = useState<SaveStatus>('saved')
@@ -71,15 +74,16 @@ export function useCanvasDocument({
     (nodeList = nodes, edgeList = edges, base = baseCanvas) =>
       withCanvasReviewMode(
         withValidationSuppressions(fromFlowCanvas(nodeList, edgeList, base), suppressions),
-        reviewMode,
+        effectiveReviewMode,
       ),
-    [baseCanvas, edges, nodes, reviewMode, suppressions],
+    [baseCanvas, edges, effectiveReviewMode, nodes, suppressions],
   )
 
   const changeReviewMode = useCallback((mode: ReviewMode) => {
+    if (!reviewModesEnabled && mode !== 'design') return
     setReviewMode(mode)
     markDirty()
-  }, [markDirty])
+  }, [markDirty, reviewModesEnabled])
 
   const save = useCallback(async (canvasOverride?: JsonCanvas, etagOverride?: string) => {
     const local = canvasOverride ?? currentCanvas()
@@ -230,7 +234,7 @@ export function useCanvasDocument({
     setRenameOpen,
     renameBusy,
     baseCanvas,
-    reviewMode,
+    reviewMode: effectiveReviewMode,
     changeReviewMode,
     dirty,
     status,

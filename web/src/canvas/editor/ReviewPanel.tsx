@@ -70,6 +70,7 @@ export function ReviewPanel({
   const issuesRef = useRef<HTMLButtonElement>(null)
   const fixesRef = useRef<HTMLButtonElement>(null)
   const tabOrder: ReviewTab[] = ['issues', 'fixes']
+  const reviewModesAvailable = profile.id !== 'raw'
 
   function selectTab(next: ReviewTab) {
     onTabChange(next)
@@ -98,18 +99,20 @@ export function ReviewPanel({
           <h2>Review</h2>
         </div>
         <div className="review-head-controls">
-          <label className="review-mode">
-            <span>Mode</span>
-            <select
-              aria-label="Review mode"
-              value={reviewMode}
-              onChange={(event) => onReviewModeChange(event.target.value as ReviewMode)}
-            >
-              {REVIEW_MODES.map((mode) => (
-                <option key={mode} value={mode}>{REVIEW_MODE_LABELS[mode]}</option>
-              ))}
-            </select>
-          </label>
+          {reviewModesAvailable && (
+            <label className="review-mode">
+              <span>Mode</span>
+              <select
+                aria-label="Review mode"
+                value={reviewMode}
+                onChange={(event) => onReviewModeChange(event.target.value as ReviewMode)}
+              >
+                {REVIEW_MODES.map((mode) => (
+                  <option key={mode} value={mode}>{REVIEW_MODE_LABELS[mode]}</option>
+                ))}
+              </select>
+            </label>
+          )}
           {hiddenByModeCount > 0 && (
             <span className="review-hidden">
               {hiddenByModeCount} hidden by {REVIEW_MODE_LABELS[reviewMode]}

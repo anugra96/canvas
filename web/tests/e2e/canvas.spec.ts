@@ -9,6 +9,7 @@ test('creates a canvas, edits a card, saves, and reopens it', async ({ page }) =
 
   await createCanvas(page)
   await expect(page.getByRole('heading', { name: 'Untitled canvas', level: 1 })).toBeVisible()
+  await expect(page.getByLabel('Review mode')).toHaveCount(0)
 
   await addCanvasItem(page, 'Text card')
   await expect(page.locator('.text-node')).toHaveCount(1)

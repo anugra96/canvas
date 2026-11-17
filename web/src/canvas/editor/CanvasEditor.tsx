@@ -252,6 +252,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     nodes,
     edges,
     suppressions,
+    reviewModesEnabled: profile.id !== 'raw',
     setNodes,
     setEdges,
     setSuppressions,
