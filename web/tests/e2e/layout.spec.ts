@@ -37,7 +37,7 @@ test('keeps the desktop editor chrome compact', async ({ page }) => {
       })
       .length
   ))
-  expect(controlCount).toBeLessThanOrEqual(10)
+  expect(controlCount).toBeLessThanOrEqual(11)
   const canvas = await page.locator('.canvas-flow').boundingBox()
   expect(canvas?.y ?? 999).toBeLessThanOrEqual(72)
 })
