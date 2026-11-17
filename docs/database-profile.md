@@ -189,13 +189,31 @@ SQL against any database.
 
 ## Parser
 
-Import needs a real Postgres parser. Recommended: the Postgres parser compiled
-to WebAssembly (`libpg-query` family on npm), because it parses exactly what
-`pg_dump` prints. Fallback: `pgsql-ast-parser` (pure TypeScript, smaller, less
-complete). **Spike before Phase 1:** confirm the current package, its licence,
-that it runs in the browser and in Node (for the convert script), and its
-bundle size. Load it lazily from the import dialog only, so the main bundle does
-not grow. Export does not need a parser.
+**Decision (spike 2026-11-17):** `libpg-query@18.2.4` (the Postgres 18 parser
+compiled to WebAssembly, MIT) plus `pgsql-deparser@18.4.5` (MIT) to turn
+expression ASTs (defaults, checks, generated columns, partial-index predicates)
+back into SQL text. Pin exact versions.
+
+| | `libpg-query` + deparser | `pgsql-ast-parser` (rejected) |
+| --- | --- | --- |
+| Spike fixtures | 3 of 3, 58 of 58 statements | Aborts on the `pg_dump`-style fixture; 7 of 42 statements unsupported (owners, triggers, deferrable or `NOT VALID` constraints) |
+| Source positions for Extra DDL | Every statement | Only statements it parses |
+| Node and browser | Both | Both |
+| Lazy load, gzip | 395 kB (339 kB is WASM) | 42 kB |
+
+- Load it lazily from the import dialog only, so the main bundle does not grow.
+  Export does not need a parser.
+- Serve the `.wasm` file as a static asset and pass it to `loadModule({ wasm })`.
+  Otherwise the module fetches `/libpg-query.wasm`, gets `index.html`, and logs
+  a compile error. The web image's CSP (if any) must allow
+  `wasm-unsafe-eval`.
+- Unmodelled statements (SET, owners, sequences, functions, triggers) go to
+  Extra DDL verbatim, with byte offsets.
+- Normalise `serial` to identity on import. Otherwise Extra DDL would need
+  `CREATE SEQUENCE` ahead of the tables.
+- Not in v1 Definition, possible later because the parser exposes them: FK
+  deferrability, `NOT VALID`, identity sequence options. Import keeps a warning
+  when it drops one.
 
 ## Proof
 
