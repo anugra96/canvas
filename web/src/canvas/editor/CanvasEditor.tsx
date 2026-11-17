@@ -40,6 +40,7 @@ import { useCanvasProfile } from './useCanvasProfile'
 import { useCanvasValidation } from './validation/useCanvasValidation'
 import { useApiManagedRelations } from '../apiDesign/useApiManagedRelations'
 import { ApiDesignProvider } from '../apiDesign/ApiDesignProvider'
+import { SchemaCardsProvider } from '../schema/SchemaCardsContext'
 import { AddResourceDialog } from '../apiDesign/AddResourceDialog'
 import { OpenApiCompareDialog } from '../apiDesign/OpenApiCompareDialog'
 import { useCanvasHistory } from './useCanvasHistory'
@@ -445,6 +446,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   return (
     <CanvasEditorActionsContext.Provider value={actions}>
       <CanvasValidationContext.Provider value={validation.validation}>
+        <SchemaCardsProvider nodes={nodes.map((node) => node.data.raw)}>
         <div className="editor-shell">
           <EditorChrome
             trail={trail}
@@ -522,6 +524,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
             />
           )}
         </div>
+        </SchemaCardsProvider>
       </CanvasValidationContext.Provider>
     </CanvasEditorActionsContext.Provider>
   )

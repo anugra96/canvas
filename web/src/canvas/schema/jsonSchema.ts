@@ -5,6 +5,7 @@ import openApiSchemaJson from '../../../../packages/canvas-contract/src/openapi/
 
 import {
   getEntityMeta,
+  type SchemaColumn,
   type CanvasEdge,
   type CanvasNode,
   type CanvasProfileIssue,
@@ -36,7 +37,14 @@ export interface SchemaAnalysis {
 }
 
 const ajv = new Ajv({ allErrors: true, strict: false, validateFormats: false })
-const ajv2020 = new Ajv2020({ allErrors: true, strict: false, validateFormats: false })
+const ajv2020 = new Ajv2020({ allErrors: true, strict: false, validateFormats: true })
+ajv2020.addFormat('date', (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`)))
+ajv2020.addFormat('date-time', /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/)
+ajv2020.addFormat('email', /^[^\s@]+@[^\s@]+\.[^\s@]+$/)
+ajv2020.addFormat('uuid', /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
+ajv2020.addFormat('uri', (value: string) => /^[a-z][a-z0-9+.-]*:/i.test(value))
+ajv2020.addFormat('uri-reference', () => true)
+ajv2020.addFormat('media-range', () => true)
 function patchOpenApiDynamicMeta(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(patchOpenApiDynamicMeta)
   if (!value || typeof value !== 'object') return value
@@ -562,4 +570,78 @@ export function validateApiOperations(nodes: CanvasNode[]): CanvasProfileIssue[]
     })
   }
   return issues
+}
+
+
+interface RowValidationError {
+  instancePath?: string
+  message?: string
+  keyword?: string
+  params?: { missingProperty?: string }
+}
+
+export interface SchemaRowValidation {
+  valid: boolean
+  errors: RowValidationError[]
+  cells: Record<string, string[]>
+}
+
+function pathSegments(value: string): string[] {
+  return value.split('/').filter(Boolean).map((part) => decodeURIComponent(part).replace(/~1/g, '/').replace(/~0/g, '~'))
+}
+
+function prefixPath(prefix: string[], value: string[]): boolean {
+  return prefix.length <= value.length && prefix.every((part, index) => part === value[index])
+}
+
+function cellKeyForError(error: RowValidationError, columns: SchemaColumn[]): string | undefined {
+  if (columns.length === 0) return undefined
+  if (columns.length === 1 && columns[0]?.key === 'value') return 'value'
+  const segments = pathSegments(error.instancePath ?? '')
+  const target = error.keyword === 'required' && error.params?.missingProperty
+    ? [...segments, error.params.missingProperty]
+    : segments
+  const sorted = [...columns].sort((left, right) => right.path.length - left.path.length)
+  const direct = sorted.find((column) => prefixPath(column.path, target))
+  if (direct) return direct.key
+  const parent = sorted.find((column) => prefixPath(target, column.path))
+  return parent?.key
+}
+
+export function validateSchemaRow(
+  source: string,
+  schemas: Array<{ name: string; source: string }>,
+  row: unknown,
+  columns: SchemaColumn[],
+): SchemaRowValidation {
+  const added: string[] = []
+  try {
+    for (const schema of schemas) {
+      const key = `#/components/schemas/${schema.name}`
+      try { ajv2020.removeSchema(key) } catch { /* No previous registration. */ }
+      try {
+        ajv2020.addSchema(JSON.parse(schema.source), key)
+        added.push(key)
+      } catch {
+        // An invalid Schema card is reported elsewhere.
+      }
+    }
+    const validate = ajv2020.compile(JSON.parse(source))
+    const valid = validate(row) === true
+    const errors = (validate.errors ?? []) as RowValidationError[]
+    const cells: Record<string, string[]> = {}
+    for (const error of errors) {
+      const key = cellKeyForError(error, columns)
+      const message = `${error.instancePath || 'root'} ${error.message ?? 'is invalid'}`
+      if (key) cells[key] = [...(cells[key] ?? []), message]
+    }
+    return { valid, errors, cells }
+  } catch (cause) {
+    const message = cause instanceof Error ? cause.message : 'Could not validate row.'
+    return { valid: false, errors: [{ message }], cells: {} }
+  } finally {
+    for (const key of added) {
+      try { ajv2020.removeSchema(key) } catch { /* Already gone. */ }
+    }
+  }
 }

@@ -1,13 +1,16 @@
 import { AlertCircle, AlertTriangle, CheckCircle2, ChevronRight, ListTree, Table2 } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 
-import type { EntityFields } from '@canvas/contract'
+import { parseFieldModel, type EntityFields } from '@canvas/contract'
 
+import { useSchemaCards } from '../schema/schemaCards'
 import {
   analyzeJsonSchema,
   schemaReviewReasons,
   type SchemaOutlineNode,
 } from '../schema/jsonSchema'
+import { FieldsPanel } from './schema/FieldsPanel'
+import { RowsPanel } from './schema/RowsPanel'
 
 function fieldValue(fields: EntityFields, key: string): string {
   const value = fields[key]
@@ -94,7 +97,11 @@ export function SchemaEditor({
     [api, source],
   )
   const sourceRef = useRef<HTMLTextAreaElement>(null)
+  const schemas = useSchemaCards()
+  const [tab, setTab] = useState<'fields' | 'rows' | 'json'>('json')
   const [structureView, setStructureView] = useState<'table' | 'tree'>('table')
+  const [testRows, setTestRows] = useState<unknown[]>([])
+  const fieldModel = useMemo(() => parseFieldModel(source), [source])
   const reviewApproved = fieldValue(fields, 'reviewStatus') === 'approved'
   const version = fieldValue(fields, 'version')
   const reviewedVersion = fieldValue(fields, 'reviewedVersion')
@@ -117,6 +124,13 @@ export function SchemaEditor({
   return (
     <div className="schema-workbench">
       <section className="schema-source-pane">
+        <div className="schema-workbench-tabs" role="tablist" aria-label="Schema workbench">
+          <button type="button" role="tab" aria-selected={tab === 'fields'} className={tab === 'fields' ? 'active' : ''} onClick={() => setTab('fields')}>Fields</button>
+          <button type="button" role="tab" aria-selected={tab === 'rows'} className={tab === 'rows' ? 'active' : ''} onClick={() => setTab('rows')}>Rows</button>
+          <button type="button" role="tab" aria-selected={tab === 'json'} className={tab === 'json' ? 'active' : ''} onClick={() => setTab('json')}>JSON</button>
+        </div>
+        {tab === 'json' ? (
+        <>
         <header className="schema-source-head">
           <div>
             <span className="schema-source-kicker">JSON Schema</span>
@@ -176,6 +190,30 @@ export function SchemaEditor({
             ? <SchemaTable outline={analysis.outline} />
             : analysis.outline.map((node) => <OutlineRow key={node.name} node={node} />)}
         </div>
+        </>
+        ) : !fieldModel.valid ? (
+          <div className="schema-fix-json">
+            <AlertCircle size={16} />
+            <strong>Fix the JSON first</strong>
+            <p>{fieldModel.error}</p>
+            <button type="button" className="button" onClick={() => setTab('json')}>Open JSON tab</button>
+          </div>
+        ) : tab === 'fields' ? (
+          <FieldsPanel
+            source={source}
+            schemas={schemas}
+            currentSchemaName={fieldValue(fields, 'name')}
+            onChange={(value) => onChange('source', value)}
+          />
+        ) : (
+          <RowsPanel
+            source={source}
+            schemas={schemas}
+            testRows={testRows}
+            onChangeTestRows={setTestRows}
+            onChangeSource={(value) => onChange('source', value)}
+          />
+        )}
       </section>
 
       <aside className="schema-inspector">
