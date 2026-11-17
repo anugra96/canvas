@@ -3,11 +3,12 @@ import { toPng } from 'html-to-image'
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
 
 import type { CanvasFlowNode } from '../../model/adapter'
-import { captureDimensions, downloadUrl, safeFileTitle } from './exportFile'
+import { captureDimensions, downloadUrl, safeFileTitle, withCaptureFooter } from './exportFile'
 
 interface UseCanvasCaptureInput {
   nodes: CanvasFlowNode[]
   title: string
+  footer: string
   flowRef: React.RefObject<HTMLDivElement | null>
   clientToFlow: (clientX: number, clientY: number) => { x: number; y: number }
   clearSelection: () => void
@@ -19,6 +20,7 @@ interface UseCanvasCaptureInput {
 export function useCanvasCapture({
   nodes,
   title,
+  footer,
   flowRef,
   clientToFlow,
   clearSelection,
@@ -59,7 +61,7 @@ export function useCanvasCapture({
       requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
     })
 
-    const dataUrl = await toPng(viewport, {
+    const captured = await toPng(viewport, {
       width,
       height,
       pixelRatio: screenshotScale,
@@ -72,9 +74,10 @@ export function useCanvasCapture({
         transformOrigin: '0 0',
       },
     })
+    const dataUrl = await withCaptureFooter(captured, footer, background)
 
     downloadUrl(dataUrl, `${safeFileTitle(title)}-${suffix}.png`)
-  }, [clearSelection, flowRef, screenshotScale, title])
+  }, [clearSelection, flowRef, footer, screenshotScale, title])
 
   const captureFull = useCallback(async () => {
     if (nodes.length === 0) {

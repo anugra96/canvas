@@ -12,11 +12,12 @@ import {
 import {
   attachRequestModel,
   attachResponseModel,
+  edgeOrigin,
   getEdgeMeta,
   removeModelReference,
   responseHasOtherContent,
-  shouldDrawApiEdge,
   type CanvasProfile,
+  type EdgeOrigin,
   type LevelNumber,
   type Ontology,
   type ReviewMode,
@@ -25,6 +26,7 @@ import type { Connection, EdgeChange } from '@xyflow/react'
 
 import { CanvasBackdrop } from '../backdrop/CanvasBackdrop'
 import type { CanvasFlowEdge, CanvasFlowNode } from '../model/adapter'
+import { useCanvasEditorActions } from './CanvasEditorContext'
 import { writeViewport } from './viewport'
 import { useApiDesign } from '../apiDesign/ApiDesignContext'
 import { ManagedEdgeChooser } from '../apiDesign/ManagedEdgeChooser'
@@ -109,6 +111,7 @@ export function CanvasWorkspace({
   onOpenLevel,
 }: CanvasWorkspaceProps) {
   const apiDesign = useApiDesign()
+  const actions = useCanvasEditorActions()
   const [managedConnection, setManagedConnection] = useState<{
     sourceId: string
     targetId: string
@@ -116,53 +119,52 @@ export function CanvasWorkspace({
     modelName: string
   } | null>(null)
   const renderedEdges = useMemo(() => {
-    if (!apiDesign) return edges
-    const sourceTypes = new Map(nodes.map((node) => [node.id, node.data.entity?.entityType ?? '']))
-    const selectedIds = new Set(nodes.filter((node) => node.selected).map((node) => node.id))
-    const endpoints = new Map(apiDesign.resources.flatMap((resource) => (
-      resource.endpoints.map((endpoint) => [endpoint.id, endpoint] as const)
-    )))
-    const modelNames = new Map(nodes.map((node) => [node.id, String(node.data.entity?.fields.name ?? '')]))
-    return edges.filter((edge) => {
-      if (selectedIds.has(edge.source) || selectedIds.has(edge.target)) return true
-      const raw = edge.data?.raw
-      const meta = raw ? getEdgeMeta(raw) : undefined
-      const relationType = edge.data?.relationType ?? meta?.relationType
-      const sourcePlacement = apiDesign.modelPlacement[modelNames.get(edge.source) ?? '']
-      const targetPlacement = apiDesign.modelPlacement[modelNames.get(edge.target) ?? '']
-      const usesNextColumn = Boolean(sourcePlacement
-        && targetPlacement
-        && sourcePlacement.region === targetPlacement.region
-        && sourcePlacement.region !== 'shared'
-        && targetPlacement.depth === sourcePlacement.depth + 1)
-      const usesShared = targetPlacement?.region === 'shared'
-      return shouldDrawApiEdge({
-        relationType,
-        status: meta?.status ?? raw?.label,
-        sourceType: sourceTypes.get(edge.source),
-        securityOverride: endpoints.get(edge.source)?.securityOverride,
-        usesNextColumn,
-        usesShared,
-      })
-    }).map((edge) => {
-      if (edge.data?.relationType !== 'uses') return edge
-      const source = nodes.find((node) => node.id === edge.source)
-      const target = nodes.find((node) => node.id === edge.target)
-      if (!source || !target) return edge
+    const nodeById = new Map(nodes.map((node) => [node.id, node]))
+    return edges.map((edge) => {
+      if (!edge.data) return edge
+      const raw = edge.data.raw
+      const origin = edgeOrigin(raw)
+      const originNode = origin === 'managed' ? nodeById.get(edge.source) : undefined
+      const fields = originNode?.data.entity?.fields ?? {}
+      const originCardName = String(fields.name ?? fields.title ?? '').trim()
+      const next: CanvasFlowEdge = {
+        ...edge,
+        data: {
+          ...edge.data,
+          origin,
+          ...(originNode
+            ? {
+              originCardId: originNode.id,
+              originCardName: originCardName || originNode.id,
+            }
+            : {}),
+        },
+      }
+      if (edge.data.relationType !== 'uses') return next
+      const source = nodeById.get(edge.source)
+      const target = nodeById.get(edge.target)
+      if (!source || !target) return next
       if (Math.abs(source.position.x - target.position.x) < 1) {
         return {
-          ...edge,
+          ...next,
           sourceHandle: source.position.y < target.position.y ? 'bottom' : 'top',
           targetHandle: source.position.y < target.position.y ? 'top' : 'bottom',
         }
       }
       return {
-        ...edge,
+        ...next,
         sourceHandle: target.position.x > source.position.x ? 'right' : 'left',
         targetHandle: target.position.x > source.position.x ? 'left' : 'right',
       }
     })
-  }, [apiDesign, edges, nodes])
+  }, [edges, nodes])
+
+  const selectedOrigin = graph.selectedEdges.length === 1
+    ? renderedEdges.find((edge) => edge.selected)?.data
+    : undefined
+  const editorOrigin = graph.edgeLabelEditor
+    ? renderedEdges.find((edge) => edge.id === graph.edgeLabelEditor?.edgeId)?.data
+    : undefined
 
   function nodeField(id: string, key: string): string {
     const node = nodes.find((candidate) => candidate.id === id)
@@ -374,6 +376,11 @@ export function CanvasWorkspace({
           onDelete={graph.deleteSelected}
           onClear={graph.clearSelection}
           onColor={graph.applyColor}
+          edgeOrigin={selectedOrigin?.origin as EdgeOrigin | undefined}
+          edgeOriginCardName={selectedOrigin?.originCardName as string | undefined}
+          onOpenOriginCard={selectedOrigin?.originCardId
+            ? () => actions.openNodeEditor(String(selectedOrigin.originCardId))
+            : undefined}
         />
       )}
       {graph.pendingConnection && (
@@ -400,6 +407,14 @@ export function CanvasWorkspace({
           x={graph.edgeLabelEditor.x}
           y={graph.edgeLabelEditor.y}
           initialValue={graph.edgeLabelEditor.label}
+          origin={editorOrigin?.origin as EdgeOrigin | undefined}
+          originCardName={editorOrigin?.originCardName as string | undefined}
+          onOpenOriginCard={editorOrigin?.originCardId
+            ? () => {
+              graph.setEdgeLabelEditor(null)
+              actions.openNodeEditor(String(editorOrigin.originCardId))
+            }
+            : undefined}
           onSave={graph.saveEdgeLabel}
           onCancel={() => graph.setEdgeLabelEditor(null)}
         />

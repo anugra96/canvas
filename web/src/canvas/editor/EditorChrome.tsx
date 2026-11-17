@@ -1,6 +1,7 @@
 import { X } from 'lucide-react'
 
 import { CanvasToolbar, type SaveStatus } from './CanvasToolbar'
+import type { DisplayControlProps } from './DisplayControl'
 import type { CanvasCommand } from './commands'
 
 interface EditorChromeProps {
@@ -11,6 +12,7 @@ interface EditorChromeProps {
   isSystems: boolean
   status: SaveStatus
   commands: CanvasCommand[]
+  display?: DisplayControlProps
   notice: string
   onDismissNotice: () => void
   error: string
@@ -24,6 +26,7 @@ export function EditorChrome({
   isSystems,
   status,
   commands,
+  display,
   notice,
   onDismissNotice,
   error,
@@ -46,6 +49,7 @@ export function EditorChrome({
         isSystems={isSystems}
         status={status}
         commands={commands}
+        display={display}
       />
 
       {notice && (

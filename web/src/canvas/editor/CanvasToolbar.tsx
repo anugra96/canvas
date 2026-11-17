@@ -16,6 +16,7 @@ import { AppearanceMenu } from '../../AppearanceMenu'
 import { AppearanceControls } from '../../AppearanceControls'
 import { AvatarMenu, AvatarPanel } from '../../AvatarMenu'
 import { CommandMenu, CommandSheet } from './CommandMenu'
+import { DisplayControl, type DisplayControlProps } from './DisplayControl'
 import type { CanvasCommand } from './commands'
 
 export type SaveStatus = 'saved' | 'dirty' | 'saving' | 'conflict' | 'error' | 'offline'
@@ -26,6 +27,7 @@ interface CanvasToolbarProps {
   isSystems: boolean
   status: SaveStatus
   commands: CanvasCommand[]
+  display?: DisplayControlProps
 }
 
 function statusLabel(status: SaveStatus): string {
@@ -113,7 +115,7 @@ function ReviewButton({ command }: { command: CanvasCommand }) {
   )
 }
 
-function DesktopToolbar({ title, profileLabel, isSystems, status, commands }: CanvasToolbarProps) {
+function DesktopToolbar({ title, profileLabel, isSystems, status, commands, display }: CanvasToolbarProps) {
   const back = commandById(commands, 'back')
   const rename = commandById(commands, 'rename')
   const views = commandById(commands, 'views')
@@ -148,6 +150,7 @@ function DesktopToolbar({ title, profileLabel, isSystems, status, commands }: Ca
             </button>
           )}
           {review && <ReviewButton command={review} />}
+          {display && <DisplayControl {...display} />}
         </div>
       </div>
       <div className="bar-zone bar-right">
@@ -192,7 +195,7 @@ function DesktopToolbar({ title, profileLabel, isSystems, status, commands }: Ca
   )
 }
 
-function PhoneToolbar({ title, profileLabel, isSystems, status, commands }: CanvasToolbarProps) {
+function PhoneToolbar({ title, profileLabel, isSystems, status, commands, display }: CanvasToolbarProps) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const moreRef = useRef<HTMLButtonElement>(null)
   const back = commandById(commands, 'back')
@@ -217,6 +220,7 @@ function PhoneToolbar({ title, profileLabel, isSystems, status, commands }: Canv
       <span className={`profile-badge${isSystems ? ' systems' : ''}`}>{profileLabel}</span>
       <SaveState status={status} />
       <div className="mobile-toolbar-actions">
+        {display && <DisplayControl {...display} />}
         {addCommands.length > 0 && (
           <CommandMenu label="Add" icon={Plus} commands={addCommands} iconOnly triggerLabel="Add" />
         )}

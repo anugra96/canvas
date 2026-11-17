@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   addApiResource,
   applyStandardErrors,
+  buildApiReferenceDocument,
   createNodeId,
   deriveManagedRelations,
   exportOpenApiDocument,
@@ -53,6 +54,19 @@ import { useCanvasProfile } from './useCanvasProfile'
 import { useCanvasValidation } from './validation/useCanvasValidation'
 import { useApiManagedRelations } from '../apiDesign/useApiManagedRelations'
 import { insertNodes } from '../model/insertNodes'
+import {
+  computeDisplay,
+  displayCardTypeId,
+  displayCardTypes,
+  displayPresetLabel,
+  readDisplayState,
+  resetDisplayState,
+  selectDisplayPreset,
+  toggleDisplayCardType,
+  toggleDisplayClass,
+  writeDisplayState,
+  type CanvasDisplayState,
+} from '../display/display'
 import { ApiDesignProvider } from '../apiDesign/ApiDesignProvider'
 import { SchemaCardsProvider } from '../schema/SchemaCardsContext'
 import {
@@ -147,6 +161,67 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const editRequestToken = useRef(0)
   const flowRef = useRef<HTMLDivElement>(null)
   const { fitView } = useReactFlow()
+  const [displayState, setDisplayState] = useState<CanvasDisplayState>(() => (
+    readDisplayState(document.id, profile.id)
+  ))
+  const [revealedCardIds, setRevealedCardIds] = useState<string[]>([])
+
+  useEffect(() => {
+    writeDisplayState(document.id, displayState)
+  }, [displayState, document.id])
+
+  const rawNodes = useMemo(() => nodes.map((node) => node.data.raw), [nodes])
+  const rawEdges = useMemo(
+    () => edges.flatMap((edge) => (edge.data?.raw ? [edge.data.raw] : [])),
+    [edges],
+  )
+  const apiReference = useMemo(
+    () => (isApi ? buildApiReferenceDocument(rawNodes) : null),
+    [isApi, rawNodes],
+  )
+  const displayView = useMemo(() => computeDisplay({
+    nodes: rawNodes,
+    edges: rawEdges,
+    state: displayState,
+    selectedIds: new Set(nodes.filter((node) => node.selected).map((node) => node.id)),
+    revealedCardIds: new Set(revealedCardIds),
+    ontology,
+    apiReference,
+  }), [apiReference, displayState, nodes, ontology, rawEdges, rawNodes, revealedCardIds])
+  const visibleNodes = useMemo(() => {
+    const ids = displayView.visibleNodeIds
+    return nodes.filter((node) => ids.has(node.id))
+  }, [displayView.visibleNodeIds, nodes])
+  const visibleEdges = useMemo(() => {
+    const ids = new Set(displayView.edges.map((edge) => edge.id))
+    return edges.filter((edge) => ids.has(edge.id))
+  }, [displayView.edges, edges])
+  const revealedCardLabels = useMemo(() => revealedCardIds.flatMap((id) => {
+    const node = nodes.find((candidate) => candidate.id === id)
+    if (!node) return []
+    const fields = node.data.entity?.fields ?? {}
+    const label = String(fields.name ?? fields.title ?? node.data.label ?? '').trim()
+      || (node.data.text ?? '').split('\n').find((line) => line.trim())?.replace(/^#+\s*/, '').trim()
+      || id
+    return [label]
+  }), [nodes, revealedCardIds])
+
+  const changeDisplayPreset = useCallback((preset: 'minimal' | 'standard' | 'all') => {
+    setRevealedCardIds([])
+    setDisplayState((current) => selectDisplayPreset(current, preset))
+  }, [])
+  const changeDisplayClass = useCallback((edgeClass: Parameters<typeof toggleDisplayClass>[1]) => {
+    setRevealedCardIds([])
+    setDisplayState((current) => toggleDisplayClass(current, edgeClass))
+  }, [])
+  const changeDisplayCardType = useCallback((typeId: string) => {
+    setRevealedCardIds([])
+    setDisplayState((current) => toggleDisplayCardType(current, typeId))
+  }, [])
+  const resetDisplay = useCallback(() => {
+    setRevealedCardIds([])
+    setDisplayState(resetDisplayState(document.id, profile.id))
+  }, [document.id, profile.id])
 
   const {
     title,
@@ -207,8 +282,9 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   }, [graph])
 
   const capture = useCanvasCapture({
-    nodes,
+    nodes: visibleNodes,
     title,
+    footer: `${displayPresetLabel(displayState.preset)} display`,
     flowRef,
     clientToFlow: graph.clientToFlow,
     clearSelection: graph.clearSelection,
@@ -252,6 +328,14 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     selectEdge: graph.selectEdge,
     markDirty,
     setNotice,
+    onRevealCards: (ids) => {
+      const hiddenIds = ids.filter((id) => {
+        const node = nodes.find((candidate) => candidate.id === id)
+        const typeId = node ? displayCardTypeId(node.data.raw) : null
+        return Boolean(typeId && displayState.hiddenCardTypes.includes(typeId))
+      })
+      setRevealedCardIds(hiddenIds)
+    },
   })
 
   useEffect(() => observeHistory({ nodes, edges }), [edges, nodes, observeHistory])
@@ -601,6 +685,17 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
             isSystems={isSystems}
             status={status}
             commands={commands}
+            display={{
+              state: displayState,
+              cardTypes: displayCardTypes(rawNodes, ontology),
+              hiddenCards: displayView.hiddenCards,
+              hiddenEdges: displayView.hiddenEdges,
+              revealedCardLabels,
+              onChangePreset: changeDisplayPreset,
+              onToggleClass: changeDisplayClass,
+              onToggleCardType: changeDisplayCardType,
+              onReset: resetDisplay,
+            }}
             notice={notice}
             onDismissNotice={() => setNotice('')}
             error={error}
@@ -609,8 +704,8 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
             <NodeEditRequestContext.Provider value={nodeEditRequest}>
             <CanvasWorkspace
             documentId={document.id}
-            nodes={nodes}
-            edges={edges}
+            nodes={visibleNodes}
+            edges={visibleEdges}
             isMobile={isMobile}
             coarsePointer={coarsePointer}
             isSystems={isStructured}

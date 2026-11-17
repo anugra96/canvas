@@ -93,6 +93,7 @@ interface UseCanvasValidationInput {
   selectEdge: (id: string) => void
   markDirty: () => void
   setNotice: (message: string) => void
+  onRevealCards?: (ids: string[]) => void
 }
 
 export function useCanvasValidation({
@@ -111,6 +112,7 @@ export function useCanvasValidation({
   selectEdge,
   markDirty,
   setNotice,
+  onRevealCards,
 }: UseCanvasValidationInput) {
   const { fitView } = useReactFlow()
   const [reviewOpen, setReviewOpen] = useState(false)
@@ -305,6 +307,7 @@ export function useCanvasValidation({
 
   const focusValidationIssue = useCallback((issue: CanvasProfileIssue) => {
     if (issue.nodeId) {
+      onRevealCards?.([issue.nodeId])
       setNodes((current) => current.map((node) => ({
         ...node,
         selected: node.id === issue.nodeId,
@@ -315,6 +318,7 @@ export function useCanvasValidation({
       selectEdge(issue.edgeId)
       const edge = edges.find((candidate) => candidate.id === issue.edgeId)
       if (edge) {
+        onRevealCards?.([edge.source, edge.target])
         void fitView({
           nodes: [{ id: edge.source }, { id: edge.target }],
           duration: 300,
@@ -322,7 +326,7 @@ export function useCanvasValidation({
         })
       }
     }
-  }, [edges, fitView, selectEdge, setEdges, setNodes])
+  }, [edges, fitView, onRevealCards, selectEdge, setEdges, setNodes])
 
   const nodeIssues = new Map<string, CanvasProfileIssue[]>()
   const edgeIssues = new Map<string, CanvasProfileIssue[]>()

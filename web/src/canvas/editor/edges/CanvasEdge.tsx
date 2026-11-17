@@ -6,6 +6,8 @@ import {
 
 import { AlertCircle, AlertTriangle } from 'lucide-react'
 
+import type { EdgeOrigin } from '@canvas/contract'
+
 import type { CanvasFlowEdge } from '../../model/adapter'
 import { useCanvasEditorActions } from '../CanvasEditorContext'
 import { useCanvasValidation } from '../CanvasValidationContext'
@@ -46,6 +48,13 @@ export function CanvasEdge({
   const labelY = pathResult.labelY
   const label = data?.label
   const untyped = !data?.relationType
+  const origin = data?.origin as EdgeOrigin | undefined
+  const originCardName = data?.originCardName as string | undefined
+  const tooltip = origin === 'managed'
+    ? `Managed edge${originCardName ? ` · Edited through ${originCardName}` : ''}`
+    : origin === 'inferred'
+      ? 'Inferred edge'
+      : 'Explicit edge'
 
   return (
     <>
@@ -79,6 +88,7 @@ export function CanvasEdge({
             {label && (
               <div
                 className={`edge-label${untyped ? ' untyped' : ''}`}
+                title={tooltip}
                 onClick={(event) => {
                   event.stopPropagation()
                   actions.selectEdge(id)

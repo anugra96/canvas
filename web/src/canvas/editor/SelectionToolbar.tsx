@@ -1,5 +1,7 @@
 import { ArrowLeftRight, Copy, Group as GroupIcon, Link2, Scaling, Trash2, X } from 'lucide-react'
 
+import type { EdgeOrigin } from '@canvas/contract'
+
 import { useOntology } from '../../ontology/OntologyContext'
 import { CANVAS_COLOR_PRESETS } from '../model/adapter'
 
@@ -29,6 +31,9 @@ export function SelectionToolbar({
   onDelete,
   onClear,
   onColor,
+  edgeOrigin,
+  edgeOriginCardName,
+  onOpenOriginCard,
 }: {
   selectedNodes: number
   selectedEdges: number
@@ -55,6 +60,9 @@ export function SelectionToolbar({
   onDelete: () => void
   onClear: () => void
   onColor: (color: string | undefined) => void
+  edgeOrigin?: EdgeOrigin
+  edgeOriginCardName?: string
+  onOpenOriginCard?: () => void
 }) {
   const ontology = useOntology()
   const total = selectedNodes + selectedEdges
@@ -131,6 +139,21 @@ export function SelectionToolbar({
             ))}
           </select>
         </label>
+      )}
+      {selectedEdges === 1 && edgeOrigin && (
+        <span className="selection-origin">
+          <span>{edgeOrigin === 'managed' ? 'Managed' : edgeOrigin === 'inferred' ? 'Inferred' : 'Explicit'} edge</span>
+          {edgeOrigin === 'managed' && edgeOriginCardName && (
+            <span>
+              Edited through <strong>{edgeOriginCardName}</strong>
+              {onOpenOriginCard && (
+                <button type="button" className="validation-link-button" onClick={onOpenOriginCard}>
+                  Open card
+                </button>
+              )}
+            </span>
+          )}
+        </span>
       )}
       {canManageMembership && (
         <button className="button" onClick={onToggleMembership}>
