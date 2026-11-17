@@ -261,62 +261,73 @@ export function validateApiDesign(canvas: JsonCanvas): CanvasProfileIssue[] {
     }
   }
 
-  const styleCounts = new Map<string, number>()
-  const endpointNames = new Map<string, string[]>()
+  function majorityStyle(names: string[]): string | undefined {
+    const counts = new Map<string, number>()
+    for (const name of names) {
+      const style = caseStyle(name)
+      if (style) counts.set(style, (counts.get(style) ?? 0) + 1)
+    }
+    return [...counts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0]?.[0]
+  }
+
+  function inconsistent(names: string[], majority: string | undefined): string[] {
+    if (!majority) return []
+    return names.filter((name) => {
+      const style = caseStyle(name)
+      return style !== undefined && style !== majority
+    })
+  }
+
+  function namingMessage(category: string, names: string[], majority: string): string {
+    const label = names.length === 1 ? category : `${category}s`
+    return `has ${label} ${names.map((name) => `"${name}"`).join(', ')} outside ${majority}.`
+  }
+
+  const pathNamesByEndpoint = new Map<string, string[]>()
+  const parameterNamesByEndpoint = new Map<string, string[]>()
   for (const endpoint of endpoints) {
     const operation = operations.get(endpoint.id)
     if (!operation) continue
-    const pathNames = field(endpoint, 'path').split('/').filter((segment) => segment && !segment.startsWith('{'))
-    const parameterNames = (Array.isArray(operation.parameters) ? operation.parameters : [])
+    pathNamesByEndpoint.set(endpoint.id, field(endpoint, 'path')
+      .split('/')
+      .filter((segment) => segment && !segment.startsWith('{')))
+    parameterNamesByEndpoint.set(endpoint.id, (Array.isArray(operation.parameters) ? operation.parameters : [])
       .filter(isObject)
-      .map((parameter) => String(parameter.name ?? ''))
-    const names = [...pathNames, ...parameterNames]
-    endpointNames.set(endpoint.id, names)
-    for (const name of names) {
-      const style = caseStyle(name)
-      if (style) styleCounts.set(style, (styleCounts.get(style) ?? 0) + 1)
-    }
+      .map((parameter) => String(parameter.name ?? '')))
   }
   const schemaPropertyNames = new Map<string, string[]>()
   for (const schema of schemas) {
-    const names = propertyNames(sources.get(field(schema, 'name')))
-    schemaPropertyNames.set(schema.id, names)
-    for (const name of names) {
-      const style = caseStyle(name)
-      if (style) styleCounts.set(style, (styleCounts.get(style) ?? 0) + 1)
+    schemaPropertyNames.set(schema.id, propertyNames(sources.get(field(schema, 'name'))))
+  }
+
+  const pathMajority = majorityStyle([...pathNamesByEndpoint.values()].flat())
+  const parameterMajority = majorityStyle([...parameterNamesByEndpoint.values()].flat())
+  const propertyMajority = majorityStyle([...schemaPropertyNames.values()].flat())
+
+  for (const endpoint of endpoints) {
+    const naming: string[] = []
+    const pathOutliers = inconsistent(pathNamesByEndpoint.get(endpoint.id) ?? [], pathMajority)
+    if (pathOutliers.length > 0) naming.push(namingMessage('path segment', pathOutliers, pathMajority!))
+    const parameterOutliers = inconsistent(parameterNamesByEndpoint.get(endpoint.id) ?? [], parameterMajority)
+    if (parameterOutliers.length > 0) naming.push(namingMessage('parameter', parameterOutliers, parameterMajority!))
+    if (naming.length > 0) {
+      issues.push({
+        code: 'naming_inconsistent',
+        severity: 'warning',
+        message: `Endpoint "${field(endpoint, 'method')} ${field(endpoint, 'path')}" ${naming.join(' ')}`,
+        nodeId: endpoint.id,
+      })
     }
   }
-  const majority = [...styleCounts.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0]?.[0]
-  if (majority) {
-    for (const endpoint of endpoints) {
-      const inconsistent = (endpointNames.get(endpoint.id) ?? [])
-        .filter((name) => {
-          const style = caseStyle(name)
-          return style !== undefined && style !== majority
-        })
-      if (inconsistent.length > 0) {
-        issues.push({
-          code: 'naming_inconsistent',
-          severity: 'warning',
-          message: `Endpoint "${field(endpoint, 'method')} ${field(endpoint, 'path')}" has ${inconsistent.map((name) => `"${name}"`).join(', ')} outside ${majority}.`,
-          nodeId: endpoint.id,
-        })
-      }
-    }
-    for (const schema of schemas) {
-      const inconsistent = (schemaPropertyNames.get(schema.id) ?? [])
-        .filter((name) => {
-          const style = caseStyle(name)
-          return style !== undefined && style !== majority
-        })
-      if (inconsistent.length > 0) {
-        issues.push({
-          code: 'naming_inconsistent',
-          severity: 'warning',
-          message: `Schema "${field(schema, 'name')}" has ${inconsistent.map((name) => `"${name}"`).join(', ')} outside ${majority}.`,
-          nodeId: schema.id,
-        })
-      }
+  for (const schema of schemas) {
+    const propertyOutliers = inconsistent(schemaPropertyNames.get(schema.id) ?? [], propertyMajority)
+    if (propertyOutliers.length > 0) {
+      issues.push({
+        code: 'naming_inconsistent',
+        severity: 'warning',
+        message: `Schema "${field(schema, 'name')}" ${namingMessage('property', propertyOutliers, propertyMajority!)}`,
+        nodeId: schema.id,
+      })
     }
   }
 

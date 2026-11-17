@@ -210,12 +210,61 @@ describe('API design checks', () => {
     expect(issuesFor(code, failing).length).toBeGreaterThan(0)
   })
 
+  it.each([
+    {
+      name: 'accepts a different style in each naming category',
+      source: canvas(baseOperation({
+        parameters: [
+          { name: 'tenant_id', in: 'query', schema: { type: 'string' } },
+          { name: 'trace_id', in: 'header', schema: { type: 'string' } },
+        ],
+      }), {
+        path: '/v1/job-items',
+        extraEndpoints: [endpointNode('item', 'GET', '/v1/job-items/{job_id}', baseOperation({
+          parameters: [{ name: 'job_id', in: 'path', required: true, schema: { type: 'string' } }],
+        }))],
+        schemas: [schemaNode('item-schema', 'JobItem', {
+          type: 'object',
+          properties: { job_id: { type: 'string' }, created_at: { type: 'string' }, next_cursor: { type: 'string' } },
+        })],
+      }),
+      expected: [],
+    },
+    {
+      name: 'flags only the outlier in its own category',
+      source: canvas(baseOperation({
+        parameters: [
+          { name: 'tenant_id', in: 'query', schema: { type: 'string' } },
+          { name: 'trace_id', in: 'header', schema: { type: 'string' } },
+        ],
+      }), {
+        path: '/v1/job-items',
+        extraEndpoints: [endpointNode('item', 'GET', '/v1/job-items/{job_id}', baseOperation({
+          parameters: [{ name: 'job_id', in: 'path', required: true, schema: { type: 'string' } }],
+        }))],
+        schemas: [schemaNode('item-schema', 'JobItem', {
+          type: 'object',
+          properties: {
+            job_id: { type: 'string' },
+            created_at: { type: 'string' },
+            badName: { type: 'string' },
+          },
+        })],
+      }),
+      expected: [{ nodeId: 'item-schema', message: /property "badName" outside snake_case/ }],
+    },
+  ])('$name', ({ source, expected }) => {
+    const issues = issuesFor('naming_inconsistent', source)
+    expect(issues.map((issue) => ({ nodeId: issue.nodeId, message: issue.message })))
+      .toEqual(expected.map((issue) => ({ nodeId: issue.nodeId, message: expect.stringMatching(issue.message) })))
+  })
+
   it('keeps fixture errors empty and lists expected warnings', () => {
     const fixtures = [
       ['Engine', engine, { endpoint_without_resource: 6, naming_inconsistent: 1 }],
       ['Alaska', alaska, { endpoint_without_resource: 1 }],
-      ['Registry', registry, { naming_inconsistent: 7 }],
-      ['Simple Tasks', sample, { naming_inconsistent: 3 }],
+      ['Registry', registry, {}],
+      ['Simple Tasks', sample, {}],
     ] as const
     for (const [name, source, expected] of fixtures) {
       const issues = validateApiDesign(importOpenApi(source).canvas)
