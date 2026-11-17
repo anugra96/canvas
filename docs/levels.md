@@ -48,7 +48,7 @@ detail lists "also: <others>".
 | Process | The System that `runs` it; else the Repository that `runs` it; else the Actor that `runs` it |
 | Artifact | The Process that `produces` it; else the System; else the Repository |
 | Repository | The System that `uses` it |
-| Schema | The System or Repository that `defines` it; else the System it `describes`; else the only System or Process that `uses` it; else the Schema that `uses` it (it follows that Schema's parent) |
+| Schema | The System or Repository that `defines` it; else the System it `describes`; else the only System or Process that `uses` it; else the only Artifact whose `schemaRef` names it (see `docs/schema-builder.md`); else the Schema that `uses` it (it follows that Schema's parent) |
 | Database System (folded) | The only System that `uses` it |
 | Note, Decision, Risk | Not levelled. Shown as a count badge on the visible card they relate to (`2 risks`). A Risk with severity `high` gives a red badge |
 
@@ -61,6 +61,8 @@ a **Show in canvas** action.
 
 ## Edges
 
+0. Add one derived `uses` edge from each Artifact to the Schema card its
+   `schemaRef` names. It exists only in derived views, never on the canvas.
 1. Map each edge's ends to their nearest visible ancestors at the current level.
 2. Drop an edge whose ends map to the same card. Count it as internal in that
    card's detail (`4 internal relations`).
