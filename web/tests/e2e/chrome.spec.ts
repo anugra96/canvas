@@ -129,7 +129,7 @@ test('keeps the appearance popover compact and keyboard accessible', async ({ pa
   await expect(popup).toBeVisible()
 
   const width = await popup.evaluate((element) => Math.round(element.getBoundingClientRect().width))
-  expect(width).toBe(300)
+  expect(width).toBe(360)
 
   const violations = await popup.evaluate((element) => (
     [...element.querySelectorAll('button, h2, span, label, select')].flatMap((target) => {

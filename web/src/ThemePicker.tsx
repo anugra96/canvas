@@ -3,6 +3,8 @@ import { useRef, useState, type KeyboardEvent } from 'react'
 import { findTheme } from './atmosphere/registry'
 import { setTheme, THEMES, useTheme, type ThemeId } from './themes'
 
+const THEME_GRID_COLUMNS = 2
+
 export function ThemePicker() {
   const theme = useTheme()
   const activeIndex = Math.max(0, THEMES.findIndex((candidate) => candidate.id === theme))
@@ -33,10 +35,10 @@ export function ThemePicker() {
       moveFocus(Math.max(0, index - 1))
     } else if (event.key === 'ArrowDown') {
       event.preventDefault()
-      moveFocus(Math.min(THEMES.length - 1, index + 7))
+      moveFocus(Math.min(THEMES.length - 1, index + THEME_GRID_COLUMNS))
     } else if (event.key === 'ArrowUp') {
       event.preventDefault()
-      moveFocus(Math.max(0, index - 7))
+      moveFocus(Math.max(0, index - THEME_GRID_COLUMNS))
     } else if (event.key === 'Home') {
       event.preventDefault()
       moveFocus(0)
@@ -63,15 +65,17 @@ export function ThemePicker() {
             aria-label={candidate.label}
             title={`${candidate.label} — ${candidate.description}`}
             tabIndex={index === rovingIndex ? 0 : -1}
-            className={`theme-swatch${candidate.id === theme ? ' active' : ''}`}
-            style={{ backgroundColor: candidate.themeColor }}
+            className={`theme-option${candidate.id === theme ? ' active' : ''}`}
             onClick={() => select(index)}
             onFocus={() => setFocusIndex(index)}
             onKeyDown={(event) => onKeyDown(event, index)}
           >
-            {'scene' in candidate && candidate.scene && (
-              <span className="theme-swatch-scenic" aria-hidden="true" />
-            )}
+            <span className="theme-swatch" style={{ backgroundColor: candidate.themeColor }}>
+              {'scene' in candidate && candidate.scene && (
+                <span className="theme-swatch-scenic" aria-hidden="true" />
+              )}
+            </span>
+            <span className="theme-option-label">{candidate.label}</span>
           </button>
         ))}
       </div>

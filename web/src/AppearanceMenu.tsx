@@ -10,7 +10,8 @@ export function AppearanceMenu() {
 
   useEffect(() => {
     if (!open) return
-    const first = popupRef.current?.querySelector<HTMLElement>('select, input, button')
+    const activeTheme = popupRef.current?.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]')
+    const first = activeTheme ?? popupRef.current?.querySelector<HTMLElement>('select, input, button')
     first?.focus()
     function close() {
       setOpen(false)

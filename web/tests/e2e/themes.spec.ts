@@ -60,6 +60,7 @@ test('applies and persists color themes', async ({ page }) => {
   let appearance = await openAppearance(page)
   for (const theme of THEMES) {
     const swatch = appearance.getByRole('radio', { name: theme.label, exact: true })
+    await expect(swatch.locator('.theme-option-label')).toHaveText(theme.label)
     await swatch.click()
     await expect(swatch).toHaveAttribute('aria-checked', 'true')
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme.id)
@@ -77,8 +78,8 @@ test('offers optional background ambience themes', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
   await page.goto('/')
-  const appearance = await openAppearance(page)
-  const picker = appearance.getByLabel('Background ambience')
+  let appearance = await openAppearance(page)
+  let picker = appearance.getByLabel('Background ambience')
   await expect(picker.locator('option')).toContainText([
     'Ambience off',
     'Space sci-fi',
@@ -104,6 +105,11 @@ test('offers optional background ambience themes', async ({ page }) => {
   await volume.fill('50')
   await expect(volume).toHaveValue('50')
   await expect.poll(async () => page.evaluate(() => localStorage.getItem('canvas-ambience-volume'))).toBe('0.5')
+  await picker.selectOption('space')
+  await appearance.getByRole('button', { name: 'Close appearance' }).click()
+  appearance = await openAppearance(page)
+  picker = appearance.getByLabel('Background ambience')
+  await expect(picker).toHaveValue('space')
   await picker.selectOption('')
   await expect(picker).toHaveValue('')
   expect(errors).toEqual([])

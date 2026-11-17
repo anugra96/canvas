@@ -183,6 +183,16 @@ class Playback {
 let generation = 0
 let current: Playback | null = null
 let activeTheme: AmbienceId | '' = ''
+const ambienceListeners = new Set<() => void>()
+
+function notifyAmbience(): void {
+  for (const listener of ambienceListeners) listener()
+}
+
+export function subscribeAmbience(listener: () => void): () => void {
+  ambienceListeners.add(listener)
+  return () => { ambienceListeners.delete(listener) }
+}
 
 export function currentAmbience(): AmbienceId | '' {
   return activeTheme
@@ -193,11 +203,13 @@ export async function startAmbience(theme: AmbienceId): Promise<void> {
   current?.stop()
   current = null
   activeTheme = ''
+  notifyAmbience()
   const spec = await loadSpec(theme)
   const buffer = await getBuffer(theme, spec)
   if (token !== generation) return
   current = new Playback(buffer, spec.env)
   activeTheme = theme
+  notifyAmbience()
 }
 
 export function stopAmbience(): void {
@@ -205,4 +217,5 @@ export function stopAmbience(): void {
   current?.stop()
   current = null
   activeTheme = ''
+  notifyAmbience()
 }
