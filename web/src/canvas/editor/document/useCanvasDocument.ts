@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import {
+  canvasReviewMode,
   mergeCanvas,
+  withCanvasReviewMode,
   type CanvasDocument,
   type JsonCanvas,
   type MergeConflict,
   type Ontology,
+  type ReviewMode,
 } from '@canvas/contract'
 
 import type { CanvasClient } from '../../../api/client'
@@ -48,6 +51,7 @@ export function useCanvasDocument({
   const [renameOpen, setRenameOpen] = useState(false)
   const [renameBusy, setRenameBusy] = useState(false)
   const [baseCanvas, setBaseCanvas] = useState<JsonCanvas>(document.canvas)
+  const [reviewMode, setReviewMode] = useState<ReviewMode>(() => canvasReviewMode(document.canvas))
   const [etag, setEtag] = useState(document.etag)
   const [dirty, setDirty] = useState(false)
   const [status, setStatus] = useState<SaveStatus>('saved')
@@ -65,9 +69,17 @@ export function useCanvasDocument({
 
   const currentCanvas = useCallback(
     (nodeList = nodes, edgeList = edges, base = baseCanvas) =>
-      withValidationSuppressions(fromFlowCanvas(nodeList, edgeList, base), suppressions),
-    [baseCanvas, edges, nodes, suppressions],
+      withCanvasReviewMode(
+        withValidationSuppressions(fromFlowCanvas(nodeList, edgeList, base), suppressions),
+        reviewMode,
+      ),
+    [baseCanvas, edges, nodes, reviewMode, suppressions],
   )
+
+  const changeReviewMode = useCallback((mode: ReviewMode) => {
+    setReviewMode(mode)
+    markDirty()
+  }, [markDirty])
 
   const save = useCallback(async (canvasOverride?: JsonCanvas, etagOverride?: string) => {
     const local = canvasOverride ?? currentCanvas()
@@ -77,6 +89,7 @@ export function useCanvasDocument({
       const saved = await client.saveCanvas(document.id, etagOverride ?? etag, local)
       setEtag(saved.etag)
       setBaseCanvas(saved.canvas)
+      setReviewMode(canvasReviewMode(saved.canvas))
       setSuppressions(() => readValidationSuppressions(saved.canvas))
       setDirty(false)
       setStatus('saved')
@@ -94,6 +107,7 @@ export function useCanvasDocument({
         resetHistory(flow)
         setBaseCanvas(cause.latest.canvas)
         setEtag(cause.latest.etag)
+        setReviewMode(canvasReviewMode(merged.canvas))
         setSuppressions(() => readValidationSuppressions(merged.canvas))
         setPendingLocal(local)
         if (merged.conflicts.length > 0) {
@@ -190,6 +204,7 @@ export function useCanvasDocument({
       resetHistory(flow)
       setBaseCanvas(latest.canvas)
       setEtag(latest.etag)
+      setReviewMode(canvasReviewMode(latest.canvas))
       setSuppressions(() => readValidationSuppressions(latest.canvas))
       setConflicts([])
       setPendingLocal(null)
@@ -215,6 +230,8 @@ export function useCanvasDocument({
     setRenameOpen,
     renameBusy,
     baseCanvas,
+    reviewMode,
+    changeReviewMode,
     dirty,
     status,
     error,

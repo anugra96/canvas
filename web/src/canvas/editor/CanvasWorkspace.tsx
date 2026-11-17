@@ -17,7 +17,9 @@ import {
   responseHasOtherContent,
   shouldDrawApiEdge,
   type CanvasProfile,
+  type LevelNumber,
   type Ontology,
+  type ReviewMode,
 } from '@canvas/contract'
 import type { Connection, EdgeChange } from '@xyflow/react'
 
@@ -77,6 +79,9 @@ interface CanvasWorkspaceProps {
   validation: CanvasValidationEditor
   setNotice: (message: string) => void
   onOpenHelp: () => void
+  reviewMode: ReviewMode
+  onReviewModeChange: (mode: ReviewMode) => void
+  onOpenLevel: (level: LevelNumber) => void
 }
 
 export function CanvasWorkspace({
@@ -99,6 +104,9 @@ export function CanvasWorkspace({
   validation,
   setNotice,
   onOpenHelp,
+  reviewMode,
+  onReviewModeChange,
+  onOpenLevel,
 }: CanvasWorkspaceProps) {
   const apiDesign = useApiDesign()
   const [managedConnection, setManagedConnection] = useState<{
@@ -415,9 +423,14 @@ export function CanvasWorkspace({
           edges={edges}
           profile={profile}
           ontology={ontology}
+          reviewMode={reviewMode}
+          hiddenByModeCount={validation.hiddenByModeCount}
+          levelReadiness={validation.levelReadiness}
           ignoredReasons={validation.ignoredReasons}
           focusRequest={validation.validationFocusRequest}
           onClose={validation.closeReview}
+          onReviewModeChange={onReviewModeChange}
+          onOpenLevel={onOpenLevel}
           onFocus={validation.focusValidationIssue}
           onIgnore={validation.ignoreValidationIssue}
           onRestore={validation.restoreValidationIssue}

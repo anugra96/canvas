@@ -62,6 +62,7 @@ import {
 } from '../schema/embeddedSchema'
 import { AddResourceDialog } from '../apiDesign/AddResourceDialog'
 import { OpenApiCompareDialog } from '../apiDesign/OpenApiCompareDialog'
+import { PublishBlockedDialog } from './PublishBlockedDialog'
 import { useCanvasHistory } from './useCanvasHistory'
 import { useEditorShortcuts } from './useEditorShortcuts'
 import { readValidationSuppressions, type ValidationSuppression } from './validationSuppressions'
@@ -136,6 +137,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const [helpOpen, setHelpOpen] = useState(false)
   const [viewsOpen, setViewsOpen] = useState(false)
   const [viewsLevel, setViewsLevel] = useState<LevelNumber | undefined>()
+  const [blockedExport, setBlockedExport] = useState<{ label: string; run: () => void } | null>(null)
   const [addResourceOpen, setAddResourceOpen] = useState(false)
   const [compareHead, setCompareHead] = useState<JsonObject | null>(null)
   const [suppressions, setSuppressions] = useState<ValidationSuppression[]>(() => (
@@ -152,6 +154,8 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     setRenameOpen,
     renameBusy,
     baseCanvas,
+    reviewMode,
+    changeReviewMode,
     dirty,
     status,
     error,
@@ -240,6 +244,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     ontology,
     isSystems: isStructured,
     isApi,
+    reviewMode,
     suppressions,
     setSuppressions,
     setNodes,
@@ -250,6 +255,16 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   })
 
   useEffect(() => observeHistory({ nodes, edges }), [edges, nodes, observeHistory])
+
+  const guardExport = useCallback((label: string, run: () => void) => {
+    if (validation.publishBlockingIssues.length > 0) setBlockedExport({ label, run })
+    else run()
+  }, [validation.publishBlockingIssues.length])
+
+  const openLevelInViews = useCallback((level: LevelNumber) => {
+    setViewsLevel(level)
+    setViewsOpen(true)
+  }, [])
 
   const updateEntityField = useCallback((id: string, fieldKey: string, value: string) => {
     const target = nodes.find((node) => node.id === id)
@@ -548,13 +563,13 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     onTidyApi: graph.autoLayoutApi,
     onFitCards: graph.autoFitAll,
     onFitView: graph.fitCanvas,
-    onDownload: () => void download(),
-    onScreenshot: capture.openScreenshot,
+    onDownload: () => guardExport('Canvas export', () => { void download() }),
+    onScreenshot: () => guardExport('View image', capture.openScreenshot),
     onAddResource: () => setAddResourceOpen(true),
     onStandardErrors: standardErrors,
     selectedEndpointCount,
-    onExportOpenApi,
-    onCopyOpenApi,
+    onExportOpenApi: (format) => guardExport('OpenAPI export', () => onExportOpenApi(format)),
+    onCopyOpenApi: (format) => guardExport('OpenAPI copy', () => onCopyOpenApi(format)),
     onCompare: openCompare,
     onHelp: () => setHelpOpen(true),
     onDuplicate: graph.duplicateSelection,
@@ -612,6 +627,9 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
             validation={validation}
             setNotice={setNotice}
               onOpenHelp={() => setHelpOpen(true)}
+            reviewMode={reviewMode}
+            onReviewModeChange={changeReviewMode}
+            onOpenLevel={openLevelInViews}
             />
             </NodeEditRequestContext.Provider>
           </ApiDesignProvider>
@@ -637,6 +655,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
             setViewsOpen={setViewsOpen}
             viewsLevel={viewsLevel}
             onShowInCanvas={showInCanvas}
+            guardExport={guardExport}
             renameOpen={renameOpen}
             setRenameOpen={setRenameOpen}
             renameBusy={renameBusy}
@@ -647,6 +666,19 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
               initialPrefix={prefixFromPaths(nodes)}
               onSubmit={addResource}
               onClose={() => setAddResourceOpen(false)}
+            />
+          )}
+          {blockedExport && (
+            <PublishBlockedDialog
+              label={blockedExport.label}
+              issues={validation.publishBlockingIssues}
+              onShow={(issue) => {
+                setBlockedExport(null)
+                setViewsOpen(false)
+                validation.openValidationIssue(issue)
+              }}
+              onIgnore={(issue, reason) => validation.ignoreValidationIssue(issue, reason)}
+              onClose={() => setBlockedExport(null)}
             />
           )}
           {compareHead && (

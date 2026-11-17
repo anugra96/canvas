@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
 
 import {
+  levelReadiness,
+  levelReadinessIssues,
   validateApiDesign,
   validateProfileCanvas,
   type CanvasProfile,
@@ -30,15 +32,20 @@ export function useProfileValidation({
   isApi: boolean
 }) {
   return useMemo(() => {
-    if (!isSystems) return []
+    if (!isSystems) return { issues: [], levelReadiness: [] }
     const canvas = fromFlowCanvas(nodes, edges, baseCanvas)
-    return [
-      ...validateProfileCanvas(canvas, profile, ontology),
-      ...validateSchemaContracts(canvas.nodes ?? [], canvas.edges ?? [], new Date(), isApi ? 'api' : 'systems'),
-      ...(isApi ? validateApiExamples(canvas.nodes ?? []) : []),
-      ...(isApi ? validateApiOperations(canvas.nodes ?? []) : []),
-      ...(isApi ? validateApiDesign(canvas) : []),
-      ...validateSemanticRules(canvas.nodes ?? [], canvas.edges ?? []),
-    ]
+    const readiness = isApi ? [] : levelReadiness(canvas.nodes ?? [], canvas.edges ?? [])
+    return {
+      issues: [
+        ...validateProfileCanvas(canvas, profile, ontology),
+        ...validateSchemaContracts(canvas.nodes ?? [], canvas.edges ?? [], new Date(), isApi ? 'api' : 'systems'),
+        ...(isApi ? validateApiExamples(canvas.nodes ?? []) : []),
+        ...(isApi ? validateApiOperations(canvas.nodes ?? []) : []),
+        ...(isApi ? validateApiDesign(canvas) : []),
+        ...validateSemanticRules(canvas.nodes ?? [], canvas.edges ?? []),
+        ...levelReadinessIssues(readiness),
+      ],
+      levelReadiness: readiness,
+    }
   }, [baseCanvas, edges, isApi, isSystems, nodes, ontology, profile])
 }

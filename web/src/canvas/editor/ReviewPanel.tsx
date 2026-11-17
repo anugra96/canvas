@@ -1,7 +1,15 @@
-import { X } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, X } from 'lucide-react'
 import { useRef, type KeyboardEvent } from 'react'
 
-import type { CanvasProfile, CanvasProfileIssue, Ontology } from '@canvas/contract'
+import {
+  REVIEW_MODES,
+  REVIEW_MODE_LABELS,
+  type CanvasProfile,
+  type CanvasProfileIssue,
+  type LevelReadiness,
+  type Ontology,
+  type ReviewMode,
+} from '@canvas/contract'
 
 import type { CanvasFlowEdge, CanvasFlowNode } from '../model/adapter'
 import type { CanvasSuggestion } from '../suggestions/suggestionEngine'
@@ -22,9 +30,14 @@ export function ReviewPanel({
   edges,
   profile,
   ontology,
+  reviewMode,
+  hiddenByModeCount,
+  levelReadiness,
   ignoredReasons,
   focusRequest,
   onClose,
+  onReviewModeChange,
+  onOpenLevel,
   onFocus,
   onIgnore,
   onRestore,
@@ -40,9 +53,14 @@ export function ReviewPanel({
   edges: CanvasFlowEdge[]
   profile: CanvasProfile
   ontology: Ontology
+  reviewMode: ReviewMode
+  hiddenByModeCount: number
+  levelReadiness: LevelReadiness[]
   ignoredReasons: Map<string, string>
   focusRequest: { key: string; requestId: number } | null
   onClose: () => void
+  onReviewModeChange: (mode: ReviewMode) => void
+  onOpenLevel: (level: LevelReadiness['level']) => void
   onFocus: (issue: CanvasProfileIssue) => void
   onIgnore: (issue: CanvasProfileIssue, reason: IgnoreReason) => void
   onRestore: (issue: CanvasProfileIssue) => void
@@ -79,10 +97,52 @@ export function ReviewPanel({
           <span className="validation-panel-kicker">Architecture</span>
           <h2>Review</h2>
         </div>
-        <button className="icon-button" onClick={onClose} aria-label="Close review">
-          <X size={16} />
-        </button>
+        <div className="review-head-controls">
+          <label className="review-mode">
+            <span>Mode</span>
+            <select
+              aria-label="Review mode"
+              value={reviewMode}
+              onChange={(event) => onReviewModeChange(event.target.value as ReviewMode)}
+            >
+              {REVIEW_MODES.map((mode) => (
+                <option key={mode} value={mode}>{REVIEW_MODE_LABELS[mode]}</option>
+              ))}
+            </select>
+          </label>
+          {hiddenByModeCount > 0 && (
+            <span className="review-hidden">
+              {hiddenByModeCount} hidden by {REVIEW_MODE_LABELS[reviewMode]}
+            </span>
+          )}
+          <button className="icon-button" onClick={onClose} aria-label="Close review">
+            <X size={16} />
+          </button>
+        </div>
       </header>
+      {levelReadiness.some((entry) => entry.available) && (
+        <section className="review-views" aria-label="View readiness">
+          <h3>Views</h3>
+          {levelReadiness.filter((entry) => entry.available).map((entry) => (
+            <button
+              key={entry.level}
+              type="button"
+              className={`review-view-level ${entry.ready ? 'ready' : 'unready'}`}
+              onClick={() => onOpenLevel(entry.level)}
+            >
+              {entry.ready
+                ? <CheckCircle2 size={15} />
+                : <AlertTriangle size={15} />}
+              <span>Level {entry.level} {entry.name}</span>
+              <small>
+                {entry.ready
+                  ? 'Ready'
+                  : `${entry.unassigned.length} ${entry.unassigned.length === 1 ? 'card' : 'cards'} unassigned`}
+              </small>
+            </button>
+          ))}
+        </section>
+      )}
       <div className="review-tabs" role="tablist" aria-label="Review sections">
         <button
           ref={issuesRef}

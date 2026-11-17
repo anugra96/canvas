@@ -7,6 +7,7 @@ import {
   emptyEntityFields,
   findEntityType,
   getEntityMeta,
+  issueVisibleInMode,
   renderEntityMarkdown,
   type CanvasNode,
   type CanvasNodeSide,
@@ -14,6 +15,7 @@ import {
   type CanvasProfileIssue,
   type JsonCanvas,
   type Ontology,
+  type ReviewMode,
 } from '@canvas/contract'
 
 import { buildSuggestions, type CanvasSuggestion } from '../../suggestions/suggestionEngine'
@@ -21,6 +23,7 @@ import { fromFlowCanvas, nodeDimensions, toFlowEdge, toFlowNode, type CanvasFlow
 import { edgeFromConnection } from '../../model/edgeRelations'
 import { makeEntityNode } from '../graph/nodes'
 import { prioritizeValidationIssues } from '../prioritizeIssues'
+import { blockedExportIssues } from '../reviewExport'
 import type { ReviewTab } from '../ReviewPanel'
 import { useProfileValidation } from '../useProfileValidation'
 import { validationIssueKey } from '../validationIdentity'
@@ -82,6 +85,7 @@ interface UseCanvasValidationInput {
   ontology: Ontology
   isSystems: boolean
   isApi: boolean
+  reviewMode: ReviewMode
   suppressions: ValidationSuppression[]
   setSuppressions: (update: (current: ValidationSuppression[]) => ValidationSuppression[]) => void
   setNodes: (update: (current: CanvasFlowNode[]) => CanvasFlowNode[]) => void
@@ -99,6 +103,7 @@ export function useCanvasValidation({
   ontology,
   isSystems,
   isApi,
+  reviewMode,
   suppressions,
   setSuppressions,
   setNodes,
@@ -113,7 +118,7 @@ export function useCanvasValidation({
   const [validationFocusRequest, setValidationFocusRequest] = useState<{ key: string; requestId: number } | null>(null)
   const validationRequestId = useRef(0)
 
-  const allValidationIssues = useProfileValidation({
+  const profileValidation = useProfileValidation({
     nodes,
     edges,
     baseCanvas,
@@ -126,13 +131,22 @@ export function useCanvasValidation({
     () => new Map(suppressions.map((suppression) => [suppression.fingerprint, suppression])),
     [suppressions],
   )
-  const validationIssues = useMemo(
-    () => allValidationIssues.filter((issue) => !suppressionByFingerprint.has(validationIssueKey(issue))),
-    [allValidationIssues, suppressionByFingerprint],
+  const unsuppressedIssues = useMemo(
+    () => profileValidation.issues.filter((issue) => !suppressionByFingerprint.has(validationIssueKey(issue))),
+    [profileValidation.issues, suppressionByFingerprint],
   )
+  const validationIssues = useMemo(
+    () => unsuppressedIssues.filter((issue) => issueVisibleInMode(issue, reviewMode)),
+    [reviewMode, unsuppressedIssues],
+  )
+  const hiddenByModeCount = unsuppressedIssues.length - validationIssues.length
   const ignoredValidationIssues = useMemo(
-    () => allValidationIssues.filter((issue) => suppressionByFingerprint.has(validationIssueKey(issue))),
-    [allValidationIssues, suppressionByFingerprint],
+    () => profileValidation.issues.filter((issue) => suppressionByFingerprint.has(validationIssueKey(issue))),
+    [profileValidation.issues, suppressionByFingerprint],
+  )
+  const publishBlockingIssues = useMemo(
+    () => blockedExportIssues(reviewMode, profileValidation.issues, suppressions),
+    [profileValidation.issues, reviewMode, suppressions],
   )
   const prioritizedIssues = useMemo(
     () => prioritizeValidationIssues(validationIssues, nodes, edges),
@@ -361,6 +375,9 @@ export function useCanvasValidation({
     closeReview,
     validationFocusRequest,
     validationIssues,
+    hiddenByModeCount,
+    publishBlockingIssues,
+    levelReadiness: profileValidation.levelReadiness,
     prioritizedIssues,
     ignoredPrioritizedIssues,
     suggestions,

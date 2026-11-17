@@ -34,6 +34,7 @@ interface EditorDialogsProps {
   setViewsOpen: (open: boolean) => void
   viewsLevel?: LevelNumber
   onShowInCanvas?: (id: string) => void
+  guardExport?: (label: string, run: () => void) => void
   renameOpen: boolean
   setRenameOpen: (open: boolean) => void
   renameBusy: boolean
@@ -62,6 +63,7 @@ export function EditorDialogs({
   setViewsOpen,
   viewsLevel,
   onShowInCanvas,
+  guardExport,
   renameOpen,
   setRenameOpen,
   renameBusy,
@@ -119,6 +121,7 @@ export function EditorDialogs({
           profileId={isApi ? 'api' : 'systems'}
           initialLevel={viewsLevel}
           onShowInCanvas={onShowInCanvas}
+          guardExport={guardExport}
           onClose={() => setViewsOpen(false)}
         />
       )}

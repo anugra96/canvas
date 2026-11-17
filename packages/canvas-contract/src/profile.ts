@@ -35,6 +35,7 @@ export const canvasProfileMetadataSchema = z
     profile: z.string().min(1),
     profileVersion: z.number().int().positive(),
     scope: z.string().min(1).optional(),
+    reviewMode: z.enum(['sketch', 'design', 'publish']).optional(),
   })
   .passthrough()
 
@@ -46,36 +47,39 @@ export type ProfileRelationValidation =
   | { ok: true; rule?: CanvasProfileRelationRule }
   | { ok: false; reason: 'unknown_relation' | 'relation_not_allowed' }
 
-export type ProfileIssueCode =
-  | 'untyped_text'
-  | 'unknown_entity_type'
-  | 'missing_required_field'
-  | 'missing_relation_type'
-  | 'unknown_relation_type'
-  | 'relation_not_allowed'
-  | 'group_endpoint'
-  | 'missing_endpoint'
-  | 'schema_invalid'
-  | 'schema_review'
-  | 'schema_unlinked'
-  | 'schema_ref_missing'
-  | 'schema_contract'
-  | 'artifact_without_producer'
-  | 'process_without_runner'
-  | 'example_invalid'
-  | 'operation_invalid'
-  | 'ref_unresolved'
-  | 'operation_duplicate'
-  | 'path_parameter_mismatch'
-  | 'response_success_missing'
-  | 'mutation_errors_missing'
-  | 'security_missing'
-  | 'list_pagination_missing'
-  | 'get_with_body'
-  | 'naming_inconsistent'
-  | 'schema_unused'
-  | 'endpoint_without_resource'
-  | 'level_unassigned'
+export const PROFILE_ISSUE_CODES = [
+  'untyped_text',
+  'unknown_entity_type',
+  'missing_required_field',
+  'missing_relation_type',
+  'unknown_relation_type',
+  'relation_not_allowed',
+  'group_endpoint',
+  'missing_endpoint',
+  'schema_invalid',
+  'schema_review',
+  'schema_unlinked',
+  'schema_ref_missing',
+  'schema_contract',
+  'artifact_without_producer',
+  'process_without_runner',
+  'example_invalid',
+  'operation_invalid',
+  'ref_unresolved',
+  'operation_duplicate',
+  'path_parameter_mismatch',
+  'response_success_missing',
+  'mutation_errors_missing',
+  'security_missing',
+  'list_pagination_missing',
+  'get_with_body',
+  'naming_inconsistent',
+  'schema_unused',
+  'endpoint_without_resource',
+  'level_unassigned',
+] as const
+
+export type ProfileIssueCode = (typeof PROFILE_ISSUE_CODES)[number]
 
 export interface CanvasProfileIssue {
   code: ProfileIssueCode
