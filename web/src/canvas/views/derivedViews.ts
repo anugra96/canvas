@@ -112,6 +112,7 @@ export interface DerivedViewLevelState {
 export interface DerivedView {
   nodes: DerivedCard[]
   edges: DerivedRelation[]
+  notInLevels: DerivedUnassignedItem[]
   levelState?: DerivedViewLevelState
 }
 
@@ -408,6 +409,7 @@ export function deriveView(
     return {
       nodes: sortedCards(nodes, included, ontology),
       edges: relations.sort(compareRelations),
+      notInLevels: [],
     }
   }
 
@@ -503,9 +505,24 @@ export function deriveView(
     })
   }
 
+  const notInLevels = [...included]
+    .filter((id) => {
+      if (graph.levels.has(id)) return false
+      const node = rawById.get(id)
+      if (!node || node.type === 'group') return false
+      const typeId = node.app?.entityType
+      return !typeId || !ANNOTATION_ENTITY_TYPES.has(typeId)
+    })
+    .map((id) => ({
+      id,
+      label: flowById.get(id) ? nodeLabel(flowById.get(id)!, ontology) : id,
+    }))
+    .sort((left, right) => left.label.localeCompare(right.label) || left.id.localeCompare(right.id))
+
   return {
     nodes: cards,
     edges: relations,
+    notInLevels,
     levelState: {
       level,
       visible: [...selection.visible].sort(),

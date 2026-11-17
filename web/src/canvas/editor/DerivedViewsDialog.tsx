@@ -25,6 +25,7 @@ import {
   recommendedSequenceProcessId,
   sequenceProcessOptions,
   type DerivedSequence,
+  type DerivedUnassignedItem,
   type DerivedViewId,
 } from '../views/derivedViews'
 
@@ -83,7 +84,7 @@ export function DerivedViewsDialog({
     : recommendedProcessId ?? processOptions[0]?.id
   const view = useMemo(
     () => (activeView === 'sequence' || activeView === 'reference'
-      ? { nodes: [], edges: [] }
+      ? { nodes: [], edges: [], notInLevels: [] }
       : deriveView(nodes, edges, activeView, ontology, { level, expanded })),
     [activeView, edges, expanded, level, nodes, ontology],
   )
@@ -325,6 +326,7 @@ export function DerivedViewsDialog({
                   diagram={diagram}
                   label={viewDefinition?.label ?? 'Architecture'}
                   footer={footer}
+                  notInLevels={view.notInLevels}
                   surfaceRef={graphSurface}
                   onExpand={(id) => setExpanded((current) => new Set(current).add(id))}
                   onShowInCanvas={onShowInCanvas}
@@ -344,6 +346,7 @@ function GraphDiagram({
   diagram,
   label,
   footer,
+  notInLevels,
   surfaceRef,
   onExpand,
   onShowInCanvas,
@@ -351,11 +354,12 @@ function GraphDiagram({
   diagram: DerivedDiagram
   label: string
   footer: string
+  notInLevels: DerivedUnassignedItem[]
   surfaceRef: RefObject<HTMLDivElement | null>
   onExpand: (id: string) => void
   onShowInCanvas?: (id: string) => void
 }) {
-  if (diagram.nodes.length === 0) {
+  if (diagram.nodes.length === 0 && notInLevels.length === 0) {
     return (
       <div className="derived-empty">
         <strong>No cards match this view.</strong>
@@ -476,6 +480,23 @@ function GraphDiagram({
             </article>
           ))}
         </div>
+        {notInLevels.length > 0 && (
+          <section className="derived-not-in-levels" aria-label="Not in levels">
+            <strong>Not in levels ({notInLevels.length})</strong>
+            <div className="derived-unassigned-list">
+              {notInLevels.map((item) => (
+                <div key={item.id} className="derived-unassigned-item">
+                  <span title={item.label}>{item.label}</span>
+                  {onShowInCanvas && (
+                    <button type="button" onClick={() => onShowInCanvas(item.id)}>
+                      Show in canvas
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
         <footer className="derived-export-footer">{footer}</footer>
       </div>
     </div>

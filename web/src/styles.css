@@ -8767,6 +8767,23 @@ select {
   color: var(--ui-strong);
   border-color: var(--ui-accent);
 }
+
+.derived-not-in-levels {
+  display: grid;
+  gap: 4px;
+  width: min(100%, 560px);
+  margin-top: 16px;
+  padding-top: 9px;
+  border-top: 1px solid var(--ui-line);
+}
+
+.derived-not-in-levels > strong {
+  color: var(--ui-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
 /* Review modes and view readiness */
 .review-head-controls {
   display: flex;
