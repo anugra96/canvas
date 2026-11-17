@@ -1,4 +1,4 @@
-import { FileJson, PenLine, Plus, Search, Trash2, Upload } from 'lucide-react'
+import { FileCode2, FileJson, PenLine, Plus, Search, Trash2, Upload } from 'lucide-react'
 import {
   useEffect,
   useRef,
@@ -7,6 +7,7 @@ import {
 } from 'react'
 
 import type { OpenApiImportResult } from '@canvas/contract'
+import type { DatabaseImportResult } from '@canvas/contract/database-import'
 import {
   DEFAULT_PROFILES,
   MAX_CANVAS_BYTES,
@@ -19,6 +20,7 @@ import {
 import { CanvasConflictError, type CanvasClient } from '../api/client'
 import { CanvasNameDialog } from '../CanvasNameDialog'
 import { OpenApiImportDialog } from '../canvas/apiDesign/OpenApiImportDialog'
+import { DatabaseImportDialog } from '../canvas/database/DatabaseImportDialog'
 import { DeleteCanvasDialog } from '../DeleteCanvasDialog'
 
 interface CanvasListPageProps {
@@ -41,6 +43,7 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
   const [error, setError] = useState('')
   const [importing, setImporting] = useState(false)
   const [openApiOpen, setOpenApiOpen] = useState(false)
+  const [databaseOpen, setDatabaseOpen] = useState(false)
   const [profileId, setProfileId] = useState('raw')
   const [nameDialog, setNameDialog] = useState<
     { mode: 'create' } | { mode: 'rename'; canvas: CanvasSummary } | null
@@ -107,6 +110,21 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
       onOpen(document.id, document.title)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not import the OpenAPI document.')
+      throw cause
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  async function createDatabaseCanvas(result: DatabaseImportResult) {
+    setImporting(true)
+    setError('')
+    try {
+      const document = await client.importCanvas(result.title, result.canvas)
+      setDatabaseOpen(false)
+      onOpen(document.id, document.title)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Could not import the PostgreSQL DDL.')
       throw cause
     } finally {
       setImporting(false)
@@ -188,6 +206,14 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
           >
             <FileJson size={16} />
             Import OpenAPI
+          </button>
+          <button
+            className="button"
+            onClick={() => setDatabaseOpen(true)}
+            disabled={nameBusy || importing}
+          >
+            <FileCode2 size={16} />
+            Import DDL
           </button>
           <select
             className="template-select canvas-profile-select"
@@ -298,6 +324,11 @@ export function CanvasListPage({ client, onOpen }: CanvasListPageProps) {
         </div>
       )}
 
+      <DatabaseImportDialog
+        open={databaseOpen}
+        onCreate={createDatabaseCanvas}
+        onClose={() => setDatabaseOpen(false)}
+      />
       <OpenApiImportDialog
         open={openApiOpen}
         onClose={() => setOpenApiOpen(false)}

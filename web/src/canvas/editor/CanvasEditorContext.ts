@@ -1,4 +1,4 @@
-import type { CanvasDocument } from '@canvas/contract'
+import type { CanvasDocument, DatabaseReferenceConnection } from '@canvas/contract'
 
 import type { CanvasClient } from '../../api/client'
 
@@ -21,6 +21,8 @@ export interface CanvasEditorActions {
   openCanvasLinks: (id: string) => void
   createOrOpenApiCanvas: (id: string, title: string) => void
   openNodeEditor: (id: string) => void
+  addDatabaseReference: (connection: DatabaseReferenceConnection) => boolean
+  removeDatabaseReference: (edgeId: string) => void
   extractSchemaCard: (id: string) => CanvasSchemaResult
   inlineSchemaCard: (id: string) => CanvasSchemaResult
 }

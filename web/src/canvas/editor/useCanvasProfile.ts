@@ -18,7 +18,8 @@ export function useCanvasProfile(ontology: Ontology, document: CanvasDocument) {
   )
   const isSystems = profile.id === 'systems'
   const isApi = profile.id === 'api'
-  const isStructured = isSystems || isApi
+  const isDatabase = profile.id === 'database'
+  const isStructured = isSystems || isApi || isDatabase
   const availableEntityTypes = useMemo(() => {
     const ids = isStructured
       ? profileEntityTypeIds(profile)
@@ -34,5 +35,13 @@ export function useCanvasProfile(ontology: Ontology, document: CanvasDocument) {
       .filter((relation): relation is NonNullable<typeof relation> => Boolean(relation))
   }, [isStructured, ontology, profile])
 
-  return { profile, isSystems, isApi, isStructured, availableEntityTypes, profileRelationTypes }
+  return {
+    profile,
+    isSystems,
+    isApi,
+    isDatabase,
+    isStructured,
+    availableEntityTypes,
+    profileRelationTypes,
+  }
 }

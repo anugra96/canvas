@@ -2,7 +2,7 @@ import { useReactFlow } from '@xyflow/react'
 import { useCallback } from 'react'
 
 import type { AlignmentGuide } from '../../model/alignment'
-import { layoutApiCanvas } from '@canvas/contract'
+import { estimateDatabaseSizes, layoutApiCanvas, layoutDatabaseCanvas } from '@canvas/contract'
 import { autoLayoutCanvas } from '../../model/autoLayout'
 import { nodeDimensions, type CanvasFlowEdge, type CanvasFlowNode } from '../../model/adapter'
 import { findBestCardSize } from '../autoFit'
@@ -66,6 +66,33 @@ export function useCanvasLayout({
     }, 0)
   }, [edges, fitView, markDirty, nodes, setAlignmentGuides, setNodes, setNotice])
 
+  const autoLayoutDatabase = useCallback(() => {
+    const rawNodes = nodes.map((node) => node.data.raw)
+    const rawEdges = edges.flatMap((edge) => edge.data?.raw ? [edge.data.raw] : [])
+    const canvas = { nodes: rawNodes, edges: rawEdges }
+    const laidOut = layoutDatabaseCanvas(canvas, estimateDatabaseSizes(canvas))
+    const byId = new Map((laidOut.nodes ?? []).map((node) => [node.id, node]))
+    setNodes((current) => current.map((node) => {
+      const next = byId.get(node.id)
+      if (!next) return node
+      return {
+        ...node,
+        position: { x: next.x, y: next.y },
+        style: { ...node.style, width: next.width, height: next.height },
+        data: {
+          ...node.data,
+          raw: { ...next },
+        },
+      }
+    }))
+    setAlignmentGuides([])
+    setNotice('Database layout applied.')
+    markDirty()
+    window.setTimeout(() => {
+      void fitView({ padding: 0.2, maxZoom: 1.2, duration: 300 })
+    }, 0)
+  }, [edges, fitView, markDirty, nodes, setAlignmentGuides, setNodes, setNotice])
+
   const autoFitAll = useCallback(() => {
     let fitted = 0
     const nextNodes = nodes.map((node) => {
@@ -95,6 +122,7 @@ export function useCanvasLayout({
   return {
     autoLayout,
     autoLayoutApi,
+    autoLayoutDatabase,
     autoFitAll,
   }
 }

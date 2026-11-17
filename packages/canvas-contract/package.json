@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./database-import": "./src/database/importDatabase.ts"
   },
   "types": "./src/index.ts",
   "scripts": {

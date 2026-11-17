@@ -9353,3 +9353,325 @@ select {
   color: var(--ui-text);
   font-weight: 600;
 }
+
+/* Database profile */
+.canvas-node.db-schema-lane {
+  border-color: color-mix(in srgb, var(--ui-accent) 42%, transparent);
+  background: color-mix(in srgb, var(--ui-panel-solid) 34%, transparent);
+  box-shadow: none;
+}
+
+.db-schema-card {
+  align-content: start;
+  padding: 10px 12px;
+  gap: 4px;
+}
+
+.db-schema-head,
+.db-enum-head,
+.db-table-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.db-schema-icon,
+.db-enum-icon,
+.db-table-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 40%, transparent);
+  border-radius: var(--radius);
+  color: var(--ui-accent);
+  background: var(--ui-input-bg);
+  flex: 0 0 auto;
+}
+
+.db-schema-head div,
+.db-enum-head div,
+.db-table-head div {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.db-schema-head strong,
+.db-enum-head strong,
+.db-table-head strong {
+  overflow: hidden;
+  color: var(--ui-strong);
+  font-size: 12px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.db-schema-description {
+  margin: 0;
+  color: var(--ui-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.db-table-card {
+  padding: 0;
+}
+
+.db-table-head {
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--ui-line);
+  background: var(--ui-group-bg);
+}
+
+.db-table-schema {
+  color: var(--ui-faint);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.db-table-count {
+  color: var(--ui-faint);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.db-table-columns {
+  display: grid;
+  align-content: start;
+  flex: 1;
+  overflow: auto;
+}
+
+.db-column-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 6px;
+  min-height: 25px;
+  padding: 3px 11px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ui-line) 65%, transparent);
+  font-size: 10px;
+}
+
+.db-column-row:last-child {
+  border-bottom: 0;
+}
+
+.db-column-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ui-text);
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.db-column-type {
+  color: var(--ui-muted);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 9px;
+  max-width: 128px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.db-column-badges {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.db-badge {
+  padding: 1px 3px;
+  border-radius: 3px;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  background: var(--ui-input-bg);
+  color: var(--ui-muted);
+}
+
+.db-badge-pk { color: var(--ui-accent); }
+.db-badge-fk { color: var(--ui-warning-text); }
+.db-badge-uq { color: var(--ui-accent); }
+.db-badge-idx { color: var(--ui-text); }
+.db-badge-null { opacity: 0.72; }
+
+.db-column-more {
+  padding: 5px 11px;
+  color: var(--ui-faint);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.db-column-handle.react-flow__handle {
+  width: 8px;
+  height: 8px;
+  min-width: 8px;
+  min-height: 8px;
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 60%, transparent);
+  border-radius: 50%;
+  background: var(--ui-panel-solid);
+  opacity: 0;
+  transition: opacity 100ms ease;
+}
+
+.db-column-row:hover .db-column-handle.react-flow__handle,
+.react-flow__node.selected .db-column-handle.react-flow__handle {
+  opacity: 1;
+}
+
+.db-column-handle.left { left: -5px; }
+.db-column-handle.right { right: -5px; }
+
+.db-enum-card {
+  padding: 9px 11px;
+  gap: 7px;
+}
+
+.db-enum-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  overflow: auto;
+}
+
+.db-enum-value {
+  padding: 2px 5px;
+  border: 1px solid var(--ui-line);
+  border-radius: 3px;
+  color: var(--ui-muted);
+  background: var(--ui-input-bg);
+  font-size: 9px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.database-table-editor {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+}
+
+.database-editor-fields {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 0.8fr;
+  gap: 10px;
+}
+
+.database-description-field {
+  display: grid;
+  gap: 4px;
+}
+
+.database-editor-section {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.database-editor-section > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.database-editor-section h3 {
+  margin: 0;
+  color: var(--ui-strong);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.database-column-grid {
+  display: grid;
+  gap: 4px;
+  min-width: 900px;
+}
+
+.database-grid-head,
+.database-grid-row {
+  display: grid;
+  grid-template-columns: 1.1fr 1.2fr 48px 1.1fr 34px 34px 110px 1fr 92px;
+  gap: 5px;
+  align-items: center;
+}
+
+.database-grid-head {
+  color: var(--ui-faint);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.database-grid-row input,
+.database-grid-row select,
+.database-subgrid input,
+.database-subgrid select {
+  width: 100%;
+  min-height: 26px;
+  padding: 3px 6px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--radius);
+  color: var(--ui-text);
+  background: var(--ui-input-bg);
+  font-size: 10px;
+  outline: none;
+}
+
+.database-grid-row input:focus,
+.database-grid-row select:focus,
+.database-subgrid input:focus,
+.database-subgrid select:focus {
+  border-color: var(--ui-line-strong);
+}
+
+.database-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--ui-muted);
+  font-size: 9px;
+}
+
+.database-row-actions {
+  display: inline-flex;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.database-subgrid {
+  display: grid;
+  grid-template-columns: 1.1fr 14px 0.7fr 1fr 1fr 100px 100px 32px;
+  gap: 5px;
+  align-items: center;
+}
+
+.database-subgrid-arrow {
+  color: var(--ui-faint);
+  text-align: center;
+}
+
+.database-editor-section {
+  overflow-x: auto;
+}
+
+.database-import-extra {
+  color: var(--ui-warning-text);
+  font-size: 11px;
+  font-weight: 700;
+}

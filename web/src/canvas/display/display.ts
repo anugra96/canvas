@@ -81,7 +81,7 @@ export function displayPresetLabel(preset: DisplayPreset): string {
 }
 
 export function defaultDisplayPreset(profileId: string): Exclude<DisplayPreset, 'custom'> {
-  if (profileId === 'systems' || profileId === 'api') return 'standard'
+  if (profileId === 'systems' || profileId === 'api' || profileId === 'database') return 'standard'
   return 'all'
 }
 

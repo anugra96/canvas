@@ -67,6 +67,7 @@ interface CanvasCommandInput {
   onSave: () => void
   onTidy: () => void
   onTidyApi: () => void
+  onTidyDatabase: () => void
   onFitCards: () => void
   onFitView: () => void
   onDownload: () => void
@@ -76,6 +77,8 @@ interface CanvasCommandInput {
   selectedEndpointCount: number
   onExportOpenApi: (format: 'json' | 'yaml') => void
   onCopyOpenApi: (format: 'json' | 'yaml') => void
+  onExportDatabase: () => void
+  onCopyDatabase: () => void
   onCompare: () => void
   onHelp: () => void
   onDuplicate: () => void
@@ -93,7 +96,7 @@ function reviewCommand(input: CanvasCommandInput): CanvasCommand {
       label: 'Valid',
       icon: ShieldCheck,
       surface: 'bar',
-      available: input.isSystems,
+      available: input.isSystems && input.profileId !== 'database',
       tone: 'valid',
       run: input.onReview,
     }
@@ -103,7 +106,7 @@ function reviewCommand(input: CanvasCommandInput): CanvasCommand {
     label: `Review ${input.issueCount}`,
     icon: AlertTriangle,
     surface: 'bar',
-    available: input.isSystems,
+    available: input.isSystems && input.profileId !== 'database',
     tone: input.errorCount > 0 ? 'error' : 'warning',
     run: input.onReview,
   }
@@ -175,7 +178,7 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       label: 'Views',
       icon: PanelsTopLeft,
       surface: 'bar',
-      available: input.isSystems,
+      available: input.isSystems && input.profileId !== 'database',
       run: input.onViews,
     },
     reviewCommand(input),
@@ -229,7 +232,7 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       icon: LayoutGrid,
       surface: 'overflow',
       section: 'layout',
-      available: input.profileId !== 'api',
+      available: input.profileId !== 'api' && input.profileId !== 'database',
       run: input.onTidy,
     },
     {
@@ -240,6 +243,15 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       section: 'layout',
       available: input.profileId === 'api',
       run: input.onTidyApi,
+    },
+    {
+      id: 'layout.tidy-database',
+      label: 'Tidy database layout',
+      icon: LayoutGrid,
+      surface: 'overflow',
+      section: 'layout',
+      available: input.profileId === 'database',
+      run: input.onTidyDatabase,
     },
     {
       id: 'layout.fit-cards',
@@ -304,6 +316,24 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       section: 'export',
       available: input.profileId === 'api',
       run: () => input.onCopyOpenApi('json'),
+    },
+    {
+      id: 'export.database',
+      label: 'Export DDL',
+      icon: Download,
+      surface: 'overflow',
+      section: 'export',
+      available: input.profileId === 'database',
+      run: input.onExportDatabase,
+    },
+    {
+      id: 'export.copy-database',
+      label: 'Copy DDL',
+      icon: Copy,
+      surface: 'overflow',
+      section: 'export',
+      available: input.profileId === 'database',
+      run: input.onCopyDatabase,
     },
     {
       id: 'export.canvas',

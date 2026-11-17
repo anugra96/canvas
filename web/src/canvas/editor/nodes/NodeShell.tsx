@@ -31,7 +31,8 @@ export function NodeShell({ node, selected, className, children, onEdit }: NodeS
   const hasError = issues.some((issue) => issue.severity === 'error')
   const accent = colorFor(node.data.raw.color)
   const isGroup = node.data.raw.type === 'group'
-  const isLane = node.data.entity?.entityType === 'resource'
+  const isLane = node.data.entity?.entityType === 'resource' || node.data.entity?.entityType === 'db_schema'
+  const isTable = node.data.entity?.entityType === 'table'
   const background = isGroup ? groupBackgroundFor(node.data.raw.color) : undefined
   const style: CSSProperties = {}
   if (accent) (style as Record<string, string>)['--card-accent'] = accent
@@ -48,7 +49,7 @@ export function NodeShell({ node, selected, className, children, onEdit }: NodeS
         handleClassName="canvas-resize-handle"
         onResizeEnd={(_, params) => actions.resizeNode(node.id, params.width, params.height)}
       />
-      {!isLane && SIDES.map((side) => (
+      {!isLane && !isTable && SIDES.map((side) => (
         <Handle
           key={side.id}
           id={side.id}

@@ -3,21 +3,28 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
   addApiResource,
+  addDatabaseTable,
+  addReferenceToCanvas,
   applyStandardErrors,
   buildApiReferenceDocument,
   createNodeId,
   deriveManagedRelations,
+  exportDatabaseDdl,
   exportOpenApiDocument,
   findEntityType,
   getEntityMeta,
   OpenApiExportError,
+  removeReferenceFromCanvas,
   renameApiResource,
   renderEntityMarkdown,
   stringifyOpenApiYaml,
-  type CanvasNode,
-  type EntityFields,
-  type Ontology,
   type AddApiResourceInput,
+  type AddDatabaseTableInput,
+  type CanvasNode,
+  type DatabaseReferenceConnection,
+  type EntityFields,
+  type JsonCanvas,
+  type Ontology,
   type JsonObject,
   type LevelNumber,
 } from '@canvas/contract'
@@ -53,6 +60,9 @@ import { useCanvasLinks } from './links/useCanvasLinks'
 import { useCanvasProfile } from './useCanvasProfile'
 import { useCanvasValidation } from './validation/useCanvasValidation'
 import { useApiManagedRelations } from '../apiDesign/useApiManagedRelations'
+import { useDatabaseManagedRelations } from '../database/useDatabaseManagedRelations'
+import { AddTableDialog } from '../database/AddTableDialog'
+import { DatabaseDesignProvider } from '../database/DatabaseDesignProvider'
 import { insertNodes } from '../model/insertNodes'
 import {
   computeDisplay,
@@ -104,7 +114,7 @@ function withEntityFields(
 }
 
 function titleSlug(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'api'
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'canvas'
 }
 
 function downloadText(filename: string, text: string, mediaType: string): void {
@@ -133,7 +143,15 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const ontology = useOntology()
   const isMobile = useIsMobile()
   const coarsePointer = useCoarsePointer()
-  const { profile, isSystems, isApi, isStructured, availableEntityTypes, profileRelationTypes } = useCanvasProfile(ontology, document)
+  const {
+    profile,
+    isSystems,
+    isApi,
+    isDatabase,
+    isStructured,
+    availableEntityTypes,
+    profileRelationTypes,
+  } = useCanvasProfile(ontology, document)
   const initial = useMemo(() => toFlowCanvas(document.canvas, ontology), [document, ontology])
   const viewportLayout = isMobile ? 'mobile' as const : 'desktop' as const
   const savedViewport = useMemo(() => readViewport(document.id, viewportLayout), [document.id, viewportLayout])
@@ -153,6 +171,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const [viewsLevel, setViewsLevel] = useState<LevelNumber | undefined>()
   const [blockedExport, setBlockedExport] = useState<{ label: string; run: () => void } | null>(null)
   const [addResourceOpen, setAddResourceOpen] = useState(false)
+  const [addTableOpen, setAddTableOpen] = useState(false)
   const [compareHead, setCompareHead] = useState<JsonObject | null>(null)
   const [suppressions, setSuppressions] = useState<ValidationSuppression[]>(() => (
     readValidationSuppressions(document.canvas)
@@ -463,41 +482,16 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     return { ok: true }
   }, [markDirty, nodes, ontology, setNodes, setNotice])
 
-  const actions = useMemo<CanvasEditorActions>(
-    () => ({
-      updateText: graph.updateText,
-      updateLabel: graph.updateLabel,
-      updateEntityField,
-      resizeNode: graph.resizeNode,
-      autoFitNode: graph.autoFitNode,
-      editEdgeLabel: graph.openEdgeLabelEditor,
-      selectEdge: graph.selectEdge,
-      openCanvasLinks: links.openCanvasLinks,
-      createOrOpenApiCanvas: links.createOrOpenApiCanvas,
-      openNodeEditor,
-      extractSchemaCard,
-      inlineSchemaCard,
-    }),
-    [
-      extractSchemaCard,
-      graph.autoFitNode,
-      graph.openEdgeLabelEditor,
-      graph.resizeNode,
-      graph.selectEdge,
-      graph.updateLabel,
-      graph.updateText,
-      inlineSchemaCard,
-      links.createOrOpenApiCanvas,
-      links.openCanvasLinks,
-      openNodeEditor,
-      updateEntityField,
-    ],
-  )
-
   useApiManagedRelations({
     nodes,
     setEdges,
     enabled: isApi,
+  })
+
+  useDatabaseManagedRelations({
+    nodes,
+    setEdges,
+    enabled: isDatabase,
   })
 
   const selectedEndpointCount = graph.selectedNodes.filter((node) => (
@@ -549,6 +543,32 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       reportExportFailure(cause)
     }
   }, [exportDocument, reportExportFailure, setError, setNotice])
+
+  const exportDatabase = useCallback(() => ({
+    text: exportDatabaseDdl(fromFlowCanvas(nodes, edges, baseCanvas)),
+    filename: `${titleSlug(title)}.sql`,
+  }), [baseCanvas, edges, nodes, title])
+
+  const onExportDatabase = useCallback(() => {
+    try {
+      const output = exportDatabase()
+      downloadText(output.filename, output.text, 'application/sql')
+      setNotice(`Exported ${output.filename}.`)
+    } catch (cause) {
+      reportExportFailure(cause)
+    }
+  }, [exportDatabase, reportExportFailure, setNotice])
+
+  const onCopyDatabase = useCallback(() => {
+    try {
+      const output = exportDatabase()
+      void navigator.clipboard.writeText(output.text)
+        .then(() => setNotice('Copied PostgreSQL DDL.'))
+        .catch(() => setError('Clipboard access was denied.'))
+    } catch (cause) {
+      reportExportFailure(cause)
+    }
+  }, [exportDatabase, reportExportFailure, setError, setNotice])
 
   const addResource = useCallback((input: AddApiResourceInput): string[] => {
     const canvas = fromFlowCanvas(nodes, edges, baseCanvas)
@@ -621,6 +641,112 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     setNotice(result.added > 0 ? `Added ${result.added} standard error responses.` : 'Standard error responses were already present.')
   }, [baseCanvas, edges, graph.selectedNodes, markDirty, nodes, setEdges, setNodes, setError, setNotice])
 
+  const applyDatabaseCanvas = useCallback((next: JsonCanvas) => {
+    const byId = new Map((next.nodes ?? []).map((node) => [node.id, node]))
+    setNodes((current) => current.map((node) => {
+      const raw = byId.get(node.id)
+      if (!raw) return node
+      const entity = getEntityMeta(raw)
+      const entityType = entity ? findEntityType(ontology, entity.entityType) : undefined
+      const text = entity && entityType
+        ? renderEntityMarkdown(entityType, entity.fields)
+        : node.data.text
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          raw,
+          entity,
+          text,
+        },
+      }
+    }))
+    setEdges((next.edges ?? []).map((edge) => toFlowEdge(edge, ontology)))
+  }, [ontology, setEdges, setNodes])
+
+  const addDatabaseReference = useCallback((connection: DatabaseReferenceConnection): boolean => {
+    const canvas = fromFlowCanvas(nodes, edges, baseCanvas)
+    const next = addReferenceToCanvas(canvas, connection)
+    if (next === canvas) {
+      setNotice('Could not add the foreign key. Check that both columns still exist.')
+      return true
+    }
+    applyDatabaseCanvas(next)
+    markDirty()
+    setNotice(`Added foreign key ${connection.fromColumn} → ${connection.toColumn}.`)
+    return true
+  }, [applyDatabaseCanvas, baseCanvas, edges, markDirty, nodes, setNotice])
+
+  const removeDatabaseReference = useCallback((edgeId: string) => {
+    const canvas = fromFlowCanvas(nodes, edges, baseCanvas)
+    const edge = (canvas.edges ?? []).find((candidate) => candidate.id === edgeId)
+    if (!edge) return
+    const next = removeReferenceFromCanvas(canvas, edge)
+    applyDatabaseCanvas(next)
+    markDirty()
+    setNotice('Removed the foreign key.')
+  }, [applyDatabaseCanvas, baseCanvas, edges, markDirty, nodes, setNotice])
+
+  const addTable = useCallback((input: AddDatabaseTableInput): string[] => {
+    const canvas = fromFlowCanvas(nodes, edges, baseCanvas)
+    const result = addDatabaseTable(canvas, input)
+    if (result.errors.length > 0) return result.errors
+    const additions = result.nodes.map((node) => ({
+      ...toFlowNode(node),
+      selected: node.app?.entityType === 'table',
+    }))
+    setNodes((current) => [
+      ...current.map((node) => ({ ...node, selected: false })),
+      ...additions,
+    ])
+    markDirty()
+    setNotice(`Added table ${input.schema.trim() || 'public'}.${input.name.trim()}.`)
+    window.setTimeout(() => {
+      void fitView({
+        nodes: additions.map((node) => ({ id: node.id })),
+        padding: 0.2,
+        maxZoom: 1.2,
+        duration: 300,
+      })
+    }, 0)
+    return []
+  }, [baseCanvas, edges, fitView, markDirty, nodes, setNodes, setNotice])
+
+  const actions = useMemo<CanvasEditorActions>(
+    () => ({
+      updateText: graph.updateText,
+      updateLabel: graph.updateLabel,
+      updateEntityField,
+      resizeNode: graph.resizeNode,
+      autoFitNode: graph.autoFitNode,
+      editEdgeLabel: graph.openEdgeLabelEditor,
+      selectEdge: graph.selectEdge,
+      openCanvasLinks: links.openCanvasLinks,
+      createOrOpenApiCanvas: links.createOrOpenApiCanvas,
+      openNodeEditor,
+      addDatabaseReference,
+      removeDatabaseReference,
+      extractSchemaCard,
+      inlineSchemaCard,
+    }),
+    [
+      addDatabaseReference,
+      extractSchemaCard,
+      graph.autoFitNode,
+      graph.openEdgeLabelEditor,
+      graph.resizeNode,
+      graph.selectEdge,
+      graph.updateLabel,
+      graph.updateText,
+      inlineSchemaCard,
+      links.createOrOpenApiCanvas,
+      links.openCanvasLinks,
+      openNodeEditor,
+      removeDatabaseReference,
+      updateEntityField,
+    ],
+  )
+
   const commands = useCanvasCommands({
     backLabel: trail.length > 1 ? 'Back' : 'All canvases',
     isSystems: isStructured,
@@ -634,7 +760,13 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     onRename: () => setRenameOpen(true),
     onAddNote: graph.addNoteAtCenter,
     onAddCard: graph.addAtCenter,
-    onAddEntity: graph.addEntityAtCenter,
+    onAddEntity: (entityTypeId) => {
+      if (isDatabase && entityTypeId === 'table') {
+        setAddTableOpen(true)
+        return
+      }
+      graph.addEntityAtCenter(entityTypeId)
+    },
     onAddProcessCanvas: () => void links.addProcessWithCanvas(),
     onViews: () => {
       setViewsLevel(undefined)
@@ -646,6 +778,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     onSave: () => { void save() },
     onTidy: graph.autoLayout,
     onTidyApi: graph.autoLayoutApi,
+    onTidyDatabase: graph.autoLayoutDatabase,
     onFitCards: graph.autoFitAll,
     onFitView: graph.fitCanvas,
     onDownload: () => guardExport('Canvas export', () => { void download() }),
@@ -655,6 +788,8 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     selectedEndpointCount,
     onExportOpenApi: (format) => guardExport('OpenAPI export', () => onExportOpenApi(format)),
     onCopyOpenApi: (format) => guardExport('OpenAPI copy', () => onCopyOpenApi(format)),
+    onExportDatabase: () => guardExport('DDL export', onExportDatabase),
+    onCopyDatabase: () => guardExport('DDL copy', onCopyDatabase),
     onCompare: openCompare,
     onHelp: () => setHelpOpen(true),
     onDuplicate: graph.duplicateSelection,
@@ -701,6 +836,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
             onDismissNotice={() => setNotice('')}
             error={error}
           />
+          <DatabaseDesignProvider nodes={rawNodes} enabled={isDatabase}>
           <ApiDesignProvider nodes={nodes} enabled={isApi}>
             <NodeEditRequestContext.Provider value={nodeEditRequest}>
             <CanvasWorkspace
@@ -729,13 +865,14 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
             />
             </NodeEditRequestContext.Provider>
           </ApiDesignProvider>
+          </DatabaseDesignProvider>
           <EditorDialogs
             documentId={document.id}
             title={title}
             nodes={nodes}
             edges={edges}
             ontology={ontology}
-            isSystems={isStructured}
+            isSystems={isSystems || isApi}
             isApi={isApi}
             trail={trail}
             commands={commands}
@@ -762,6 +899,24 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
               initialPrefix={prefixFromPaths(nodes)}
               onSubmit={addResource}
               onClose={() => setAddResourceOpen(false)}
+            />
+          )}
+          {addTableOpen && (
+            <AddTableDialog
+              schemas={Array.from(new Set([
+                'public',
+                ...nodes.flatMap((node) => {
+                  if (node.data.entity?.entityType === 'db_schema') {
+                    return [String(node.data.entity.fields.name ?? '')]
+                  }
+                  if (node.data.entity?.entityType === 'table') {
+                    return [String(node.data.entity.fields.schema ?? 'public')]
+                  }
+                  return []
+                }),
+              ])).filter(Boolean)}
+              onSubmit={addTable}
+              onClose={() => setAddTableOpen(false)}
             />
           )}
           {blockedExport && (

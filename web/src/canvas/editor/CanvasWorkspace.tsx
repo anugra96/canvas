@@ -12,6 +12,7 @@ import {
 import {
   attachRequestModel,
   attachResponseModel,
+  columnFromDatabaseHandle,
   edgeOrigin,
   getEdgeMeta,
   removeModelReference,
@@ -173,6 +174,21 @@ export function CanvasWorkspace({
   }
 
   function handleConnect(connection: Connection) {
+    if (profile.id === 'database') {
+      const fromColumn = columnFromDatabaseHandle(connection.sourceHandle)
+      const toColumn = columnFromDatabaseHandle(connection.targetHandle)
+      if (connection.source && connection.target && fromColumn && toColumn) {
+        actions.addDatabaseReference({
+          fromNode: connection.source,
+          toNode: connection.target,
+          fromColumn,
+          toColumn,
+        })
+      } else {
+        setNotice('Draw a reference from one column row to another.')
+      }
+      return
+    }
     if (!apiDesign) {
       graph.onConnect(connection)
       return
@@ -207,6 +223,25 @@ export function CanvasWorkspace({
   }
 
   function handleEdgesChange(changes: EdgeChange<CanvasFlowEdge>[]) {
+    if (profile.id === 'database') {
+      const removals = changes
+        .filter((change) => change.type === 'remove')
+        .map((change) => edges.find((edge) => edge.id === change.id))
+        .filter((edge): edge is CanvasFlowEdge => Boolean(edge))
+        .filter((edge) => {
+          const meta = edge.data?.raw ? getEdgeMeta(edge.data.raw) : undefined
+          return meta?.managed && meta.relationType === 'references'
+        })
+      if (removals.length > 0) {
+        const removedIds = new Set(removals.map((edge) => edge.id))
+        for (const edge of removals) actions.removeDatabaseReference(edge.id)
+        const rest = changes.filter((change) => !(
+          change.type === 'remove' && removedIds.has(change.id)
+        ))
+        if (rest.length > 0) graph.onEdgesChange(rest)
+        return
+      }
+    }
     if (!apiDesign) {
       graph.onEdgesChange(changes)
       return

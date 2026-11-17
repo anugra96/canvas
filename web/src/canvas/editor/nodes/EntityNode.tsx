@@ -10,12 +10,14 @@ import {
   Database,
   FileCheck,
   FolderGit2,
+  Layers,
   List,
   Package,
   Scale,
   Server,
   ShieldCheck,
   StickyNote,
+  Table2,
   TriangleAlert,
   UserRound,
   Workflow,
@@ -46,6 +48,9 @@ import { ApiEndpointEditor, EndpointCopyCurlButton } from '../../apiDesign/ApiEn
 import { ResourceEditor } from '../../apiDesign/ResourceEditor'
 import { SecuritySchemeEditor } from '../../apiDesign/SecuritySchemeEditor'
 import { ApiCardPreview } from '../../apiDesign/ApiCardPreview'
+import { DatabaseEnumCardPreview, DatabaseSchemaCardPreview } from '../../database/DatabaseCardPreviews'
+import { TableCardPreview } from '../../database/TableCardPreview'
+import { TableEditor } from '../../database/TableEditor'
 import { ArtifactEditor } from './ArtifactEditor'
 import { FieldInput } from './FieldInput'
 
@@ -60,6 +65,8 @@ const ICONS = {
   code: Code2,
   braces: Braces,
   database: Database,
+  layers: Layers,
+  'table-2': Table2,
   'file-check': FileCheck,
   list: List,
   package: Package,
@@ -151,7 +158,7 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
   const iconColor = colorFor(entityType.color)
   const hiddenSummaryKeys = entityType.id === 'endpoint'
     ? new Set(['operation'])
-    : entityType.id === 'api_definition'
+    : entityType.id === 'api_definition' || entityType.id === 'database_definition'
       ? new Set(['extra'])
       : entityType.id === 'security_scheme'
         ? new Set(['definition'])
@@ -207,7 +214,10 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
                   key={field.key}
                   field={field}
                   value={meta.fields[field.key] == null ? '' : String(meta.fields[field.key])}
-                  readOnly={entityType.id === 'api_definition' && field.key === 'extra'}
+                  readOnly={
+                    (entityType.id === 'api_definition' || entityType.id === 'database_definition')
+                    && field.key === 'extra'
+                  }
                   onChange={(value) => actions.updateEntityField(id, field.key, value)}
                 />
               ))}
@@ -232,10 +242,16 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
     <NodeShell
       node={{ id, data, selected } as CanvasFlowNode}
       selected={Boolean(selected)}
-      className={`entity-node${entityType.id === 'resource' ? ' api-lane-node' : ''}`}
+      className={`entity-node${entityType.id === 'resource' ? ' api-lane-node' : ''}${entityType.id === 'db_schema' ? ' db-schema-lane' : ''}`}
       onEdit={startEditing}
     >
-      {['api_definition', 'resource', 'endpoint', 'security_scheme'].includes(entityType.id) ? (
+      {entityType.id === 'table' ? (
+        <TableCardPreview fields={meta.fields} />
+      ) : entityType.id === 'db_schema' ? (
+        <DatabaseSchemaCardPreview fields={meta.fields} />
+      ) : entityType.id === 'db_enum' ? (
+        <DatabaseEnumCardPreview fields={meta.fields} />
+      ) : ['api_definition', 'resource', 'endpoint', 'security_scheme'].includes(entityType.id) ? (
         <div
           className="entity-card api-card"
           onDoubleClick={() => {
@@ -332,6 +348,11 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
             />
           ) : entityType.id === 'resource' ? (
             <ResourceEditor
+              fields={meta.fields}
+              onChange={(key, value) => actions.updateEntityField(id, key, value)}
+            />
+          ) : entityType.id === 'table' ? (
+            <TableEditor
               fields={meta.fields}
               onChange={(key, value) => actions.updateEntityField(id, key, value)}
             />

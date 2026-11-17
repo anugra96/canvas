@@ -9,7 +9,7 @@ const engineFixture = readFileSync(
 
 test('imports the Engine fixture into API cards with zero review errors', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByLabel('Canvas type').locator('option')).toHaveText(['Raw canvas', 'Systems', 'API'])
+  await expect(page.getByLabel('Canvas type').locator('option')).toHaveText(['Raw canvas', 'Systems', 'API', 'Database'])
   await page.getByRole('button', { name: 'Import OpenAPI' }).click()
   const dialog = page.getByRole('dialog', { name: 'Import OpenAPI' })
   await dialog.getByLabel('OpenAPI 3.1 document').fill(engineFixture)

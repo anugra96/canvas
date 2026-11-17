@@ -5,9 +5,11 @@ import {
 } from '@xyflow/react'
 import {
   DEFAULT_ONTOLOGY,
+  databaseColumnHandleId,
   findRelationType,
   getEdgeMeta,
   getEntityMeta,
+  isDatabaseColumnHandle,
   type CanvasEdge,
   type CanvasEntityMeta,
   type CanvasNode,
@@ -90,7 +92,7 @@ export function toFlowNode(raw: CanvasNode): CanvasFlowNode {
       : raw.type,
     position: { x: raw.x, y: raw.y },
     data: nodeData(raw),
-    zIndex: raw.type === 'group' || meta?.entityType === 'resource' ? 0 : 1,
+    zIndex: raw.type === 'group' || meta?.entityType === 'resource' || meta?.entityType === 'db_schema' ? 0 : 1,
     style: {
       width: raw.width,
       ...(autoHeight ? {} : { height: raw.height }),
@@ -102,15 +104,22 @@ export function toFlowEdge(
   raw: CanvasEdge,
   ontology: Ontology = DEFAULT_ONTOLOGY,
 ): CanvasFlowEdge {
-  const relationType = getEdgeMeta(raw)?.relationType
+  const meta = getEdgeMeta(raw)
+  const relationType = meta?.relationType
   const relation = relationType ? findRelationType(ontology, relationType) : undefined
   const color = colorFor(raw.color ?? relation?.color) ?? '#6b7d8c'
+  const fromColumn = typeof meta?.fromColumn === 'string' ? meta.fromColumn : undefined
+  const toColumn = typeof meta?.toColumn === 'string' ? meta.toColumn : undefined
   return {
     id: raw.id,
     source: raw.fromNode,
     target: raw.toNode,
-    sourceHandle: raw.fromSide ?? 'right',
-    targetHandle: raw.toSide ?? 'left',
+    sourceHandle: fromColumn
+      ? databaseColumnHandleId(fromColumn, raw.fromSide === 'left' ? 'left' : 'right')
+      : raw.fromSide ?? 'right',
+    targetHandle: toColumn
+      ? databaseColumnHandleId(toColumn, raw.toSide === 'right' ? 'right' : 'left')
+      : raw.toSide ?? 'left',
     type: 'canvas',
     data: { raw, label: raw.label ?? relation?.label, relationType },
     style: { stroke: color, strokeWidth: 2 },
@@ -183,8 +192,12 @@ export function fromFlowCanvas(
     const raw = { ...(edge.data?.raw as CanvasEdge) }
     raw.fromNode = edge.source
     raw.toNode = edge.target
-    if (edge.sourceHandle) raw.fromSide = edge.sourceHandle as CanvasNodeSide
-    if (edge.targetHandle) raw.toSide = edge.targetHandle as CanvasNodeSide
+    if (edge.sourceHandle && !isDatabaseColumnHandle(edge.sourceHandle)) {
+      raw.fromSide = edge.sourceHandle as CanvasNodeSide
+    }
+    if (edge.targetHandle && !isDatabaseColumnHandle(edge.targetHandle)) {
+      raw.toSide = edge.targetHandle as CanvasNodeSide
+    }
     const label = edge.data?.label
     if (typeof label === 'string' && label) raw.label = label
     else delete raw.label
