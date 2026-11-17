@@ -776,6 +776,10 @@ test('derives focused graph views and a process sequence', async ({ page }) => {
   await page.getByRole('button', { name: 'Views' }).click()
   const dialog = page.getByRole('dialog', { name: 'Derived views' })
   await expect(dialog).toBeVisible()
+  await expect(dialog.locator('.derived-card')).toHaveCount(2)
+  await expect(dialog.locator('.derived-card')).toContainText(['Actor', 'System'])
+
+  await dialog.getByRole('button', { name: '2 Containers' }).click()
   await expect(dialog.locator('.derived-card')).toHaveCount(4)
   await expect(dialog.locator('.derived-card')).toContainText(['Actor', 'Process', 'System', 'Artifact'])
 
