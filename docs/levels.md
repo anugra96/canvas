@@ -37,6 +37,21 @@ relations that already exist.
   flow, Contracts, Pipeline). The view chooses the aspect; the level chooses the
   depth. The Contracts view starts at level 4.
 
+### Legacy and other card types
+
+Nothing disappears silently. Legacy types that Systems canvases can still hold
+get a level:
+
+| Type | Level |
+| --- | --- |
+| `service`, `api`, `external_system` | 1, like System |
+| `database`, `queue` | 2 and folded into the only System that `uses`, `stores_in`, or `reads_from`/`writes_to` it; else 1 |
+| `event` | 4, parent: the only card that `publishes` or `emits` it |
+
+Any other card without a level (untyped text, `requirement`, `code`, groups
+excluded) is listed in a **Not in levels (N)** note under the diagram, with
+**Show in canvas**. Annotations keep their badge rule.
+
 ## Parents
 
 A card's parent is chosen by the first rule that matches, in this order. If
@@ -119,16 +134,20 @@ The Review panel gets a **Views** section above Issues:
 
 ```text
 Views
-  ✓ Level 1 Context
-  ⚠ Level 2 Containers   3 cards unassigned
-  ⚠ Level 4 Contracts    2 schemas unassigned
+  ⚠ Level 1 Context      3 cards unassigned
+  ⚠ Level 2 Containers   2 schemas unassigned
+  ✓ Level 4 Contracts
 ```
 
-- A level is **ready** when no card at a deeper level is Unassigned at that
-  level. Each unready level produces one `level_unassigned` issue per card
-  (tier `design`, severity warning) with the message
-  "<card> has no owner at <level>: add `defines`, `describes`, `runs`,
-  `produces`, or `uses` from a System".
+- A level is **ready** when its view has no Unassigned card: every card with a
+  level **greater than** that level folds into a visible card. Cards at that
+  level or above are visible, so they never count. The readiness counts must
+  equal the Unassigned card in the view at the same level (same function).
+- One `level_unassigned` issue per card (tier `design`, severity warning), for
+  the lowest available level where it is unassigned, with the message
+  "<card> has no owner at Level <n> <name>: add `defines`, `describes`, `runs`,
+  `produces`, or `uses` from a System". The Views section still shows each
+  level's count.
 - Clicking a level opens the Derived views dialog at that level.
 - No automatic fix: choosing an owner is a design decision.
 - An unready view still renders. Gaps show as the Unassigned card; nothing is
