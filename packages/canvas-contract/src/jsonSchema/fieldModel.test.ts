@@ -1,16 +1,19 @@
 import { describe, expect, it } from 'vitest'
 
-import { applyFieldEdit, buildSchemaColumns, parseFieldModel, type FieldEdit } from './fieldModel'
+import { applyFieldEdit, applyFieldEditResult, buildSchemaColumns, parseFieldModel, type FieldEdit } from './fieldModel'
 
 const source = JSON.stringify({
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   'x-root': 'keep',
   type: 'object',
   properties: {
-    id: { type: 'string', description: 'ID', 'x-property': 'keep' },
+    id: { type: 'string', format: 'uuid', minLength: 3, pattern: '^[a-z]+$', default: 'abc', description: 'ID', 'x-property': 'keep' },
     owner: {
       type: 'object',
-      properties: { name: { type: 'string' }, age: { type: ['integer', 'null'] } },
+      properties: {
+        name: { type: 'string' },
+        age: { type: ['integer', 'null'], minimum: 0, maximum: 10, default: 5 },
+      },
       required: ['name'],
     },
     state: { type: 'string', enum: ['open', 'closed'] },
@@ -146,6 +149,28 @@ describe('schema field model', () => {
       },
     },
     {
+      name: 'drops string keywords when changing to number',
+      edit: { type: 'setType', path: ['id'], kind: 'number' } as FieldEdit,
+      check: (next: TestSchema) => {
+        expect(next.properties.id!.type).toBe('number')
+        expect(next.properties.id!.format).toBeUndefined()
+        expect(next.properties.id!.minLength).toBeUndefined()
+        expect(next.properties.id!.pattern).toBeUndefined()
+        expect(next.properties.id!.default).toBeUndefined()
+        expect(next.properties.id!['x-property']).toBe('keep')
+      },
+    },
+    {
+      name: 'drops number keywords and mismatched defaults when changing to string',
+      edit: { type: 'setType', path: ['owner', 'age'], kind: 'string' } as FieldEdit,
+      check: (next: TestSchema) => {
+        expect(next.properties.owner!.properties.age!.type).toEqual(['string', 'null'])
+        expect(next.properties.owner!.properties.age!.minimum).toBeUndefined()
+        expect(next.properties.owner!.properties.age!.maximum).toBeUndefined()
+        expect(next.properties.owner!.properties.age!.default).toBeUndefined()
+      },
+    },
+    {
       name: 'leaves advanced rows untouched',
       edit: { type: 'setDescription', path: ['id'], description: 'Identifier' } as FieldEdit,
       check: (next: TestSchema) => {
@@ -155,7 +180,77 @@ describe('schema field model', () => {
   ])('$name', ({ edit, check }) => {
     check(edited(edit))
   })
+
+  it('renames and deletes example properties, including nested paths', () => {
+    const renamed = JSON.parse(applyFieldEdit(exampleSource, {
+      type: 'rename',
+      path: ['id'],
+      name: 'identifier',
+    })) as ExampleSchema
+    expect(renamed.examples).toEqual([
+      { identifier: 'a', owner: { name: 'Ada' }, extra: true },
+      { identifier: 'b', owner: { name: 'Grace' } },
+    ])
+
+    const renamedNested = JSON.parse(applyFieldEdit(exampleSource, {
+      type: 'rename',
+      path: ['owner', 'name'],
+      name: 'fullName',
+    })) as ExampleSchema
+    expect(renamedNested.examples).toEqual([
+      { id: 'a', owner: { fullName: 'Ada' }, extra: true },
+      { id: 'b', owner: { fullName: 'Grace' } },
+    ])
+
+    const deleted = JSON.parse(applyFieldEdit(exampleSource, {
+      type: 'delete',
+      path: ['owner', 'name'],
+    })) as ExampleSchema
+    expect(deleted.examples).toEqual([
+      { id: 'a', owner: {}, extra: true },
+      { id: 'b', owner: {} },
+    ])
+  })
+
+  it('returns an error when renaming to an existing field name', () => {
+    const result = applyFieldEditResult(exampleSource, { type: 'rename', path: ['id'], name: 'owner' })
+    expect(result.error).toContain('already exists')
+    expect(result.source).toBe(exampleSource)
+  })
+
+  it('drops items when leaving array and keeps unknown keywords', () => {
+    const arraySource = JSON.stringify({
+      type: 'object',
+      properties: {
+        tags: { type: 'array', items: { type: 'integer' }, 'x-array': 'keep' },
+      },
+    }, null, 2)
+    const next = JSON.parse(applyFieldEdit(arraySource, {
+      type: 'setType',
+      path: ['tags'],
+      kind: 'string',
+    })) as TestSchema
+    expect(next.properties.tags!.items).toBeUndefined()
+    expect(next.properties.tags!.type).toBe('string')
+    expect(next.properties.tags!['x-array']).toBe('keep')
+  })
 })
+
+interface ExampleSchema extends TestSchema {
+  examples?: Array<Record<string, unknown>>
+}
+
+const exampleSource = JSON.stringify({
+  type: 'object',
+  properties: {
+    id: { type: 'string' },
+    owner: { type: 'object', properties: { name: { type: 'string' } } },
+  },
+  examples: [
+    { id: 'a', owner: { name: 'Ada' }, extra: true },
+    { id: 'b', owner: { name: 'Grace' } },
+  ],
+}, null, 2)
 
 function sourceObject(): TestSchema {
   return JSON.parse(source) as TestSchema

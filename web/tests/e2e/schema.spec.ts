@@ -22,8 +22,10 @@ test('designs and validates a JSON Schema contract', async ({ page }) => {
   await expect(card).toContainText('Valid schema')
   await expect(card).toContainText('Review required')
   await card.dblclick()
-  await expect(page.getByRole('dialog', { name: 'Edit schema contract' })).toBeVisible()
+  const dialog = page.getByRole('dialog', { name: 'Edit schema contract' })
+  await expect(dialog).toBeVisible()
 
+  await dialog.getByRole('tab', { name: 'JSON' }).click()
   const source = page.locator('.schema-source-input')
   await source.fill('{"type":')
   await expect(page.locator('.schema-diagnostics')).toContainText('Invalid JSON')

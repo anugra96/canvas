@@ -577,13 +577,22 @@ interface RowValidationError {
   instancePath?: string
   message?: string
   keyword?: string
-  params?: { missingProperty?: string }
+  params?: {
+    missingProperty?: string
+    allowedValues?: unknown[]
+    pattern?: string
+    type?: string
+    format?: string
+    limit?: number
+    additionalProperty?: string
+  }
 }
 
 export interface SchemaRowValidation {
   valid: boolean
   errors: RowValidationError[]
   cells: Record<string, string[]>
+  messages: string[]
 }
 
 function pathSegments(value: string): string[] {
@@ -594,18 +603,75 @@ function prefixPath(prefix: string[], value: string[]): boolean {
   return prefix.length <= value.length && prefix.every((part, index) => part === value[index])
 }
 
+function errorTarget(error: RowValidationError): string[] {
+  const segments = pathSegments(error.instancePath ?? '')
+  return error.keyword === 'required' && error.params?.missingProperty
+    ? [...segments, error.params.missingProperty]
+    : segments
+}
+
+function columnForError(error: RowValidationError, columns: SchemaColumn[]): SchemaColumn | undefined {
+  const target = errorTarget(error)
+  const sorted = [...columns].sort((left, right) => right.path.length - left.path.length)
+  return sorted.find((column) => prefixPath(column.path, target))
+    ?? sorted.find((column) => prefixPath(target, column.path))
+}
+
 function cellKeyForError(error: RowValidationError, columns: SchemaColumn[]): string | undefined {
   if (columns.length === 0) return undefined
   if (columns.length === 1 && columns[0]?.key === 'value') return 'value'
-  const segments = pathSegments(error.instancePath ?? '')
-  const target = error.keyword === 'required' && error.params?.missingProperty
-    ? [...segments, error.params.missingProperty]
-    : segments
-  const sorted = [...columns].sort((left, right) => right.path.length - left.path.length)
-  const direct = sorted.find((column) => prefixPath(column.path, target))
-  if (direct) return direct.key
-  const parent = sorted.find((column) => prefixPath(target, column.path))
-  return parent?.key
+  return columnForError(error, columns)?.key
+}
+
+const TYPE_PHRASES: Record<string, string> = {
+  string: 'a string',
+  number: 'a number',
+  integer: 'an integer',
+  boolean: 'a boolean',
+  object: 'an object',
+  array: 'an array',
+  null: 'null',
+}
+
+const FORMAT_PHRASES: Record<string, string> = {
+  'date-time': 'a date-time like 2026-11-16T10:30:00Z',
+  date: 'a date like 2026-11-16',
+  email: 'an email address',
+  uuid: 'a UUID',
+  uri: 'a URI',
+}
+
+function plainMessage(error: RowValidationError, columns: SchemaColumn[]): string {
+  const column = columnForError(error, columns)
+  const target = errorTarget(error)
+  const label = column?.label ?? (target.join('.') || 'row')
+  const params = error.params ?? {}
+  if (error.keyword === 'required') return `${label}: required`
+  if (error.keyword === 'enum') {
+    const values = Array.isArray(params.allowedValues) ? params.allowedValues.map(String) : []
+    return `${label}: must be one of ${values.join(', ')}`
+  }
+  if (error.keyword === 'pattern') return `${label}: must match ${String(params.pattern ?? '')}`
+  if (error.keyword === 'type') {
+    const types = String(params.type ?? '').split(',')
+    const type = types.find((candidate) => candidate !== 'null') ?? types[0] ?? ''
+    const phrase = TYPE_PHRASES[type] ?? type
+    const suffix = column?.nullable && type !== 'null' ? ' or null' : ''
+    return `${label}: must be ${phrase}${suffix}`
+  }
+  if (error.keyword === 'format') {
+    const format = String(params.format ?? '')
+    return `${label}: must be ${FORMAT_PHRASES[format] ?? format}`
+  }
+  if (error.keyword === 'minimum') return `${label}: must be at least ${String(params.limit ?? '')}`
+  if (error.keyword === 'maximum') return `${label}: must be at most ${String(params.limit ?? '')}`
+  if (error.keyword === 'minLength') return `${label}: must be at least ${String(params.limit ?? '')} characters`
+  if (error.keyword === 'maxLength') return `${label}: must be at most ${String(params.limit ?? '')} characters`
+  if (error.keyword === 'additionalProperties') {
+    return `${label}: must not have extra property ${String(params.additionalProperty ?? '')}`
+  }
+  if (error.keyword === 'anyOf' || error.keyword === 'oneOf') return `${label}: must match the schema`
+  return `${label}: ${error.message ?? 'is invalid'}`
 }
 
 export function validateSchemaRow(
@@ -630,15 +696,18 @@ export function validateSchemaRow(
     const valid = validate(row) === true
     const errors = (validate.errors ?? []) as RowValidationError[]
     const cells: Record<string, string[]> = {}
+    const messages: string[] = []
     for (const error of errors) {
       const key = cellKeyForError(error, columns)
       const message = `${error.instancePath || 'root'} ${error.message ?? 'is invalid'}`
       if (key) cells[key] = [...(cells[key] ?? []), message]
+      const plain = plainMessage(error, columns)
+      if (!messages.includes(plain)) messages.push(plain)
     }
-    return { valid, errors, cells }
+    return { valid, errors, cells, messages }
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : 'Could not validate row.'
-    return { valid: false, errors: [{ message }], cells: {} }
+    return { valid: false, errors: [{ message }], cells: {}, messages: [message] }
   } finally {
     for (const key of added) {
       try { ajv2020.removeSchema(key) } catch { /* Already gone. */ }

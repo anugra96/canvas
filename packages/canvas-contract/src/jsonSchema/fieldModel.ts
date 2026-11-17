@@ -72,6 +72,19 @@ const DETAIL_KEYS = [
   'format', 'minLength', 'maxLength', 'pattern', 'minimum', 'maximum', 'default',
 ] as const
 
+const TYPE_KEYWORDS = [
+  'enum', '$ref', 'properties', 'items', 'format', 'minLength', 'maxLength', 'pattern',
+  'minimum', 'maximum', 'required', 'default',
+] as const
+
+const STRING_KEYWORDS = ['format', 'minLength', 'maxLength', 'pattern'] as const
+const NUMBER_KEYWORDS = ['minimum', 'maximum'] as const
+
+export interface FieldEditResult {
+  source: string
+  error?: string
+}
+
 function string(value: unknown): string {
   return value == null ? '' : String(value)
 }
@@ -242,55 +255,110 @@ function typeValue(base: string, nullable: boolean): string | string[] {
   return nullable ? [base, 'null'] : base
 }
 
-function setOwnedType(schema: JsonObject, kind: FieldKind, nullable: boolean, itemsType = 'string'): void {
-  if (kind === 'ref' || kind === 'advanced') return
-  if (kind === 'enum') {
-    delete schema.$ref
-    delete schema.properties
-    delete schema.items
-    delete schema.required
-    schema.type = typeValue(typeBase(schema.type) || 'string', nullable)
-    if (!Array.isArray(schema.enum)) schema.enum = []
-    return
-  }
-  if (kind === 'object') {
-    for (const key of ['enum', '$ref', 'items', 'format', 'minLength', 'maxLength', 'pattern', 'minimum', 'maximum'] as const) delete schema[key]
-    if (!isObject(schema.properties)) schema.properties = {}
-    schema.type = typeValue('object', nullable)
-    return
-  }
-  if (kind === 'array') {
-    for (const key of ['enum', '$ref', 'properties', 'format', 'minLength', 'maxLength', 'pattern', 'minimum', 'maximum', 'required'] as const) delete schema[key]
-    const items = objectOrEmpty(schema.items)
-    const itemKind = itemsType || typeBase(items.type) || 'string'
-    schema.items = itemKind === 'object'
-      ? { ...(isObject(items) ? items : {}), type: 'object', ...(isObject(items.properties) ? { properties: items.properties } : {}) }
-      : { ...(isObject(items) ? items : {}), type: itemKind }
-    schema.type = typeValue('array', nullable)
-    return
-  }
-  for (const key of ['enum', '$ref', 'properties', 'items', 'format', 'minLength', 'maxLength', 'pattern', 'minimum', 'maximum', 'required'] as const) delete schema[key]
-  schema.type = typeValue(kind, nullable)
+function keywordsForType(kind: FieldKind): Set<string> {
+  if (kind === 'string') return new Set([...STRING_KEYWORDS, 'default'])
+  if (kind === 'number' || kind === 'integer') return new Set([...NUMBER_KEYWORDS, 'default'])
+  if (kind === 'boolean') return new Set(['default'])
+  if (kind === 'object') return new Set(['properties', 'required', 'default'])
+  if (kind === 'array') return new Set(['items', 'default'])
+  if (kind === 'enum') return new Set([...STRING_KEYWORDS, 'enum', 'default'])
+  return new Set()
 }
 
-export function applyFieldEdit(source: string, edit: FieldEdit): string {
+function defaultMatches(value: unknown, kind: FieldKind, schema: JsonObject, nullable: boolean): boolean {
+  if (value === null) return nullable
+  if (kind === 'string') return typeof value === 'string'
+  if (kind === 'number') return typeof value === 'number'
+  if (kind === 'integer') return typeof value === 'number' && Number.isInteger(value)
+  if (kind === 'boolean') return typeof value === 'boolean'
+  if (kind === 'object') return isObject(value)
+  if (kind === 'array') return Array.isArray(value)
+  if (kind === 'enum') {
+    return Array.isArray(schema.enum)
+      && schema.enum.some((item) => JSON.stringify(item) === JSON.stringify(value))
+  }
+  return false
+}
+
+function setOwnedType(schema: JsonObject, kind: FieldKind, nullable: boolean, itemsType = 'string'): void {
+  if (kind === 'ref' || kind === 'advanced') return
+  const allowed = keywordsForType(kind)
+  for (const key of TYPE_KEYWORDS) {
+    if (key !== 'default' && !allowed.has(key) && key in schema) delete schema[key]
+  }
+  if (kind === 'enum') {
+    const base = typeBase(schema.type)
+    const enumBase = ['string', 'number', 'integer', 'boolean'].includes(base) ? base : 'string'
+    schema.type = typeValue(enumBase, nullable)
+    if (!Array.isArray(schema.enum)) schema.enum = []
+  } else if (kind === 'object') {
+    if (!isObject(schema.properties)) schema.properties = {}
+    schema.type = typeValue('object', nullable)
+  } else if (kind === 'array') {
+    const items = objectOrEmpty(schema.items)
+    const itemKind = itemsType || typeBase(items.type) || 'string'
+    const nextItems: JsonObject = { ...items, type: itemKind }
+    if (itemKind !== 'object') delete nextItems.properties
+    schema.items = nextItems
+    schema.type = typeValue('array', nullable)
+  } else {
+    schema.type = typeValue(kind, nullable)
+  }
+  if ('default' in schema && !defaultMatches(schema.default, kind, schema, nullable)) {
+    delete schema.default
+  }
+}
+
+function exampleParent(record: JsonObject, path: string[]): JsonObject | undefined {
+  let current: JsonObject = record
+  for (const segment of path) {
+    const next = current[segment]
+    if (!isObject(next)) return undefined
+    current = next
+  }
+  return current
+}
+
+function renameExampleKey(record: JsonObject, parentPath: string[], previous: string, name: string): void {
+  const parent = exampleParent(record, parentPath)
+  if (!parent || !(previous in parent)) return
+  const entries = Object.entries(parent).map(([key, value]) => [key === previous ? name : key, value] as const)
+  for (const key of Object.keys(parent)) delete parent[key]
+  for (const [key, value] of entries) parent[key] = value
+}
+
+function deleteExampleKey(record: JsonObject, parentPath: string[], name: string): void {
+  const parent = exampleParent(record, parentPath)
+  if (parent) delete parent[name]
+}
+
+function updateExamples(root: JsonObject, path: string[], update: (record: JsonObject, parentPath: string[], name: string) => void): void {
+  if (!Array.isArray(root.examples) || path.length === 0) return
+  const parentPath = path.slice(0, -1)
+  const name = path.at(-1)!
+  for (const example of root.examples) {
+    if (isObject(example)) update(example, parentPath, name)
+  }
+}
+
+export function applyFieldEditResult(source: string, edit: FieldEdit): FieldEditResult {
   let parsed: unknown
   try {
     parsed = JSON.parse(source)
   } catch {
-    return source
+    return { source }
   }
-  if (!isObject(parsed)) return source
+  if (!isObject(parsed)) return { source }
   const root = structuredClone(parsed)
   if (edit.type === 'add') {
     const parent = schemaAt(root, edit.parentPath)
-    if (!parent) return source
+    if (!parent) return { source }
     if (!isObject(parent.properties)) parent.properties = {}
     const properties = parent.properties as JsonObject
     const name = uniqueName(properties, edit.name)
     properties[name] = { type: 'string' }
   } else if (edit.type === 'delete') {
-    if (edit.path.length === 0) return source
+    if (edit.path.length === 0) return { source }
     const parent = parentAt(root, edit.path)
     const name = edit.path.at(-1)!
     delete objectOrEmpty(parent.properties)[name]
@@ -299,41 +367,50 @@ export function applyFieldEdit(source: string, edit: FieldEdit): string {
       if (remaining.length === 0) delete parent.required
       else parent.required = remaining
     }
+    updateExamples(root, edit.path, deleteExampleKey)
   } else if (edit.type === 'rename') {
     const name = edit.name.trim()
-    if (!name || edit.path.length === 0) return source
+    if (!name || edit.path.length === 0) return { source }
     const parent = parentAt(root, edit.path)
     const previous = edit.path.at(-1)!
-    if (previous === name) return source
+    if (previous === name) return { source }
     const properties = objectOrEmpty(parent.properties)
-    if (name in properties) return source
+    if (name in properties) {
+      return {
+        source,
+        error: `"${name}" already exists in this object.`,
+      }
+    }
     const entries = Object.entries(properties)
     parent.properties = Object.fromEntries(entries.map(([key, value]) => [key === previous ? name : key, value]))
     if (Array.isArray(parent.required)) {
       parent.required = parent.required.map((item) => String(item) === previous ? name : item)
     }
+    updateExamples(root, edit.path, (record, parentPath, current) => {
+      renameExampleKey(record, parentPath, current, name)
+    })
   } else if (edit.type === 'move') {
-    if (edit.path.length === 0) return source
+    if (edit.path.length === 0) return { source }
     const parent = parentAt(root, edit.path)
     const properties = objectOrEmpty(parent.properties)
     const entries = Object.entries(properties)
     const index = entries.findIndex(([key]) => key === edit.path.at(-1))
     const nextIndex = index + edit.direction
-    if (index < 0 || nextIndex < 0 || nextIndex >= entries.length) return source
+    if (index < 0 || nextIndex < 0 || nextIndex >= entries.length) return { source }
     const copy = [...entries]
     const [item] = copy.splice(index, 1)
-    if (!item) return source
+    if (!item) return { source }
     copy.splice(nextIndex, 0, item)
     parent.properties = Object.fromEntries(copy)
   } else {
     const schema = schemaAt(root, edit.path)
-    if (!schema) return source
+    if (!schema) return { source }
     const parent = parentAt(root, edit.path)
     const name = edit.path.at(-1)
     if (edit.type === 'setType') {
       setOwnedType(schema, edit.kind, isNullable(schema.type), edit.itemsType)
     } else if (edit.type === 'setRequired') {
-      if (!name) return source
+      if (!name) return { source }
       const required = new Set(Array.isArray(parent.required) ? parent.required.map(String) : [])
       if (edit.required) required.add(name)
       else required.delete(name)
@@ -341,7 +418,7 @@ export function applyFieldEdit(source: string, edit: FieldEdit): string {
       else delete parent.required
     } else if (edit.type === 'setNullable') {
       const kind = kindFor(schema)
-      if (kind === 'ref' || kind === 'advanced') return source
+      if (kind === 'ref' || kind === 'advanced') return { source }
       const base = typeBase(schema.type)
       if (base) schema.type = typeValue(base, edit.nullable)
     } else if (edit.type === 'setDescription') {
@@ -378,10 +455,14 @@ export function applyFieldEdit(source: string, edit: FieldEdit): string {
       }
     } else if (edit.type === 'setRef') {
       const ref = edit.name.trim()
-      if (!ref) return source
+      if (!ref) return { source }
       for (const key of OWNED_KEYS) delete schema[key]
       schema.$ref = `#/components/schemas/${ref}`
     }
   }
-  return JSON.stringify(root, null, 2)
+  return { source: JSON.stringify(root, null, 2) }
+}
+
+export function applyFieldEdit(source: string, edit: FieldEdit): string {
+  return applyFieldEditResult(source, edit).source
 }

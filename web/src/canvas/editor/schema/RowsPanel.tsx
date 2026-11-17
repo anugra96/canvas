@@ -1,5 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 
 import {
   buildSchemaColumns,
@@ -10,6 +10,13 @@ import {
 
 import { validateSchemaRow } from '../../schema/jsonSchema'
 import type { SchemaCardSource } from '../../schema/schemaCards'
+import {
+  dateTimeInputValue,
+  emptyRow,
+  rfc3339FromLocalDateTime,
+  setAt,
+  valueAt,
+} from '../../schema/rowValues'
 
 function parseRoot(source: string): Record<string, unknown> | null {
   try {
@@ -31,33 +38,6 @@ function writeExamples(source: string, examples: unknown[]): string {
   if (examples.length > 0) root.examples = examples.slice(0, 5)
   else delete root.examples
   return JSON.stringify(root, null, 2)
-}
-
-function valueAt(row: unknown, path: string[]): unknown {
-  if (path.length === 0) return row
-  let current: unknown = row
-  for (const segment of path) {
-    if (!current || typeof current !== 'object' || Array.isArray(current)) return undefined
-    current = (current as Record<string, unknown>)[segment]
-  }
-  return current
-}
-
-function setAt(row: unknown, path: string[], value: unknown): unknown {
-  if (path.length === 0) return value
-  const copy = row && typeof row === 'object' && !Array.isArray(row)
-    ? structuredClone(row) as Record<string, unknown>
-    : {}
-  let current: Record<string, unknown> = copy
-  for (const segment of path.slice(0, -1)) {
-    const child = current[segment]
-    if (!child || typeof child !== 'object' || Array.isArray(child)) current[segment] = {}
-    current = current[segment] as Record<string, unknown>
-  }
-  const key = path.at(-1)!
-  if (value === undefined) delete current[key]
-  else current[key] = value
-  return copy
 }
 
 function compact(value: unknown): string {
@@ -114,10 +94,6 @@ function csvValue(text: string, column: SchemaColumn): unknown {
     try { return JSON.parse(text) } catch { return text }
   }
   return text
-}
-
-function emptyRow(columns: SchemaColumn[]): unknown {
-  return columns.length === 1 && columns[0]?.key === 'value' ? '' : {}
 }
 
 export function RowsPanel({
@@ -300,23 +276,30 @@ function RowsTable({
         </thead>
         <tbody>
           {rows.map(({ row, index, validation }) => (
-            <tr key={index} className={validation.valid ? 'valid' : 'invalid'}>
-              <td className="schema-row-status" title={validation.valid ? 'Valid' : 'Invalid'}>{validation.valid ? '✓' : '✗'} {index + 1}</td>
-              {columns.map((column) => (
-                <td key={column.key} className={validation.cells[column.key] ? 'invalid' : ''} title={validation.cells[column.key]?.join('\n')}>
-                  <RowCell
-                    column={column}
-                    value={valueAt(row, column.path)}
-                    onChange={(value) => onSet(index, column, value)}
-                  />
-                </td>
-              ))}
-              {onDelete && (
-                <td>
-                  <button type="button" className="icon-button" aria-label={`Delete row ${index + 1}`} onClick={() => onDelete(index)}><Trash2 size={12} /></button>
-                </td>
+            <Fragment key={index}>
+              <tr className={validation.valid ? 'valid' : 'invalid'}>
+                <td className="schema-row-status" title={validation.valid ? 'Valid' : 'Invalid'}>{validation.valid ? '✓' : '✗'} {index + 1}</td>
+                {columns.map((column) => (
+                  <td key={column.key} className={validation.cells[column.key] ? 'invalid' : ''} title={validation.cells[column.key]?.join('\n')}>
+                    <RowCell
+                      column={column}
+                      value={valueAt(row, column.path)}
+                      onChange={(value) => onSet(index, column, value)}
+                    />
+                  </td>
+                ))}
+                {onDelete && (
+                  <td>
+                    <button type="button" className="icon-button" aria-label={`Delete row ${index + 1}`} onClick={() => onDelete(index)}><Trash2 size={12} /></button>
+                  </td>
+                )}
+              </tr>
+              {!validation.valid && validation.messages.length > 0 && (
+                <tr className="schema-row-errors">
+                  <td colSpan={columns.length + (onDelete ? 2 : 1)}>{validation.messages.join(' · ')}</td>
+                </tr>
               )}
-            </tr>
+            </Fragment>
           ))}
         </tbody>
       </table>
@@ -397,17 +380,22 @@ function RowCell({
     )
   }
 
-  const inputType = column.format === 'date' ? 'date' : column.format === 'date-time' ? 'datetime-local' : column.kind === 'number' || column.kind === 'integer' ? 'number' : 'text'
-  const displayValue = value === null || value === undefined ? '' : String(value)
+  const isDateTime = column.format === 'date-time'
+  const inputType = column.format === 'date' ? 'date' : isDateTime ? 'datetime-local' : column.kind === 'number' || column.kind === 'integer' ? 'number' : 'text'
+  const displayValue = isDateTime
+    ? dateTimeInputValue(value)
+    : value === null || value === undefined ? '' : String(value)
   return (
     <div className="schema-cell-input">
       <input
         aria-label={column.label}
         type={inputType}
+        step={isDateTime ? 1 : undefined}
         value={displayValue}
         onChange={(event) => {
           const text = event.target.value
           if (text === '') onChange(undefined)
+          else if (isDateTime) onChange(rfc3339FromLocalDateTime(text))
           else if (column.kind === 'number' || column.kind === 'integer') {
             const number = Number(text)
             onChange(Number.isFinite(number) ? number : text)

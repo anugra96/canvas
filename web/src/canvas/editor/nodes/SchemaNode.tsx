@@ -111,7 +111,21 @@ export function SchemaNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
         </div>
       </div>
       {editing && (
-        <FocusEditor label="Edit schema contract" title={name} onClose={() => setEditing(false)}>
+        <FocusEditor
+          label="Edit schema contract"
+          title={name}
+          actions={apiDesign ? (
+            <label className="focus-name-field">
+              <span>Name</span>
+              <input
+                aria-label="Schema name"
+                value={name}
+                onChange={(event) => actions.updateEntityField(id, 'name', event.target.value)}
+              />
+            </label>
+          ) : undefined}
+          onClose={() => setEditing(false)}
+        >
           <SchemaEditor
             fields={meta.fields}
             api={Boolean(apiDesign)}

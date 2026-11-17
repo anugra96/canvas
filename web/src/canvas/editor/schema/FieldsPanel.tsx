@@ -2,7 +2,7 @@ import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Plus, Trash2 } from 'luc
 import { useState } from 'react'
 
 import {
-  applyFieldEdit,
+  applyFieldEditResult,
   parseFieldModel,
   type FieldEdit,
   type FieldRow,
@@ -55,10 +55,13 @@ export function FieldsPanel({
   const sharedSchemas = schemas.filter((schema) => schema.name !== currentSchemaName)
   const model = parseFieldModel(source)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const [editError, setEditError] = useState('')
   const rows = flatten(model.rows)
 
   function edit(operation: FieldEdit) {
-    onChange(applyFieldEdit(source, operation))
+    const result = applyFieldEditResult(source, operation)
+    setEditError(result.error ?? '')
+    if (!result.error) onChange(result.source)
   }
 
   function changeType(row: FieldRow, value: string) {
@@ -95,6 +98,7 @@ export function FieldsPanel({
         </button>
         <span className="api-endpoint-muted">{rows.length} field{rows.length === 1 ? '' : 's'}</span>
       </div>
+      {editError && <div className="schema-field-error" role="alert">{editError}</div>}
       {rows.length === 0 ? (
         <p className="schema-table-empty">No properties yet. Add the first field.</p>
       ) : (
