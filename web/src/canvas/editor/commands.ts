@@ -6,6 +6,7 @@ import {
   Camera,
   Copy,
   Download,
+  GitCompareArrows,
   Group as GroupIcon,
   Keyboard,
   LayoutGrid,
@@ -75,6 +76,7 @@ interface CanvasCommandInput {
   selectedEndpointCount: number
   onExportOpenApi: (format: 'json' | 'yaml') => void
   onCopyOpenApi: (format: 'json' | 'yaml') => void
+  onCompare: () => void
   onHelp: () => void
   onDuplicate: () => void
   onSelectAll: () => void
@@ -257,6 +259,15 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       bindings: [{ code: 'Digit1', shift: true }],
       available: true,
       run: input.onFitView,
+    },
+    {
+      id: 'api.compare',
+      label: 'Compare…',
+      icon: GitCompareArrows,
+      surface: 'overflow',
+      section: 'export',
+      available: input.profileId === 'api',
+      run: input.onCompare,
     },
     {
       id: 'export.openapi-yaml',

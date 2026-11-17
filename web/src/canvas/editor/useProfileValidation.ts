@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 
 import {
+  validateApiDesign,
   validateProfileCanvas,
   type CanvasProfile,
   type JsonCanvas,
@@ -36,6 +37,7 @@ export function useProfileValidation({
       ...validateSchemaContracts(canvas.nodes ?? [], canvas.edges ?? [], new Date(), isApi ? 'api' : 'systems'),
       ...(isApi ? validateApiExamples(canvas.nodes ?? []) : []),
       ...(isApi ? validateApiOperations(canvas.nodes ?? []) : []),
+      ...(isApi ? validateApiDesign(canvas) : []),
       ...validateSemanticRules(canvas.nodes ?? [], canvas.edges ?? []),
     ]
   }, [baseCanvas, edges, isApi, isSystems, nodes, ontology, profile])

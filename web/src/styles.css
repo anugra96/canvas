@@ -7983,3 +7983,99 @@ select {
   background: var(--ui-input-bg);
   font-size: 11px;
 }
+
+.compare-dialog {
+  display: grid;
+  width: min(980px, calc(100vw - 32px));
+  max-height: min(820px, calc(100vh - 48px));
+  padding: 18px;
+  gap: 16px;
+  overflow: hidden;
+  border: 1px solid var(--ui-line-strong);
+  border-radius: var(--radius);
+  background: var(--ui-panel-solid);
+  box-shadow: var(--ui-shadow);
+}
+
+.compare-body {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(360px, 1.2fr);
+  gap: 18px;
+  min-height: 0;
+}
+
+.compare-controls,
+.compare-results {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.compare-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.compare-tabs button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--radius);
+  color: var(--ui-muted);
+  background: transparent;
+}
+
+.compare-tabs button.active {
+  border-color: var(--ui-accent);
+  color: var(--ui-strong);
+  background: var(--ui-highlight);
+}
+
+.compare-group {
+  display: grid;
+  gap: 8px;
+}
+
+.compare-group > h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ui-strong);
+  font-size: 13px;
+}
+
+.compare-group > h3 span {
+  color: var(--ui-faint);
+  font-size: 10px;
+}
+
+.compare-endpoint {
+  display: grid;
+  gap: 5px;
+  padding: 8px 10px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--radius);
+}
+
+.compare-endpoint strong {
+  color: var(--ui-text);
+  font-size: 11px;
+}
+
+.compare-endpoint ul {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding-left: 16px;
+  color: var(--ui-muted);
+  font-size: 11px;
+}
+
+@media (max-width: 760px) {
+  .compare-body {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+}

@@ -13,6 +13,7 @@ import {
   renderEntityMarkdown,
   stringifyOpenApiYaml,
   type AddApiResourceInput,
+  type JsonObject,
 } from '@canvas/contract'
 import {
   fromFlowCanvas,
@@ -40,6 +41,7 @@ import { useCanvasValidation } from './validation/useCanvasValidation'
 import { useApiManagedRelations } from '../apiDesign/useApiManagedRelations'
 import { ApiDesignProvider } from '../apiDesign/ApiDesignProvider'
 import { AddResourceDialog } from '../apiDesign/AddResourceDialog'
+import { OpenApiCompareDialog } from '../apiDesign/OpenApiCompareDialog'
 import { useCanvasHistory } from './useCanvasHistory'
 import { useEditorShortcuts } from './useEditorShortcuts'
 import { readValidationSuppressions, type ValidationSuppression } from './validationSuppressions'
@@ -93,6 +95,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const [helpOpen, setHelpOpen] = useState(false)
   const [viewsOpen, setViewsOpen] = useState(false)
   const [addResourceOpen, setAddResourceOpen] = useState(false)
+  const [compareHead, setCompareHead] = useState<JsonObject | null>(null)
   const [suppressions, setSuppressions] = useState<ValidationSuppression[]>(() => (
     readValidationSuppressions(document.canvas)
   ))
@@ -300,6 +303,14 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     }
   }, [exportDocument, reportExportFailure, setNotice])
 
+  const openCompare = useCallback(() => {
+    try {
+      setCompareHead(exportOpenApiDocument(fromFlowCanvas(nodes, edges, baseCanvas)))
+    } catch (cause) {
+      reportExportFailure(cause)
+    }
+  }, [baseCanvas, edges, nodes, reportExportFailure])
+
   const onCopyOpenApi = useCallback((format: 'json' | 'yaml') => {
     try {
       const output = exportDocument(format)
@@ -413,6 +424,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     selectedEndpointCount,
     onExportOpenApi,
     onCopyOpenApi,
+    onCompare: openCompare,
     onHelp: () => setHelpOpen(true),
     onDuplicate: graph.duplicateSelection,
     onSelectAll: graph.selectAll,
@@ -499,6 +511,14 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
               initialPrefix={prefixFromPaths(nodes)}
               onSubmit={addResource}
               onClose={() => setAddResourceOpen(false)}
+            />
+          )}
+          {compareHead && (
+            <OpenApiCompareDialog
+              client={client}
+              currentCanvasId={document.id}
+              head={compareHead}
+              onClose={() => setCompareHead(null)}
             />
           )}
         </div>
