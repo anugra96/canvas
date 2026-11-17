@@ -228,4 +228,79 @@ describe('OpenAPI 3.0 conversion positions', () => {
     expect(relations).toContain('accepts')
     expect(relations).toContain('returns')
   })
+
+  it.each([
+    {
+      name: 'merges path-level parameters and lets operation-level parameters win',
+      document: {
+        openapi: '3.1.0',
+        info: { title: 'T', version: '1' },
+        paths: {
+          '/v1/jobs/{job_id}': {
+            summary: 'One job',
+            description: 'Path description.',
+            parameters: [
+              { name: 'job_id', in: 'path', required: true, description: 'path-level', schema: { type: 'string' } },
+              { name: 'trace_id', in: 'header', schema: { type: 'string' } },
+            ],
+            get: {
+              tags: ['jobs'],
+              summary: 'Get one job',
+              parameters: [
+                { name: 'job_id', in: 'path', required: true, description: 'operation-level', schema: { type: 'string', format: 'uuid' } },
+                { name: 'expand', in: 'query', schema: { type: 'string' } },
+              ],
+              responses: { '200': { description: 'ok' } },
+            },
+            delete: {
+              tags: ['jobs'],
+              responses: { '204': { description: 'gone' } },
+            },
+          },
+        },
+      },
+      check: (exported: unknown) => {
+        const item = at(exported, ['paths', '/v1/jobs/{job_id}']) as Record<string, unknown>
+        expect(item.parameters).toBeUndefined()
+        expect(item.summary).toBeUndefined()
+        const get = item.get as Record<string, unknown>
+        const getParameters = get.parameters as Array<Record<string, unknown>>
+        expect(getParameters.map((parameter) => parameter.name)).toEqual(['job_id', 'trace_id', 'expand'])
+        expect(getParameters[0]).toMatchObject({ description: 'operation-level', schema: { type: 'string', format: 'uuid' } })
+        expect(getParameters[1]).toMatchObject({ name: 'trace_id', in: 'header' })
+        expect(get.summary).toBe('Get one job')
+        expect(get.description).toBe('Path description.')
+        const del = item.delete as Record<string, unknown>
+        expect((del.parameters as Array<Record<string, unknown>>).map((parameter) => parameter.name)).toEqual(['job_id', 'trace_id'])
+        expect(del.summary).toBe('One job')
+        expect(del.description).toBe('Path description.')
+      },
+    },
+    {
+      name: 'fills path-level summary and description on operations without their own',
+      document: {
+        openapi: '3.1.0',
+        info: { title: 'T', version: '1' },
+        paths: {
+          '/v1/jobs': {
+            summary: 'Jobs',
+            description: 'Job operations.',
+            get: { tags: ['jobs'], responses: { '200': { description: 'ok' } } },
+            post: { tags: ['jobs'], summary: 'Create job', description: 'Creates one.', responses: { '201': { description: 'ok' } } },
+          },
+        },
+      },
+      check: (exported: unknown) => {
+        const item = at(exported, ['paths', '/v1/jobs']) as Record<string, unknown>
+        expect(item.summary).toBeUndefined()
+        expect(item.description).toBeUndefined()
+        expect(at(item, ['get', 'summary'])).toBe('Jobs')
+        expect(at(item, ['get', 'description'])).toBe('Job operations.')
+        expect(at(item, ['post', 'summary'])).toBe('Create job')
+        expect(at(item, ['post', 'description'])).toBe('Creates one.')
+      },
+    },
+  ])('$name', ({ document, check }) => {
+    check(exportOpenApiCanvas(importOpenApi(document).canvas))
+  })
 })

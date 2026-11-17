@@ -46,6 +46,35 @@ function inferResourceName(path: string): string {
   return segments.find((segment) => !/^v\d+(?:\.\d+)*$/i.test(segment))?.replace(/[{}]/g, '') || 'root'
 }
 
+function parameterKey(parameter: JsonObject): string | undefined {
+  if (typeof parameter.name !== 'string' || typeof parameter.in !== 'string') return undefined
+  return `${parameter.in}\u0000${parameter.name}`
+}
+
+function operationWithPathItem(operation: JsonObject, item: JsonObject): JsonObject {
+  const merged: JsonObject = { ...operation }
+  const pathParameters = Array.isArray(item.parameters) ? item.parameters.filter(isObject) : []
+  if (pathParameters.length > 0) {
+    const parameters = [...pathParameters]
+    const positions = new Map<string, number>()
+    for (const [index, parameter] of parameters.entries()) {
+      const key = parameterKey(parameter)
+      if (key) positions.set(key, index)
+    }
+    const operationParameters = Array.isArray(operation.parameters) ? operation.parameters.filter(isObject) : []
+    for (const parameter of operationParameters) {
+      const key = parameterKey(parameter)
+      const position = key ? positions.get(key) : undefined
+      if (position === undefined) parameters.push(parameter)
+      else parameters[position] = parameter
+    }
+    merged.parameters = parameters
+  }
+  if (merged.summary == null && item.summary != null) merged.summary = item.summary
+  if (merged.description == null && item.description != null) merged.description = item.description
+  return merged
+}
+
 function apiExtra(document: JsonObject): JsonObject {
   const known = new Set([
     'openapi', 'info', 'servers', 'paths', 'components', 'tags', 'security',
@@ -86,7 +115,7 @@ export function importOpenApi(source: string | unknown): OpenApiImportResult {
     if (!isObject(item)) continue
     for (const method of METHOD_ORDER) {
       const operation = item[method]
-      if (isObject(operation)) operationEntries.push({ path, method, operation })
+      if (isObject(operation)) operationEntries.push({ path, method, operation: operationWithPathItem(operation, item) })
     }
   }
 
