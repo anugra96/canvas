@@ -1,6 +1,7 @@
 import { getEdgeMeta, getEntityMeta } from '../ontology'
 import type { CanvasEdge, CanvasNode, JsonCanvas } from '../jsonCanvas'
 import { isObject, objectOrEmpty, schemaNameFromRef } from './document'
+import type { JsonObject } from './types'
 
 const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace'] as const
 
@@ -34,7 +35,22 @@ function refsForSchema(schema: unknown, result = new Set<string>()): Set<string>
   return result
 }
 
-function operationRefs(operation: Record<string, unknown>, key: 'request' | 'responses'): Array<{ name: string; status?: string; mediaType?: string }> {
+function responseBody(value: unknown, componentResponses: JsonObject, seen = new Set<string>()): JsonObject {
+  const response = objectOrEmpty(value)
+  if (typeof response.$ref !== 'string') return response
+  const prefix = '#/components/responses/'
+  if (!response.$ref.startsWith(prefix)) return response
+  const name = decodeURIComponent(response.$ref.slice(prefix.length))
+  if (seen.has(name)) return response
+  seen.add(name)
+  return responseBody(componentResponses[name], componentResponses, seen)
+}
+
+function operationRefs(
+  operation: Record<string, unknown>,
+  key: 'request' | 'responses',
+  componentResponses: JsonObject = {},
+): Array<{ name: string; status?: string; mediaType?: string }> {
   const refs: Array<{ name: string; status?: string; mediaType?: string }> = []
   if (key === 'request') {
     const content = objectOrEmpty(objectOrEmpty(operation.requestBody).content)
@@ -47,7 +63,7 @@ function operationRefs(operation: Record<string, unknown>, key: 'request' | 'res
   }
   const responses = objectOrEmpty(operation.responses)
   for (const [status, response] of Object.entries(responses)) {
-    const content = objectOrEmpty(objectOrEmpty(response).content)
+    const content = objectOrEmpty(responseBody(response, componentResponses).content)
     for (const [mediaType, media] of Object.entries(content)) {
       for (const name of refsForSchema(objectOrEmpty(media).schema)) {
         refs.push({ name, status, mediaType })
@@ -137,6 +153,7 @@ export function deriveManagedRelations(canvas: Pick<JsonCanvas, 'nodes' | 'edges
     apiExtra = {}
   }
   const topSecurity = securityNames(apiExtra.security)
+  const componentResponses = objectOrEmpty(objectOrEmpty(apiExtra.components).responses)
   const edges: CanvasEdge[] = []
 
   for (const resource of resources) {
@@ -168,7 +185,7 @@ export function deriveManagedRelations(canvas: Pick<JsonCanvas, 'nodes' | 'edges
         }))
       }
     }
-    for (const ref of operationRefs(operation, 'responses')) {
+    for (const ref of operationRefs(operation, 'responses', componentResponses)) {
       const schema = schemaByName.get(ref.name)
       if (schema) {
         edges.push(managedEdge('returns', endpoint.id, schema.id, {

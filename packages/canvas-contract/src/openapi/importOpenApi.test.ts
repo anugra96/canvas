@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { getEntityMeta } from '../ontology'
 import { exportOpenApiCanvas } from './exportOpenApi'
 import { importOpenApi } from './importOpenApi'
+import { buildApiReferenceDocument } from './reference'
 
 const engineSource = readFileSync(new URL('./fixtures/skyward-engine-v1.json', import.meta.url), 'utf8')
 
@@ -210,23 +211,65 @@ describe('OpenAPI 3.0 conversion positions', () => {
     expect(at(exported, ['tags'])).toEqual([{ name: 'jobs' }])
   })
 
-  it('draws returns and accepts edges for array schemas whose items are a $ref', () => {
-    const imported = importOpenApi({
-      openapi: '3.1.0',
-      info: { title: 'T', version: '1' },
-      paths: {
-        '/jobs': {
-          post: {
-            requestBody: { content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/JobCreate' } } } } },
-            responses: { '200': { description: 'ok', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/Job' } } } } } },
+  it.each([
+    {
+      name: 'a response schema that is a $ref',
+      pathItem: {
+        get: {
+          tags: ['jobs'],
+          responses: {
+            '200': { description: 'ok', content: { 'application/json': { schema: { $ref: '#/components/schemas/Job' } } } },
           },
         },
       },
-      components: { schemas: { Job: { type: 'object' }, JobCreate: { type: 'object' } } },
+      components: { schemas: { Job: { type: 'object' } } },
+    },
+    {
+      name: 'a response schema that is an array of $refs',
+      pathItem: {
+        get: {
+          tags: ['jobs'],
+          responses: {
+            '200': { description: 'ok', content: { 'application/json': { schema: { type: 'array', items: { $ref: '#/components/schemas/Job' } } } } },
+          },
+        },
+      },
+      components: { schemas: { Job: { type: 'object' } } },
+    },
+    {
+      name: 'a response object that is a $ref',
+      pathItem: {
+        get: {
+          tags: ['jobs'],
+          responses: { '200': { $ref: '#/components/responses/JobPage' } },
+        },
+      },
+      components: {
+        responses: {
+          JobPage: { description: 'ok', content: { 'application/json': { schema: { $ref: '#/components/schemas/Job' } } } },
+        },
+        schemas: { Job: { type: 'object' } },
+      },
+    },
+  ])('draws a returns edge for $name', ({ pathItem, components }) => {
+    const imported = importOpenApi({
+      openapi: '3.1.0',
+      info: { title: 'T', version: '1' },
+      tags: [{ name: 'jobs' }],
+      paths: { '/jobs': pathItem },
+      components,
     })
-    const relations = (imported.canvas.edges ?? []).map((edge) => edge.app?.relationType).filter(Boolean)
-    expect(relations).toContain('accepts')
-    expect(relations).toContain('returns')
+    const nodes = imported.canvas.nodes ?? []
+    const byId = new Map(nodes.map((node) => [node.id, node]))
+    const returns = (imported.canvas.edges ?? [])
+      .filter((edge) => edge.app?.relationType === 'returns')
+      .map((edge) => ({
+        status: edge.app?.status,
+        target: String(getEntityMeta(byId.get(edge.toNode)!)?.fields.name),
+      }))
+    expect(returns).toEqual([{ status: '200', target: 'Job' }])
+    const endpoint = buildApiReferenceDocument(nodes).resources.flatMap((resource) => resource.endpoints)[0]
+    expect(endpoint?.responses).toEqual([{ status: '200', description: 'ok', model: 'Job' }])
   })
 
   it.each([

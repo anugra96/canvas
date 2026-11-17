@@ -45,19 +45,36 @@ function parametersFor(path: string, operation: Record<string, unknown>): ApiRef
 
 function requestModels(operation: Record<string, unknown>): string[] {
   const content = objectOrEmpty(objectOrEmpty(operation.requestBody).content)
-  return [...new Set(Object.values(content).flatMap((media) => {
-    const name = schemaNameFromRef(objectOrEmpty(objectOrEmpty(media).schema).$ref)
-    return name ? [name] : []
-  }))]
+  return [...new Set(Object.values(content).flatMap((media) => (
+    schemaModelNames(objectOrEmpty(media).schema)
+  )))]
 }
 
-function responses(operation: Record<string, unknown>): ApiReferenceResponse[] {
-  return Object.entries(objectOrEmpty(operation.responses)).map(([status, response]) => {
-    const body = objectOrEmpty(response)
-    const models = [...new Set(Object.values(objectOrEmpty(body.content)).flatMap((media) => {
-      const name = schemaNameFromRef(objectOrEmpty(objectOrEmpty(media).schema).$ref)
-      return name ? [name] : []
-    }))]
+function schemaModelNames(schema: unknown): string[] {
+  const value = objectOrEmpty(schema)
+  const direct = schemaNameFromRef(value.$ref)
+  if (direct) return [direct]
+  if (value.type === 'array') return schemaModelNames(value.items)
+  return []
+}
+
+function responseBody(value: unknown, componentResponses: JsonObject, seen = new Set<string>()): JsonObject {
+  const response = objectOrEmpty(value)
+  if (typeof response.$ref !== 'string') return response
+  const prefix = '#/components/responses/'
+  if (!response.$ref.startsWith(prefix)) return response
+  const name = decodeURIComponent(response.$ref.slice(prefix.length))
+  if (seen.has(name)) return response
+  seen.add(name)
+  return responseBody(componentResponses[name], componentResponses, seen)
+}
+
+function responses(operation: Record<string, unknown>, componentResponses: JsonObject): ApiReferenceResponse[] {
+  return Object.entries(objectOrEmpty(operation.responses)).map(([status, value]) => {
+    const body = responseBody(value, componentResponses)
+    const models = [...new Set(Object.values(objectOrEmpty(body.content)).flatMap((media) => (
+      schemaModelNames(objectOrEmpty(media).schema)
+    )))]
     return {
       status,
       description: body.description == null ? undefined : String(body.description),
@@ -109,6 +126,17 @@ function apiTopSecurity(nodes: CanvasNode[]): { defined: boolean; value: unknown
     return { defined: true, value: Array.isArray(extra.security) ? extra.security : [] }
   } catch {
     return { defined: false, value: [] }
+  }
+}
+
+function apiComponentResponses(nodes: CanvasNode[]): JsonObject {
+  const api = nodes.find((node) => getEntityMeta(node)?.entityType === 'api_definition')
+  if (!api) return {}
+  try {
+    const extra: unknown = JSON.parse(field(api, 'extra') || '{}')
+    return objectOrEmpty(objectOrEmpty(objectOrEmpty(extra).components).responses)
+  } catch {
+    return {}
   }
 }
 
@@ -183,6 +211,7 @@ function buildApiReferenceData(nodes: CanvasNode[]): ApiReferenceData {
     .filter((node) => getEntityMeta(node)?.entityType === 'resource')
     .sort((left, right) => left.x - right.x || left.y - right.y || left.id.localeCompare(right.id))
   const topSecurity = apiTopSecurity(nodes)
+  const componentResponses = apiComponentResponses(nodes)
   const grouped = new Map<string, EndpointEntry[]>(resources.map((resource) => [field(resource, 'name'), []]))
   for (const node of nodes.filter((candidate) => getEntityMeta(candidate)?.entityType === 'endpoint')) {
     let operation: Record<string, unknown> = {}
@@ -236,7 +265,7 @@ function buildApiReferenceData(nodes: CanvasNode[]): ApiReferenceData {
       deprecated: entry.deprecated,
       parameters: parametersFor(entry.path, entry.operation),
       requestModels: requestModels(entry.operation),
-      responses: responses(entry.operation),
+      responses: responses(entry.operation, componentResponses),
       security: securityNames(effectiveSecurity),
       securityOverride: canonicalSecurity(effectiveSecurity) !== defaultKey,
     }
