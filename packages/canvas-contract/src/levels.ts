@@ -356,7 +356,7 @@ export function schemaReferenceEdges(nodes: CanvasNode[]): CanvasEdge[] {
       fromNode: node.id,
       toNode: schemaRef,
       label: 'uses',
-      app: { relationType: 'uses' },
+      app: { relationType: 'uses', inferred: true },
     } as CanvasEdge]
   })
 }
