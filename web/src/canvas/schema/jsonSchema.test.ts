@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { CanvasEdge, CanvasNode } from '@canvas/contract'
 
-import { analyzeJsonSchema, validateSchemaContracts } from './jsonSchema'
+import { analyzeJsonSchema, validateApiOperations, validateSchemaContracts } from './jsonSchema'
 
 const validSource = JSON.stringify({
   $schema: 'https://json-schema.org/draft/2020-12/schema',
@@ -126,5 +126,24 @@ describe('schema links', () => {
       new Date('2026-01-01T00:00:00Z'),
     )
     expect(issues.some((issue) => issue.code === 'schema_unlinked')).toBe(false)
+  })
+})
+
+
+describe('validateApiOperations', () => {
+  it.each([
+    { name: 'valid operation', operation: { tags: ['things'], responses: { '200': { description: 'OK' } } }, valid: true },
+    { name: 'invalid responses', operation: { responses: [] }, valid: false },
+    { name: 'invalid parameters', operation: { parameters: 'bad' }, valid: false },
+  ])('$name', ({ operation, valid }) => {
+    const endpoint = entityNode('endpoint', 'endpoint', {
+      method: 'GET',
+      path: '/things',
+      status: 'active',
+      operation: JSON.stringify(operation),
+    })
+    const issues = validateApiOperations([endpoint])
+    expect(issues.length === 0).toBe(valid)
+    if (!valid) expect(issues[0]).toMatchObject({ code: 'operation_invalid', severity: 'error', nodeId: 'endpoint' })
   })
 })

@@ -1,6 +1,8 @@
 import Ajv from 'ajv'
 import Ajv2020 from 'ajv/dist/2020'
 
+import openApiSchemaJson from '../../../../packages/canvas-contract/src/openapi/fixtures/openapi-3.1-schema-2022-10-07.json'
+
 import {
   getEntityMeta,
   type CanvasEdge,
@@ -35,6 +37,18 @@ export interface SchemaAnalysis {
 
 const ajv = new Ajv({ allErrors: true, strict: false, validateFormats: false })
 const ajv2020 = new Ajv2020({ allErrors: true, strict: false, validateFormats: false })
+function patchOpenApiDynamicMeta(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(patchOpenApiDynamicMeta)
+  if (!value || typeof value !== 'object') return value
+  const result: Record<string, unknown> = {}
+  for (const [key, child] of Object.entries(value)) {
+    if (key === '$dynamicRef' && child === '#meta') result.$ref = '#/$defs/schema'
+    else result[key] = patchOpenApiDynamicMeta(child)
+  }
+  return result
+}
+
+const validateOpenApiDocument = ajv2020.compile(patchOpenApiDynamicMeta(openApiSchemaJson) as object)
 
 function stringField(value: unknown): string {
   return value == null ? '' : String(value)
@@ -511,6 +525,41 @@ export function validateApiExamples(nodes: CanvasNode[]): CanvasProfileIssue[] {
         })
       }
     }
+  }
+  return issues
+}
+
+
+export function validateApiOperations(nodes: CanvasNode[]): CanvasProfileIssue[] {
+  const issues: CanvasProfileIssue[] = []
+  for (const node of nodes) {
+    const meta = getEntityMeta(node)
+    if (meta?.entityType !== 'endpoint') continue
+    let operation: unknown
+    try {
+      operation = JSON.parse(stringField(meta.fields.operation) || '{}')
+    } catch (cause) {
+      issues.push({
+        code: 'operation_invalid',
+        severity: 'error',
+        message: `Operation JSON is invalid: ${cause instanceof Error ? cause.message : 'could not parse JSON'}.`,
+        nodeId: node.id,
+      })
+      continue
+    }
+    if (validateOpenApiDocument({
+      openapi: '3.1.0',
+      info: { title: 'Operation', version: '1.0.0' },
+      paths: { '/operation': { get: operation } },
+    })) continue
+    const first = validateOpenApiDocument.errors?.[0]
+    const path = (first?.instancePath ?? '').replace(/^\/paths\/~1operation\/get/, '') || 'root'
+    issues.push({
+      code: 'operation_invalid',
+      severity: 'error',
+      message: `Operation is not a valid OpenAPI 3.1 operation: ${path} ${first?.message ?? 'invalid operation'}.`,
+      nodeId: node.id,
+    })
   }
   return issues
 }

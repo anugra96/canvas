@@ -1,4 +1,4 @@
-import type { CanvasProfileIssue } from '@canvas/contract'
+import type { ApiCheckFix, CanvasProfileIssue } from '@canvas/contract'
 
 import type { CanvasFlowEdge, CanvasFlowNode } from '../model/adapter'
 import { validationIssueKey } from '../editor/validationIdentity'
@@ -11,7 +11,9 @@ interface AddCardFix {
   nameSuffix: string
 }
 
-type SuggestionAction = { kind: 'add-cards'; fixes: AddCardFix[] }
+type SuggestionAction =
+  | { kind: 'add-cards'; fixes: AddCardFix[] }
+  | { kind: 'api-fix'; targetId: string; fix: ApiCheckFix }
 
 interface CanvasSuggestionItem {
   id: string
@@ -35,6 +37,33 @@ const TITLES: Partial<Record<CanvasProfileIssue['code'], string>> = {
 const SOURCE_TYPES: Partial<Record<CanvasProfileIssue['code'], string[]>> = {
   artifact_without_producer: ['system', 'repository', 'process', 'api'],
   process_without_runner: ['actor', 'system'],
+}
+
+const API_FIXES: Partial<Record<CanvasProfileIssue['code'], {
+  title: string
+  description: string
+  fix: ApiCheckFix
+}>> = {
+  path_parameter_mismatch: {
+    title: 'Add missing path parameters',
+    description: 'Add the path parameters named in the endpoint path.',
+    fix: 'missing_path_parameter',
+  },
+  mutation_errors_missing: {
+    title: 'Attach standard errors',
+    description: 'Add 4XX and 5XX Problem Details responses.',
+    fix: 'standard_errors',
+  },
+  list_pagination_missing: {
+    title: 'Add pagination parameters',
+    description: 'Add limit and cursor query parameters.',
+    fix: 'pagination',
+  },
+  endpoint_without_resource: {
+    title: 'Add Resource tags',
+    description: 'Tag each endpoint with its first static path segment.',
+    fix: 'tag',
+  },
 }
 
 function nodeLabel(node: CanvasFlowNode | undefined): string {
@@ -70,6 +99,29 @@ export function buildSuggestions(
   const nodesById = new Map(nodes.map((node) => [node.id, node]))
 
   for (const issue of issues) {
+    const apiFix = API_FIXES[issue.code]
+    if (apiFix && issue.nodeId) {
+      if (issue.code === 'path_parameter_mismatch' && !issue.message.includes('Missing path parameter')) continue
+      const item: CanvasSuggestionItem = {
+        id: validationIssueKey(issue),
+        title: nodeLabel(nodesById.get(issue.nodeId)),
+        action: { kind: 'api-fix', targetId: issue.nodeId, fix: apiFix.fix },
+      }
+      const existing = suggestions.find((suggestion) => suggestion.id === `api:${issue.code}`)
+      if (existing) {
+        existing.count += 1
+        existing.items.push(item)
+      } else {
+        suggestions.push({
+          id: `api:${issue.code}`,
+          title: apiFix.title,
+          description: apiFix.description,
+          count: 1,
+          items: [item],
+        })
+      }
+      continue
+    }
     const fixConfig = semanticSuggestionForIssue(issue)
     const title = TITLES[issue.code]
     if (!fixConfig || !title || !issue.nodeId) continue

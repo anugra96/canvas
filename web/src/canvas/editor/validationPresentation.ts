@@ -126,11 +126,64 @@ const ISSUE_COPY: Record<CanvasProfileIssue['code'], { label: string; why: strin
     label: 'Invalid example',
     why: 'Replace the example or fix the schema.',
   },
+  operation_invalid: {
+    label: 'Invalid operation',
+    why: 'Fix the operation JSON to match OpenAPI 3.1.',
+  },
+  ref_unresolved: {
+    label: 'Unresolved reference',
+    why: 'Create the missing Schema card or extra component.',
+  },
+  operation_duplicate: {
+    label: 'Duplicate operation',
+    why: 'Give each endpoint a unique method, path, and operationId.',
+  },
+  path_parameter_mismatch: {
+    label: 'Path parameter mismatch',
+    why: 'Add the missing path parameter.',
+  },
+  response_success_missing: {
+    label: 'Missing success response',
+    why: 'Add a 2XX or 3XX response.',
+  },
+  mutation_errors_missing: {
+    label: 'Missing error response',
+    why: 'Add standard error responses.',
+  },
+  security_missing: {
+    label: 'Missing security',
+    why: 'Inherit API security, choose a scheme, or mark the endpoint public.',
+  },
+  list_pagination_missing: {
+    label: 'Missing pagination',
+    why: 'Add limit and cursor parameters.',
+  },
+  get_with_body: {
+    label: 'Unexpected request body',
+    why: 'Remove the body from this method.',
+  },
+  naming_inconsistent: {
+    label: 'Inconsistent naming',
+    why: 'Match the canvas majority case style.',
+  },
+  schema_unused: {
+    label: 'Unused schema',
+    why: 'Reference the schema or remove it.',
+  },
+  endpoint_without_resource: {
+    label: 'Endpoint without resource',
+    why: 'Add a tag to place the endpoint in a Resource.',
+  },
 }
 
 function issueCategory(code: CanvasProfileIssue['code']): string {
   if (code.startsWith('schema_')) return 'Schema'
   if (code.startsWith('example_')) return 'Examples'
+  if (code === 'operation_invalid' || code === 'ref_unresolved' || code === 'operation_duplicate') return 'API'
+  if (code === 'path_parameter_mismatch' || code === 'get_with_body') return 'API'
+  if (code === 'response_success_missing' || code === 'mutation_errors_missing') return 'API'
+  if (code === 'security_missing' || code === 'endpoint_without_resource') return 'API'
+  if (code === 'list_pagination_missing' || code === 'naming_inconsistent' || code === 'schema_unused') return 'API'
   if (code.includes('relation')) return 'Relation'
   if (code.includes('without')) return 'Semantics'
   if (code.includes('group')) return 'Group'

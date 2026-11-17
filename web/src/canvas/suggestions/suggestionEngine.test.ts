@@ -52,7 +52,9 @@ describe('suggestion engine', () => {
       [],
     )
 
-    expect(suggestions[0]?.items[0]?.action.fixes[0]).toEqual({
+    const action = suggestions[0]?.items[0]?.action
+    if (action?.kind !== 'add-cards') throw new Error('Expected an add-cards action')
+    expect(action.fixes[0]).toEqual({
       targetId: 'process',
       entityType: 'actor',
       relationType: 'runs',

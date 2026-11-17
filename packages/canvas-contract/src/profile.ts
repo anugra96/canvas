@@ -62,6 +62,18 @@ export type ProfileIssueCode =
   | 'artifact_without_producer'
   | 'process_without_runner'
   | 'example_invalid'
+  | 'operation_invalid'
+  | 'ref_unresolved'
+  | 'operation_duplicate'
+  | 'path_parameter_mismatch'
+  | 'response_success_missing'
+  | 'mutation_errors_missing'
+  | 'security_missing'
+  | 'list_pagination_missing'
+  | 'get_with_body'
+  | 'naming_inconsistent'
+  | 'schema_unused'
+  | 'endpoint_without_resource'
 
 export interface CanvasProfileIssue {
   code: ProfileIssueCode

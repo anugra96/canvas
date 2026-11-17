@@ -2,8 +2,11 @@ import { useReactFlow } from '@xyflow/react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 
 import {
+  applyApiCheckFix,
+  deriveManagedRelations,
   emptyEntityFields,
   findEntityType,
+  getEntityMeta,
   renderEntityMarkdown,
   type CanvasNode,
   type CanvasNodeSide,
@@ -14,7 +17,7 @@ import {
 } from '@canvas/contract'
 
 import { buildSuggestions, type CanvasSuggestion } from '../../suggestions/suggestionEngine'
-import { nodeDimensions, toFlowEdge, toFlowNode, type CanvasFlowEdge, type CanvasFlowNode } from '../../model/adapter'
+import { fromFlowCanvas, nodeDimensions, toFlowEdge, toFlowNode, type CanvasFlowEdge, type CanvasFlowNode } from '../../model/adapter'
 import { edgeFromConnection } from '../../model/edgeRelations'
 import { makeEntityNode } from '../graph/nodes'
 import { prioritizeValidationIssues } from '../prioritizeIssues'
@@ -171,7 +174,11 @@ export function useCanvasValidation({
   const focusSuggestion = useCallback((suggestion: CanvasSuggestion) => {
     const ids = new Set<string>()
     for (const item of suggestion.items) {
-      for (const fix of item.action.fixes) ids.add(fix.targetId)
+      if (item.action.kind === 'add-cards') {
+        for (const fix of item.action.fixes) ids.add(fix.targetId)
+      } else {
+        ids.add(item.action.targetId)
+      }
     }
     if (ids.size === 0) return
     setNotice('Moved to the affected area. Apply the fix when ready.')
@@ -190,6 +197,40 @@ export function useCanvasValidation({
     const addedIds: string[] = []
 
     for (const item of suggestion.items) {
+      if (item.action.kind === 'api-fix') {
+        const canvas = fromFlowCanvas(nextNodes, nextEdges, baseCanvas)
+        const updatedNodes = applyApiCheckFix(canvas, item.action.targetId, item.action.fix)
+        const rawById = new Map(updatedNodes.map((node) => [node.id, node]))
+        const currentIds = new Set(nextNodes.map((node) => node.id))
+        nextNodes = nextNodes.map((node) => {
+          const raw = rawById.get(node.id)
+          if (!raw) return node
+          const entity = getEntityMeta(raw)
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              raw,
+              ...(entity ? { entity } : {}),
+            },
+          }
+        })
+        for (const raw of updatedNodes) {
+          if (!currentIds.has(raw.id)) nextNodes.push(toFlowNode(raw))
+        }
+        const managed = deriveManagedRelations({ nodes: updatedNodes, edges: [] })
+        nextEdges = [
+          ...nextEdges.filter((edge) => (
+            edge.data?.raw?.app?.managed !== true
+            && edge.data?.relationType !== 'accepts'
+            && edge.data?.relationType !== 'returns'
+          )),
+          ...managed.map((edge) => toFlowEdge(edge)),
+        ]
+        addedIds.push(item.action.targetId)
+        focusIds.push(item.action.targetId)
+        continue
+      }
       for (const fix of item.action.fixes) {
         const target = nextNodes.find((node) => node.id === fix.targetId)
         const entityType = findEntityType(ontology, fix.entityType)
@@ -246,7 +287,7 @@ export function useCanvasValidation({
         duration: 300,
       })
     }, 0)
-  }, [edges, fitView, markDirty, nodes, ontology, setEdges, setNodes, setNotice])
+  }, [baseCanvas, edges, fitView, markDirty, nodes, ontology, setEdges, setNodes, setNotice])
 
   const focusValidationIssue = useCallback((issue: CanvasProfileIssue) => {
     if (issue.nodeId) {
