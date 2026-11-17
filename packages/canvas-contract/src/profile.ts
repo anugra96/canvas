@@ -187,7 +187,30 @@ export const API_PROFILE: CanvasProfile = {
     },
   ],
 }
-export const DEFAULT_PROFILES: CanvasProfile[] = [RAW_PROFILE, SYSTEMS_PROFILE, API_PROFILE]
+export const DATABASE_PROFILE: CanvasProfile = {
+  id: 'database',
+  label: 'Database',
+  version: 1,
+  description: 'One PostgreSQL database at table and column level.',
+  scope: 'container',
+  allowUntypedText: false,
+  allowUnlistedEntityTypes: false,
+  allowUnlistedRelationTypes: false,
+  requireRelationType: true,
+  entityTypes: ['database_definition', 'db_schema', 'table', 'db_enum'],
+  annotationTypes: ['note', 'decision', 'risk'],
+  relationTypes: ['references', 'relates_to'],
+  relationRules: [
+    { relationType: 'references', from: ['table'], to: ['table'] },
+    { relationType: 'relates_to', from: ['note', 'decision', 'risk'], to: ['*'] },
+    {
+      relationType: 'relates_to',
+      from: ['database_definition', 'db_schema', 'table', 'db_enum'],
+      to: ['note', 'decision', 'risk'],
+    },
+  ],
+}
+export const DEFAULT_PROFILES: CanvasProfile[] = [RAW_PROFILE, SYSTEMS_PROFILE, API_PROFILE, DATABASE_PROFILE]
 
 export function profileMetadata(profile: CanvasProfile): CanvasProfileMetadata {
   return {

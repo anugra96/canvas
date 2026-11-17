@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { CanvasEdge, CanvasNode, JsonCanvas } from './jsonCanvas'
 import { DEFAULT_ONTOLOGY, findEntityType, findRelationType } from './ontology'
 import {
+  DATABASE_PROFILE,
   DEFAULT_PROFILES,
   RAW_PROFILE,
   SYSTEMS_PROFILE,
@@ -62,11 +63,12 @@ function edge(
 
 describe('canvas profiles', () => {
   it('registers valid Raw and Systems profiles', () => {
-    expect(DEFAULT_PROFILES.map((profile) => profile.id)).toEqual(['raw', 'systems', 'api'])
+    expect(DEFAULT_PROFILES.map((profile) => profile.id)).toEqual(['raw', 'systems', 'api', 'database'])
     expect(findProfile(DEFAULT_PROFILES, 'systems')).toBe(SYSTEMS_PROFILE)
     expect(canvasProfileSchema.safeParse(RAW_PROFILE).success).toBe(true)
     expect(canvasProfileSchema.safeParse(SYSTEMS_PROFILE).success).toBe(true)
     expect(canvasProfileSchema.safeParse(API_PROFILE).success).toBe(true)
+    expect(canvasProfileSchema.safeParse(DATABASE_PROFILE).success).toBe(true)
     expect(profileEntityTypeIds(SYSTEMS_PROFILE)).toContain('note')
     expect(profileEntityTypeIds(SYSTEMS_PROFILE)).toContain('schema')
     for (const rule of SYSTEMS_PROFILE.relationRules) {
