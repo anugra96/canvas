@@ -51,6 +51,7 @@ const CODE_WEIGHT: Record<CanvasProfileIssue['code'], number> = {
   unknown_entity_type: 30,
   missing_endpoint: 25,
   untyped_text: 20,
+  level_unassigned: 37,
 }
 
 function nodeType(node: CanvasFlowNode | undefined): string {

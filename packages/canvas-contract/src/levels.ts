@@ -1,0 +1,371 @@
+import type { CanvasEdge, CanvasNode } from './jsonCanvas'
+import { getEdgeMeta, getEntityMeta } from './ontology'
+import type { CanvasProfileIssue } from './profile'
+
+export const LEVEL_NUMBERS = [1, 2, 3, 4] as const
+
+export type LevelNumber = (typeof LEVEL_NUMBERS)[number]
+
+export interface LevelDefinition {
+  level: LevelNumber
+  name: string
+}
+
+export const LEVEL_DEFINITIONS: readonly LevelDefinition[] = [
+  { level: 1, name: 'Context' },
+  { level: 2, name: 'Containers' },
+  { level: 3, name: 'Components' },
+  { level: 4, name: 'Contracts' },
+]
+
+export const LEVEL_NAMES: Record<LevelNumber, string> = {
+  1: 'Context',
+  2: 'Containers',
+  3: 'Components',
+  4: 'Contracts',
+}
+
+export const ANNOTATION_ENTITY_TYPES = new Set(['note', 'decision', 'risk'])
+
+export interface LevelGraph {
+  levels: Map<string, LevelNumber>
+  parents: Map<string, string>
+  alsoParents: Map<string, string[]>
+  children: Map<string, string[]>
+}
+
+export interface LevelSelection {
+  visible: Set<string>
+  folded: Map<string, string[]>
+  unassigned: string[]
+  ancestors: Map<string, string>
+}
+
+export interface LevelReadiness {
+  level: LevelNumber
+  name: string
+  available: boolean
+  ready: boolean
+  unassigned: Array<{ id: string; name: string }>
+}
+
+function entityType(node: CanvasNode | undefined): string {
+  return node ? getEntityMeta(node)?.entityType ?? '' : ''
+}
+
+function fieldsOf(node: CanvasNode | undefined): Record<string, unknown> {
+  return (node ? getEntityMeta(node)?.fields : undefined) ?? {}
+}
+
+function field(node: CanvasNode | undefined, key: string): string {
+  const value = fieldsOf(node)[key]
+  return value == null ? '' : String(value)
+}
+
+export function levelCardName(node: CanvasNode): string {
+  return field(node, 'name') || field(node, 'title') || node.id
+}
+
+function relationOf(edge: CanvasEdge): string | undefined {
+  return getEdgeMeta(edge)?.relationType
+}
+
+function uniqueSorted(
+  ids: string[],
+  nodeById: Map<string, CanvasNode>,
+): string[] {
+  return [...new Set(ids)]
+    .filter((id) => nodeById.has(id))
+    .sort((left, right) => {
+      const leftNode = nodeById.get(left)!
+      const rightNode = nodeById.get(right)!
+      return levelCardName(leftNode).localeCompare(levelCardName(rightNode))
+        || left.localeCompare(right)
+    })
+}
+
+function incoming(
+  edges: CanvasEdge[],
+  nodeId: string,
+  relation: string,
+  nodeById: Map<string, CanvasNode>,
+  fromTypes: string[],
+): string[] {
+  return uniqueSorted(
+    edges
+      .filter((edge) => (
+        edge.toNode === nodeId
+        && edge.fromNode !== nodeId
+        && relationOf(edge) === relation
+        && fromTypes.includes(entityType(nodeById.get(edge.fromNode)))
+      ))
+      .map((edge) => edge.fromNode),
+    nodeById,
+  )
+}
+
+function outgoing(
+  edges: CanvasEdge[],
+  nodeId: string,
+  relation: string,
+  nodeById: Map<string, CanvasNode>,
+  toTypes: string[],
+): string[] {
+  return uniqueSorted(
+    edges
+      .filter((edge) => (
+        edge.fromNode === nodeId
+        && edge.toNode !== nodeId
+        && relationOf(edge) === relation
+        && toTypes.includes(entityType(nodeById.get(edge.toNode)))
+      ))
+      .map((edge) => edge.toNode),
+    nodeById,
+  )
+}
+
+function databaseUsers(
+  nodeId: string,
+  edges: CanvasEdge[],
+  nodeById: Map<string, CanvasNode>,
+): string[] {
+  return incoming(edges, nodeId, 'uses', nodeById, ['system'])
+}
+
+function schemaRefArtifacts(
+  schemaId: string,
+  nodes: CanvasNode[],
+): string[] {
+  return nodes
+    .filter((node) => (
+      entityType(node) === 'artifact'
+      && field(node, 'schemaRef') === schemaId
+    ))
+    .sort((left, right) => levelCardName(left).localeCompare(levelCardName(right)) || left.id.localeCompare(right.id))
+    .map((node) => node.id)
+}
+
+function parentCandidates(
+  node: CanvasNode,
+  nodes: CanvasNode[],
+  edges: CanvasEdge[],
+  nodeById: Map<string, CanvasNode>,
+): string[] {
+  const type = entityType(node)
+  if (type === 'process') {
+    for (const types of [['system'], ['repository'], ['actor']]) {
+      const matches = incoming(edges, node.id, 'runs', nodeById, types)
+      if (matches.length > 0) return matches
+    }
+    return []
+  }
+  if (type === 'artifact') {
+    for (const types of [['process'], ['system'], ['repository']]) {
+      const matches = incoming(edges, node.id, 'produces', nodeById, types)
+      if (matches.length > 0) return matches
+    }
+    return []
+  }
+  if (type === 'repository') {
+    return incoming(edges, node.id, 'uses', nodeById, ['system'])
+  }
+  if (type === 'schema') {
+    const definers = incoming(edges, node.id, 'defines', nodeById, ['system', 'repository'])
+    if (definers.length > 0) return definers
+    const described = outgoing(edges, node.id, 'describes', nodeById, ['system'])
+    if (described.length > 0) return described
+    const users = incoming(edges, node.id, 'uses', nodeById, ['system', 'process'])
+    if (users.length === 1) return users
+    const artifacts = schemaRefArtifacts(node.id, nodes)
+    if (artifacts.length === 1) return artifacts
+    const schemas = incoming(edges, node.id, 'uses', nodeById, ['schema'])
+    if (schemas.length > 0) return schemas
+    return []
+  }
+  if (type === 'system' && field(node, 'kind') === 'database') {
+    const users = databaseUsers(node.id, edges, nodeById)
+    return users.length === 1 ? users : []
+  }
+  return []
+}
+
+export function computeLevelGraph(
+  nodes: CanvasNode[],
+  edges: CanvasEdge[],
+): LevelGraph {
+  const nodeById = new Map(nodes.map((node) => [node.id, node]))
+  const levels = new Map<string, LevelNumber>()
+
+  for (const node of nodes) {
+    const type = entityType(node)
+    let level: LevelNumber | undefined
+    if (type === 'actor' || type === 'system') {
+      level = type === 'system'
+        && field(node, 'kind') === 'database'
+        && databaseUsers(node.id, edges, nodeById).length === 1
+        ? 2
+        : 1
+    } else if (type === 'repository' || type === 'process' || type === 'artifact') {
+      level = 2
+    } else if (type === 'schema') {
+      level = 4
+    }
+    if (level) levels.set(node.id, level)
+  }
+
+  const parents = new Map<string, string>()
+  const alsoParents = new Map<string, string[]>()
+  const children = new Map<string, string[]>()
+
+  for (const node of nodes) {
+    if (!levels.has(node.id)) continue
+    const candidates = parentCandidates(node, nodes, edges, nodeById)
+    const parent = candidates[0]
+    if (!parent) continue
+    parents.set(node.id, parent)
+    if (candidates.length > 1) alsoParents.set(node.id, candidates.slice(1))
+    children.set(parent, [...(children.get(parent) ?? []), node.id])
+  }
+
+  for (const [parent, childIds] of children) {
+    children.set(parent, uniqueSorted(childIds, nodeById))
+  }
+
+  return { levels, parents, alsoParents, children }
+}
+
+export function selectVisibleCards(
+  graph: LevelGraph,
+  candidates: Set<string>,
+  level: LevelNumber,
+  expanded: ReadonlySet<string> = new Set(),
+): LevelSelection {
+  const visible = new Set<string>()
+  for (const id of candidates) {
+    const cardLevel = graph.levels.get(id)
+    if (cardLevel != null && cardLevel <= level) visible.add(id)
+  }
+
+  let added = true
+  while (added) {
+    added = false
+    for (const id of expanded) {
+      if (!visible.has(id)) continue
+      for (const childId of graph.children.get(id) ?? []) {
+        if (!candidates.has(childId) || visible.has(childId)) continue
+        if (!graph.levels.has(childId)) continue
+        visible.add(childId)
+        added = true
+      }
+    }
+  }
+
+  const folded = new Map<string, string[]>()
+  const unassigned: string[] = []
+  const ancestors = new Map<string, string>()
+
+  for (const id of candidates) {
+    if (visible.has(id) || !graph.levels.has(id)) continue
+    const seen = new Set<string>([id])
+    let current = graph.parents.get(id)
+    let ancestor: string | undefined
+    while (current && !seen.has(current)) {
+      if (visible.has(current)) {
+        ancestor = current
+        break
+      }
+      seen.add(current)
+      current = graph.parents.get(current)
+    }
+    if (ancestor) {
+      ancestors.set(id, ancestor)
+      folded.set(ancestor, [...(folded.get(ancestor) ?? []), id])
+    } else {
+      unassigned.push(id)
+    }
+  }
+
+  for (const [id, hiddenIds] of folded) {
+    folded.set(id, [...hiddenIds].sort())
+  }
+
+  return {
+    visible,
+    folded,
+    unassigned: unassigned.sort(),
+    ancestors,
+  }
+}
+
+export function schemaReferenceEdges(nodes: CanvasNode[]): CanvasEdge[] {
+  const schemaIds = new Set(
+    nodes
+      .filter((node) => entityType(node) === 'schema')
+      .map((node) => node.id),
+  )
+  return nodes.flatMap((node) => {
+    if (entityType(node) !== 'artifact') return []
+    const schemaRef = field(node, 'schemaRef')
+    if (!schemaRef || !schemaIds.has(schemaRef)) return []
+    return [{
+      id: `schema-ref:${node.id}:${schemaRef}`,
+      fromNode: node.id,
+      toNode: schemaRef,
+      label: 'uses',
+      app: { relationType: 'uses' },
+    } as CanvasEdge]
+  })
+}
+
+export function levelReadiness(
+  nodes: CanvasNode[],
+  edges: CanvasEdge[],
+): LevelReadiness[] {
+  const graph = computeLevelGraph(nodes, edges)
+  const availableLevels = new Set(graph.levels.values())
+
+  return LEVEL_DEFINITIONS.map(({ level, name }) => {
+    const available = availableLevels.has(level)
+    const candidates = nodes.filter((node) => {
+      const cardLevel = graph.levels.get(node.id)
+      if (cardLevel == null) return false
+      return level === 1 ? cardLevel > 1 : cardLevel >= level
+    })
+
+    const unassigned = candidates.filter((node) => {
+      const seen = new Set<string>([node.id])
+      let current = graph.parents.get(node.id)
+      while (current && !seen.has(current)) {
+        const parentLevel = graph.levels.get(current)
+        if (parentLevel != null && parentLevel <= level) return false
+        seen.add(current)
+        current = graph.parents.get(current)
+      }
+      return true
+    })
+
+    const entries = unassigned
+      .map((node) => ({ id: node.id, name: levelCardName(node) }))
+      .sort((left, right) => left.name.localeCompare(right.name) || left.id.localeCompare(right.id))
+
+    return {
+      level,
+      name,
+      available,
+      ready: entries.length === 0,
+      unassigned: entries,
+    }
+  })
+}
+
+export function levelReadinessIssues(readiness: LevelReadiness[]): CanvasProfileIssue[] {
+  return readiness
+    .filter((entry) => entry.available)
+    .flatMap((entry) => entry.unassigned.map((card) => ({
+      code: 'level_unassigned' as const,
+      severity: 'warning' as const,
+      message: `${card.name} has no owner at Level ${entry.level} ${entry.name}: add \`defines\`, \`describes\`, \`runs\`, \`produces\`, or \`uses\` from a System.`,
+      nodeId: card.id,
+      fieldKey: `level:${entry.level}`,
+    })))
+}

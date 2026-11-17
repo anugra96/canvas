@@ -8549,3 +8549,221 @@ select {
   font-size: 10px;
   font-weight: 700;
 }
+/* Levels in derived views */
+.derived-level {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 4px;
+}
+
+.derived-level-step {
+  display: grid;
+  min-width: 112px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 2px 6px;
+  padding: 5px 9px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--radius);
+  color: var(--ui-muted);
+  background: var(--ui-panel-raised);
+  text-align: left;
+}
+
+.derived-level-step strong {
+  color: var(--ui-strong);
+  font-size: 12px;
+}
+
+.derived-level-step span {
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.derived-level-step small {
+  grid-column: 1 / -1;
+  color: var(--ui-muted);
+  font-size: 8px;
+  font-weight: 650;
+}
+
+.derived-level-step:hover:not(:disabled) {
+  border-color: var(--ui-line-strong);
+}
+
+.derived-level-step.active {
+  border-color: var(--ui-accent);
+  color: var(--ui-strong);
+  background: color-mix(in srgb, var(--ui-accent) 12%, var(--ui-panel-raised));
+}
+
+.derived-level-step:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.derived-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--radius);
+  color: var(--ui-text);
+  background: var(--ui-panel-raised);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.derived-action:hover:not(:disabled) {
+  border-color: var(--ui-line-strong);
+}
+
+.derived-action:disabled {
+  opacity: 0.5;
+}
+
+.derived-export-error {
+  color: var(--ui-danger-text);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.derived-export-surface {
+  width: fit-content;
+  min-width: min(100%, 640px);
+  margin: 0 auto;
+  padding: 20px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--radius);
+  background: var(--ui-canvas-bg);
+}
+
+.derived-export-footer {
+  margin-top: 16px;
+  padding-top: 9px;
+  border-top: 1px solid var(--ui-line);
+  color: var(--ui-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.derived-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.derived-card-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 3px;
+}
+
+.derived-badge {
+  padding: 1px 5px;
+  border: 1px solid var(--ui-line);
+  border-radius: 999px;
+  color: var(--ui-muted);
+  background: var(--ui-highlight);
+  font-size: 8px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.derived-badge.high-risk {
+  border-color: var(--ui-danger-border);
+  color: var(--ui-danger-text);
+  background: var(--ui-danger-bg);
+}
+
+.derived-contents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.derived-content-chip {
+  padding: 1px 5px;
+  border: 1px solid var(--ui-line);
+  border-radius: 999px;
+  color: var(--ui-muted);
+  background: var(--ui-highlight);
+  font-size: 8px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.derived-internal {
+  color: var(--ui-muted);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.derived-card-action {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 2px 7px;
+  border: 1px solid var(--ui-line-strong);
+  border-radius: 999px;
+  color: var(--ui-text);
+  background: var(--ui-panel-raised);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.derived-card-action:hover {
+  border-color: var(--ui-accent);
+}
+
+.derived-card.unassigned {
+  align-items: stretch;
+  justify-content: flex-start;
+  overflow: auto;
+}
+
+.derived-unassigned-list {
+  display: grid;
+  gap: 3px;
+  margin-top: 3px;
+}
+
+.derived-unassigned-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  font-size: 9px;
+}
+
+.derived-unassigned-item > span {
+  overflow: hidden;
+  color: var(--ui-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.derived-unassigned-item > button {
+  flex: 0 0 auto;
+  padding: 1px 5px;
+  border: 1px solid var(--ui-line);
+  border-radius: 999px;
+  color: var(--ui-muted);
+  background: transparent;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.derived-unassigned-item > button:hover {
+  color: var(--ui-strong);
+  border-color: var(--ui-accent);
+}

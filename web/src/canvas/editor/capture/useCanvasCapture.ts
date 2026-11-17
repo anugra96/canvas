@@ -3,6 +3,7 @@ import { toPng } from 'html-to-image'
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
 
 import type { CanvasFlowNode } from '../../model/adapter'
+import { captureDimensions, downloadUrl, safeFileTitle } from './exportFile'
 
 interface UseCanvasCaptureInput {
   nodes: CanvasFlowNode[]
@@ -39,15 +40,6 @@ export function useCanvasCapture({
     setScreenshotOpen(true)
   }, [])
 
-  const screenshotDimensions = useCallback((bounds: { width: number; height: number }) => {
-    const longEdge = 1600
-    const ratio = bounds.width / Math.max(bounds.height, 1)
-    if (ratio >= 1) {
-      return { width: longEdge, height: Math.max(240, Math.round(longEdge / ratio)) }
-    }
-    return { width: Math.max(240, Math.round(longEdge * ratio)), height: longEdge }
-  }, [])
-
   const captureBounds = useCallback(async (
     bounds: { x: number; y: number; width: number; height: number },
     suffix: string,
@@ -56,7 +48,7 @@ export function useCanvasCapture({
     const viewport = flowRef.current?.querySelector<HTMLElement>('.react-flow__viewport')
     if (!viewport) throw new Error('Canvas viewport is not available.')
     if (bounds.width <= 0 || bounds.height <= 0) throw new Error('The selected area is too small.')
-    const { width, height } = screenshotDimensions(bounds)
+    const { width, height } = captureDimensions(bounds)
     const transform = getViewportForBounds(bounds, width, height, 0.01, 4, padding)
     const background = flowRef.current
       ? getComputedStyle(flowRef.current).backgroundColor
@@ -81,12 +73,8 @@ export function useCanvasCapture({
       },
     })
 
-    const safeTitle = title.replace(/[^a-z0-9._-]+/gi, '-').replace(/^-+|-+$/g, '') || 'canvas'
-    const link = window.document.createElement('a')
-    link.download = `${safeTitle}-${suffix}.png`
-    link.href = dataUrl
-    link.click()
-  }, [clearSelection, flowRef, screenshotDimensions, screenshotScale, title])
+    downloadUrl(dataUrl, `${safeFileTitle(title)}-${suffix}.png`)
+  }, [clearSelection, flowRef, screenshotScale, title])
 
   const captureFull = useCallback(async () => {
     if (nodes.length === 0) {

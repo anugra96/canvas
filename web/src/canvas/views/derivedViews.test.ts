@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { DEFAULT_ONTOLOGY, type CanvasEdge, type CanvasNode, type JsonCanvas } from '@canvas/contract'
+import {
+  DEFAULT_ONTOLOGY,
+  type CanvasEdge,
+  type CanvasNode,
+  type JsonCanvas,
+  type LevelNumber,
+} from '@canvas/contract'
 
 import { toFlowCanvas } from '../model/adapter'
 import {
@@ -140,5 +146,237 @@ describe('derived views', () => {
       participants: [],
       messages: [],
     })
+  })
+})
+
+const levelCanvas = {
+  nodes: [
+    card('Operator', 'actor', { kind: 'role' }),
+    card('Platform', 'system', { kind: 'service' }),
+    card('Archive', 'system', { kind: 'database' }),
+    card('Repo', 'repository', { provider: 'github' }),
+    card('Deploy', 'process', { mode: 'automated' }),
+    card('Verify', 'process', { mode: 'automated' }),
+    card('Model', 'artifact', { kind: 'container' }),
+    card('Bundle', 'artifact', { kind: 'dataset', schemaMode: 'shared', schemaRef: 'Manifest' }),
+    card('Manifest', 'schema', { kind: 'api', version: '1.0.0' }),
+  ],
+  edges: [
+    relation('operator-deploy', 'Operator', 'Deploy', 'runs'),
+    relation('operator-verify', 'Operator', 'Verify', 'runs'),
+    relation('operator-repo', 'Operator', 'Repo', 'uses'),
+    relation('operator-bundle', 'Operator', 'Bundle', 'uses'),
+    relation('platform-deploy', 'Platform', 'Deploy', 'runs'),
+    relation('platform-verify', 'Platform', 'Verify', 'runs'),
+    relation('platform-repo', 'Platform', 'Repo', 'uses'),
+    relation('platform-archive', 'Platform', 'Archive', 'uses'),
+    relation('repo-manifest', 'Repo', 'Manifest', 'defines'),
+    relation('deploy-model', 'Deploy', 'Model', 'produces'),
+    relation('deploy-bundle', 'Deploy', 'Bundle', 'produces'),
+    relation('deploy-platform', 'Deploy', 'Platform', 'uses'),
+    relation('verify-platform', 'Verify', 'Platform', 'uses'),
+  ],
+} as JsonCanvas
+
+const orphanCanvas = {
+  nodes: [
+    card('Standalone', 'repository', { provider: 'local' }),
+    card('Loose', 'process', { mode: 'manual' }),
+    card('Unclaimed', 'artifact', { kind: 'container' }),
+  ],
+  edges: [
+    relation('loose-standalone', 'Loose', 'Standalone', 'uses'),
+    relation('loose-unclaimed', 'Loose', 'Unclaimed', 'produces'),
+  ],
+} as JsonCanvas
+
+interface LevelCase {
+  name: string
+  canvas: JsonCanvas
+  level: LevelNumber
+  visible: string[]
+  parents: Record<string, string>
+  unassigned: string[]
+  edges: string[]
+  internal: Record<string, number>
+  schemaRefEdge?: boolean
+}
+
+const levelCases: LevelCase[] = [
+  {
+    name: 'level 1 folds every deeper card and merges lifted edges',
+    canvas: levelCanvas,
+    level: 1,
+    visible: ['Operator', 'Platform'],
+    parents: {
+      Deploy: 'Platform',
+      Verify: 'Platform',
+      Archive: 'Platform',
+      Repo: 'Platform',
+      Model: 'Deploy',
+      Bundle: 'Deploy',
+      Manifest: 'Repo',
+    },
+    unassigned: [],
+    edges: [
+      'Operator->Platform:runsx2',
+      'Operator->Platform:usesx2',
+    ],
+    internal: { Platform: 10 },
+  },
+  {
+    name: 'level 2 shows containers and folds schemas into their owners',
+    canvas: levelCanvas,
+    level: 2,
+    visible: ['Operator', 'Platform', 'Archive', 'Repo', 'Deploy', 'Verify', 'Model', 'Bundle'],
+    parents: {
+      Archive: 'Platform',
+      Repo: 'Platform',
+      Deploy: 'Platform',
+      Verify: 'Platform',
+      Model: 'Deploy',
+      Bundle: 'Deploy',
+      Manifest: 'Repo',
+    },
+    unassigned: [],
+    edges: [
+      'Bundle->Repo:uses',
+      'Deploy->Bundle:produces',
+      'Deploy->Model:produces',
+      'Deploy->Platform:uses',
+      'Operator->Bundle:uses',
+      'Operator->Deploy:runs',
+      'Operator->Repo:uses',
+      'Operator->Verify:runs',
+      'Platform->Archive:uses',
+      'Platform->Deploy:runs',
+      'Platform->Repo:uses',
+      'Platform->Verify:runs',
+      'Verify->Platform:uses',
+    ],
+    internal: { Repo: 1 },
+  },
+  {
+    name: 'level 3 is the same as level 2 when there are no component cards',
+    canvas: levelCanvas,
+    level: 3,
+    visible: ['Operator', 'Platform', 'Archive', 'Repo', 'Deploy', 'Verify', 'Model', 'Bundle'],
+    parents: {
+      Repo: 'Platform',
+      Deploy: 'Platform',
+      Model: 'Deploy',
+      Manifest: 'Repo',
+    },
+    unassigned: [],
+    edges: [
+      'Bundle->Repo:uses',
+      'Deploy->Bundle:produces',
+      'Deploy->Model:produces',
+      'Deploy->Platform:uses',
+      'Operator->Bundle:uses',
+      'Operator->Deploy:runs',
+      'Operator->Repo:uses',
+      'Operator->Verify:runs',
+      'Platform->Archive:uses',
+      'Platform->Deploy:runs',
+      'Platform->Repo:uses',
+      'Platform->Verify:runs',
+      'Verify->Platform:uses',
+    ],
+    internal: { Repo: 1 },
+  },
+  {
+    name: 'level 4 shows schemas and the schemaRef uses edge',
+    canvas: levelCanvas,
+    level: 4,
+    visible: ['Operator', 'Platform', 'Archive', 'Repo', 'Deploy', 'Verify', 'Model', 'Bundle', 'Manifest'],
+    parents: {
+      Deploy: 'Platform',
+      Model: 'Deploy',
+      Manifest: 'Repo',
+    },
+    unassigned: [],
+    edges: [
+      'Bundle->Manifest:uses',
+      'Deploy->Bundle:produces',
+      'Deploy->Model:produces',
+      'Deploy->Platform:uses',
+      'Operator->Bundle:uses',
+      'Operator->Deploy:runs',
+      'Operator->Repo:uses',
+      'Operator->Verify:runs',
+      'Platform->Archive:uses',
+      'Platform->Deploy:runs',
+      'Platform->Repo:uses',
+      'Platform->Verify:runs',
+      'Repo->Manifest:defines',
+      'Verify->Platform:uses',
+    ],
+    internal: {},
+    schemaRefEdge: true,
+  },
+  {
+    name: 'cards without an owner become one Unassigned card',
+    canvas: orphanCanvas,
+    level: 1,
+    visible: [],
+    parents: {},
+    unassigned: ['Loose', 'Standalone', 'Unclaimed'],
+    edges: [],
+    internal: { __unassigned__: 2 },
+  },
+  {
+    name: 'unassigned cards become visible at their own level',
+    canvas: orphanCanvas,
+    level: 2,
+    visible: ['Loose', 'Standalone', 'Unclaimed'],
+    parents: {},
+    unassigned: [],
+    edges: [
+      'Loose->Standalone:uses',
+      'Loose->Unclaimed:produces',
+    ],
+    internal: {},
+  },
+]
+
+function levelEdgeKey(edge: { from: string; to: string; relationType?: string; count?: number }): string {
+  const count = edge.count && edge.count > 1 ? `x${edge.count}` : ''
+  return `${edge.from}->${edge.to}:${edge.relationType ?? ''}${count}`
+}
+
+describe('derived view levels', () => {
+  it.each(levelCases)('$name', ({ canvas: source, level, visible, parents, unassigned, edges, internal, schemaRefEdge }) => {
+    const flow = toFlowCanvas(source, DEFAULT_ONTOLOGY)
+    const view = deriveView(flow.nodes, flow.edges, 'architecture', DEFAULT_ONTOLOGY, { level })
+    const cards = view.nodes.filter((node) => !node.isUnassigned)
+
+    expect(cards.map((node) => node.id).sort()).toEqual([...visible].sort())
+    for (const [id, parent] of Object.entries(parents)) {
+      expect(view.levelState?.parents.get(id)).toBe(parent)
+    }
+    expect(view.levelState?.unassigned).toEqual(unassigned)
+    expect(view.edges.map(levelEdgeKey).sort()).toEqual(edges)
+    for (const edge of view.edges.filter((candidate) => (candidate.count ?? 1) > 1)) {
+      expect(edge.label).toBe(`${edge.label.split(' ×')[0]} ×${edge.count}`)
+    }
+    for (const [id, count] of Object.entries(internal)) {
+      expect(view.nodes.find((node) => node.id === id)?.internalRelations).toBe(count)
+    }
+    if (schemaRefEdge) {
+      expect(view.edges).toContainEqual(expect.objectContaining({
+        from: 'Bundle',
+        to: 'Manifest',
+        relationType: 'uses',
+        label: 'uses',
+      }))
+    }
+    const unassignedCard = view.nodes.find((node) => node.isUnassigned)
+    if (unassigned.length > 0) {
+      expect(unassignedCard?.label).toBe(`Unassigned (${unassigned.length})`)
+      expect(unassignedCard?.unassignedItems?.map((item) => item.id)).toEqual(unassigned)
+    } else {
+      expect(unassignedCard).toBeUndefined()
+    }
   })
 })

@@ -18,6 +18,7 @@ import {
   type Ontology,
   type AddApiResourceInput,
   type JsonObject,
+  type LevelNumber,
 } from '@canvas/contract'
 import {
   fromFlowCanvas,
@@ -134,6 +135,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const [edges, setEdges] = useState<CanvasFlowEdge[]>(initial.edges)
   const [helpOpen, setHelpOpen] = useState(false)
   const [viewsOpen, setViewsOpen] = useState(false)
+  const [viewsLevel, setViewsLevel] = useState<LevelNumber | undefined>()
   const [addResourceOpen, setAddResourceOpen] = useState(false)
   const [compareHead, setCompareHead] = useState<JsonObject | null>(null)
   const [suppressions, setSuppressions] = useState<ValidationSuppression[]>(() => (
@@ -291,6 +293,12 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       void fitView({ nodes: [{ id }], padding: 0.35, maxZoom: 1.2 })
     }, 0)
   }, [fitView, setNodes])
+
+  const showInCanvas = useCallback((id: string) => {
+    setViewsOpen(false)
+    setViewsLevel(undefined)
+    openNodeEditor(id)
+  }, [openNodeEditor])
 
   const extractSchemaCard = useCallback((artifactId: string): CanvasSchemaResult => {
     const artifact = nodes.find((node) => node.id === artifactId)
@@ -528,7 +536,10 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     onAddCard: graph.addAtCenter,
     onAddEntity: graph.addEntityAtCenter,
     onAddProcessCanvas: () => void links.addProcessWithCanvas(),
-    onViews: () => setViewsOpen(true),
+    onViews: () => {
+      setViewsLevel(undefined)
+      setViewsOpen(true)
+    },
     onReview: validation.openReview,
     onUndo: graph.undo,
     onRedo: graph.redo,
@@ -624,6 +635,8 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
             setHelpOpen={setHelpOpen}
             viewsOpen={viewsOpen}
             setViewsOpen={setViewsOpen}
+            viewsLevel={viewsLevel}
+            onShowInCanvas={showInCanvas}
             renameOpen={renameOpen}
             setRenameOpen={setRenameOpen}
             renameBusy={renameBusy}

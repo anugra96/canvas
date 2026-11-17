@@ -178,6 +178,10 @@ const ISSUE_COPY: Record<CanvasProfileIssue['code'], { label: string; why: strin
     label: 'Endpoint without resource',
     why: 'Add a tag to place the endpoint in a Resource.',
   },
+  level_unassigned: {
+    label: 'Unassigned at level',
+    why: 'Add an owner relation so the card folds into a visible parent.',
+  },
 }
 
 function issueCategory(code: CanvasProfileIssue['code']): string {

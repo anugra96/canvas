@@ -10,7 +10,7 @@ import { NodeSizeDialog } from './NodeSizeDialog'
 import { ScreenshotDialog } from './ScreenshotDialog'
 import { nodeDimensions, type CanvasFlowEdge, type CanvasFlowNode } from '../model/adapter'
 import type { CanvasCommand } from './commands'
-import type { Ontology } from '@canvas/contract'
+import type { LevelNumber, Ontology } from '@canvas/contract'
 
 interface EditorDialogsProps {
   documentId: string
@@ -32,6 +32,8 @@ interface EditorDialogsProps {
   setHelpOpen: (open: boolean) => void
   viewsOpen: boolean
   setViewsOpen: (open: boolean) => void
+  viewsLevel?: LevelNumber
+  onShowInCanvas?: (id: string) => void
   renameOpen: boolean
   setRenameOpen: (open: boolean) => void
   renameBusy: boolean
@@ -58,6 +60,8 @@ export function EditorDialogs({
   setHelpOpen,
   viewsOpen,
   setViewsOpen,
+  viewsLevel,
+  onShowInCanvas,
   renameOpen,
   setRenameOpen,
   renameBusy,
@@ -113,6 +117,8 @@ export function EditorDialogs({
           edges={edges}
           ontology={ontology}
           profileId={isApi ? 'api' : 'systems'}
+          initialLevel={viewsLevel}
+          onShowInCanvas={onShowInCanvas}
           onClose={() => setViewsOpen(false)}
         />
       )}

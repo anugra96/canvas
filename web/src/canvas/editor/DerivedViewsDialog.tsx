@@ -1,11 +1,23 @@
-import { X } from 'lucide-react'
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Download, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from 'react'
 
-import { buildApiReference, type Ontology } from '@canvas/contract'
+import {
+  buildApiReference,
+  computeLevelGraph,
+  LEVEL_DEFINITIONS,
+  LEVEL_NAMES,
+  type LevelNumber,
+  type Ontology,
+} from '@canvas/contract'
 
 import type { CanvasFlowEdge, CanvasFlowNode } from '../model/adapter'
 import { ApiReferenceView } from '../apiDesign/ApiReferenceView'
 import { layoutDerivedView, type DerivedDiagram } from '../views/diagramLayout'
+import {
+  derivedExportFilename,
+  exportDerivedPng,
+  exportDerivedSvg,
+} from './capture/derivedExport'
 import {
   DERIVED_VIEWS,
   deriveSequence,
@@ -25,6 +37,9 @@ interface DerivedViewsDialogProps {
   edges: CanvasFlowEdge[]
   ontology: Ontology
   profileId?: string
+  initialLevel?: LevelNumber
+  onShowInCanvas?: (id: string) => void
+  guardExport?: (label: string, run: () => void) => void
   onClose: () => void
 }
 
@@ -35,11 +50,25 @@ export function DerivedViewsDialog({
   edges,
   ontology,
   profileId = 'systems',
+  initialLevel,
+  onShowInCanvas,
+  guardExport,
   onClose,
 }: DerivedViewsDialogProps) {
   const isApi = profileId === 'api'
   const [activeView, setActiveView] = useState<ActiveView>(isApi ? 'reference' : 'architecture')
   const [processId, setProcessId] = useState('')
+  const [level, setLevel] = useState<LevelNumber>(initialLevel ?? (isApi ? 4 : 1))
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
+  const [exportError, setExportError] = useState('')
+  const [levelRequest, setLevelRequest] = useState({ open, initialLevel })
+  const graphSurface = useRef<HTMLDivElement>(null)
+  const availableLevels = useMemo(() => {
+    const rawNodes = nodes.map((node) => node.data.raw)
+    const rawEdges = edges.flatMap((edge) => (edge.data?.raw ? [edge.data.raw] : []))
+    const graph = computeLevelGraph(rawNodes, rawEdges)
+    return new Set(graph.levels.values())
+  }, [edges, nodes])
   const [viewport, setViewport] = useState(() => ({
     width: window.visualViewport?.width ?? window.innerWidth,
     height: window.visualViewport?.height ?? window.innerHeight,
@@ -55,8 +84,8 @@ export function DerivedViewsDialog({
   const view = useMemo(
     () => (activeView === 'sequence' || activeView === 'reference'
       ? { nodes: [], edges: [] }
-      : deriveView(nodes, edges, activeView, ontology)),
-    [activeView, edges, nodes, ontology],
+      : deriveView(nodes, edges, activeView, ontology, { level, expanded })),
+    [activeView, edges, expanded, level, nodes, ontology],
   )
   const diagram = useMemo(() => layoutDerivedView(view), [view])
   const sequence = useMemo(
@@ -85,15 +114,66 @@ export function DerivedViewsDialog({
   useEffect(() => {
     if (!open) return
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') {
+        onClose()
+        return
+      }
+      if (!/^[1-4]$/.test(event.key) || event.metaKey || event.ctrlKey || event.altKey) return
+      const target = event.target as HTMLElement | null
+      if (target && (
+        target.tagName === 'INPUT'
+        || target.tagName === 'TEXTAREA'
+        || target.tagName === 'SELECT'
+        || target.isContentEditable
+      )) return
+      if (!DERIVED_VIEWS.some((definition) => definition.id === activeView)) return
+      const next = Number(event.key) as LevelNumber
+      if (!availableLevels.has(next)) return
+      setLevel(next)
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [onClose, open])
+  }, [activeView, availableLevels, onClose, open])
+
+  if (levelRequest.open !== open || levelRequest.initialLevel !== initialLevel) {
+    setLevelRequest({ open, initialLevel })
+    if (open && initialLevel != null) setLevel(initialLevel)
+  }
 
   if (!open) return null
 
   const viewDefinition = DERIVED_VIEWS.find((definition) => definition.id === activeView)
+  const levelLabel = `Level ${level} ${LEVEL_NAMES[level]}`
+  const footer = `${title} · ${viewDefinition?.label ?? 'View'} · ${levelLabel} · ${new Date().toISOString().slice(0, 10)}`
+
+  function selectView(next: ActiveView) {
+    setActiveView(next)
+    if (next === 'contracts') setLevel(4)
+  }
+
+  function runExport(kind: 'png' | 'svg') {
+    if (!viewDefinition) return
+    const action = () => {
+      setExportError('')
+      if (kind === 'png') {
+        if (!graphSurface.current) return
+        void exportDerivedPng(
+          graphSurface.current,
+          derivedExportFilename(title, viewDefinition.label, levelLabel, 'png'),
+        ).catch((cause: unknown) => {
+          setExportError(cause instanceof Error ? cause.message : 'Could not export the view.')
+        })
+      } else {
+        exportDerivedSvg(
+          diagram,
+          footer,
+          derivedExportFilename(title, viewDefinition.label, levelLabel, 'svg'),
+        )
+      }
+    }
+    if (guardExport) guardExport(`Derived view ${kind.toUpperCase()}`, action)
+    else action()
+  }
 
   return (
     <div
@@ -129,7 +209,7 @@ export function DerivedViewsDialog({
               role="tab"
               aria-selected={activeView === 'reference'}
               className={activeView === 'reference' ? 'active' : ''}
-              onClick={() => setActiveView('reference')}
+              onClick={() => selectView('reference')}
             >
               Reference
             </button>
@@ -140,7 +220,7 @@ export function DerivedViewsDialog({
               role="tab"
               aria-selected={activeView === definition.id}
               className={activeView === definition.id ? 'active' : ''}
-              onClick={() => setActiveView(definition.id)}
+              onClick={() => selectView(definition.id)}
             >
               {definition.label}
             </button>
@@ -149,13 +229,37 @@ export function DerivedViewsDialog({
             role="tab"
             aria-selected={activeView === 'sequence'}
             className={activeView === 'sequence' ? 'active' : ''}
-            onClick={() => setActiveView('sequence')}
+            onClick={() => selectView('sequence')}
           >
             Sequence
           </button>
         </div>
 
         <div className="derived-views-meta">
+          {viewDefinition && (
+            <div className="derived-level" role="group" aria-label="Level">
+              {LEVEL_DEFINITIONS.map((definition) => {
+                const available = availableLevels.has(definition.level)
+                return (
+                  <button
+                    key={definition.level}
+                    type="button"
+                    className={`derived-level-step${level === definition.level ? ' active' : ''}`}
+                    aria-pressed={level === definition.level}
+                    disabled={!available}
+                    title={available
+                      ? `Level ${definition.level} ${definition.name}`
+                      : `Level ${definition.level} ${definition.name}: No cards at this level`}
+                    onClick={() => setLevel(definition.level)}
+                  >
+                    <strong>{definition.level}</strong>
+                    <span>{definition.name}</span>
+                    {!available && <small>No cards at this level</small>}
+                  </button>
+                )
+              })}
+            </div>
+          )}
           {activeView === 'reference' ? (
             <>
               <span>Endpoint and model reference derived from the API canvas.</span>
@@ -167,6 +271,21 @@ export function DerivedViewsDialog({
               <span>{viewDefinition.description}</span>
               <span>{diagram.nodes.length} cards</span>
               <span>{diagram.edges.length} relations</span>
+              <button
+                type="button"
+                className="derived-action"
+                disabled={expanded.size === 0}
+                onClick={() => setExpanded(new Set())}
+              >
+                Collapse all
+              </button>
+              <button type="button" className="derived-action" onClick={() => runExport('png')}>
+                <Download size={13} /> PNG
+              </button>
+              <button type="button" className="derived-action" onClick={() => runExport('svg')}>
+                <Download size={13} /> SVG
+              </button>
+              {exportError && <span className="derived-export-error">{exportError}</span>}
             </>
           ) : (
             <>
@@ -201,7 +320,16 @@ export function DerivedViewsDialog({
             ? <ApiReferenceView nodes={nodes} />
             : activeView === 'sequence'
               ? <SequenceDiagram sequence={sequence} />
-              : <GraphDiagram diagram={diagram} label={viewDefinition?.label ?? 'Architecture'} />}
+              : (
+                <GraphDiagram
+                  diagram={diagram}
+                  label={viewDefinition?.label ?? 'Architecture'}
+                  footer={footer}
+                  surfaceRef={graphSurface}
+                  onExpand={(id) => setExpanded((current) => new Set(current).add(id))}
+                  onShowInCanvas={onShowInCanvas}
+                />
+              )}
         </div>
 
         <footer className="derived-views-foot">
@@ -212,7 +340,21 @@ export function DerivedViewsDialog({
   )
 }
 
-function GraphDiagram({ diagram, label }: { diagram: DerivedDiagram; label: string }) {
+function GraphDiagram({
+  diagram,
+  label,
+  footer,
+  surfaceRef,
+  onExpand,
+  onShowInCanvas,
+}: {
+  diagram: DerivedDiagram
+  label: string
+  footer: string
+  surfaceRef: RefObject<HTMLDivElement | null>
+  onExpand: (id: string) => void
+  onShowInCanvas?: (id: string) => void
+}) {
   if (diagram.nodes.length === 0) {
     return (
       <div className="derived-empty">
@@ -224,67 +366,117 @@ function GraphDiagram({ diagram, label }: { diagram: DerivedDiagram; label: stri
 
   return (
     <div className="derived-scroll">
-      <div
-        className="derived-graph"
-        style={{ width: diagram.width, height: diagram.height }}
-        role="img"
-        aria-label={`${label} derived diagram`}
-      >
-        <svg
-          className="derived-graph-edges"
-          width={diagram.width}
-          height={diagram.height}
-          viewBox={`0 0 ${diagram.width} ${diagram.height}`}
-          aria-hidden="true"
+      <div className="derived-export-surface" ref={surfaceRef}>
+        <div
+          className="derived-graph"
+          style={{ width: diagram.width, height: diagram.height }}
+          role="img"
+          aria-label={`${label} derived diagram`}
         >
-          <defs>
-            <marker
-              id="derived-arrow"
-              viewBox="0 0 10 10"
-              refX="8"
-              refY="5"
-              markerWidth="6"
-              markerHeight="6"
-              orient="auto-start-reverse"
-            >
-              <path d="M 0 0 L 10 5 L 0 10 z" className="derived-arrow" />
-            </marker>
-          </defs>
-          {diagram.edges.map((edge) => (
-            <g key={edge.id}>
-              <path d={edge.path} markerEnd="url(#derived-arrow)" className="derived-edge-path" />
-              <text
-                x={edge.labelX}
-                y={edge.labelY}
-                textAnchor="middle"
-                className="derived-edge-label"
-                paintOrder="stroke"
-                stroke="var(--ui-panel-solid)"
-                strokeWidth="4"
-              >
-                {edge.label}
-              </text>
-            </g>
-          ))}
-        </svg>
-        {diagram.nodes.map((node) => (
-          <article
-            key={node.id}
-            className="derived-card"
-            title={node.label}
-            style={{
-              left: node.x,
-              top: node.y,
-              width: node.width,
-              height: node.height,
-              '--derived-accent': node.accent ?? 'var(--ui-accent)',
-            } as CSSProperties}
+          <svg
+            className="derived-graph-edges"
+            width={diagram.width}
+            height={diagram.height}
+            viewBox={`0 0 ${diagram.width} ${diagram.height}`}
+            aria-hidden="true"
           >
-            <span className="derived-card-type">{node.typeLabel}</span>
-            <strong>{node.label}</strong>
-            {node.detail && <small>{node.detail}</small>}
-          </article>
-        ))}
+            <defs>
+              <marker
+                id="derived-arrow"
+                viewBox="0 0 10 10"
+                refX="8"
+                refY="5"
+                markerWidth="6"
+                markerHeight="6"
+                orient="auto-start-reverse"
+              >
+                <path d="M 0 0 L 10 5 L 0 10 z" className="derived-arrow" />
+              </marker>
+            </defs>
+            {diagram.edges.map((edge) => (
+              <g key={edge.id}>
+                <path d={edge.path} markerEnd="url(#derived-arrow)" className="derived-edge-path" />
+                <text
+                  x={edge.labelX}
+                  y={edge.labelY}
+                  textAnchor="middle"
+                  className="derived-edge-label"
+                  paintOrder="stroke"
+                  stroke="var(--ui-panel-solid)"
+                  strokeWidth="4"
+                >
+                  {edge.label}
+                </text>
+              </g>
+            ))}
+          </svg>
+          {diagram.nodes.map((node) => (
+            <article
+              key={node.id}
+              className={`derived-card${node.isUnassigned ? ' unassigned' : ''}${node.expanded ? ' expanded' : ''}`}
+              title={node.label}
+              style={{
+                left: node.x,
+                top: node.y,
+                width: node.width,
+                height: node.height,
+                '--derived-accent': node.accent ?? 'var(--ui-accent)',
+              } as CSSProperties}
+            >
+              <div className="derived-card-head">
+                <span className="derived-card-type">{node.typeLabel}</span>
+                {node.annotations && node.annotations.length > 0 && (
+                  <span className="derived-card-badges">
+                    {node.annotations.map((badge) => (
+                      <span
+                        key={badge.typeId}
+                        className={`derived-badge${badge.typeId === 'risk' && badge.highSeverity ? ' high-risk' : ''}`}
+                      >
+                        {badge.count} {badge.label}
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </div>
+              <strong>{node.label}</strong>
+              {node.detail && <small>{node.detail}</small>}
+              {node.contents && node.contents.length > 0 && (
+                <div className="derived-contents">
+                  {node.contents.map((chip) => (
+                    <span key={chip.typeId} className="derived-content-chip">
+                      {chip.count} {chip.typeLabel.toLowerCase()}{chip.count === 1 ? '' : 's'}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {node.internalRelations ? (
+                <small className="derived-internal">
+                  {node.internalRelations} internal relation{node.internalRelations === 1 ? '' : 's'}
+                </small>
+              ) : null}
+              {node.canExpand && (
+                <button type="button" className="derived-card-action" onClick={() => onExpand(node.id)}>
+                  Expand
+                </button>
+              )}
+              {node.isUnassigned && node.unassignedItems && (
+                <div className="derived-unassigned-list">
+                  {node.unassignedItems.map((item) => (
+                    <div key={item.id} className="derived-unassigned-item">
+                      <span title={item.label}>{item.label}</span>
+                      {onShowInCanvas && (
+                        <button type="button" onClick={() => onShowInCanvas(item.id)}>
+                          Show in canvas
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+        <footer className="derived-export-footer">{footer}</footer>
       </div>
     </div>
   )

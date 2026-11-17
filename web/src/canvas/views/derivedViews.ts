@@ -1,12 +1,24 @@
 import {
+  ANNOTATION_ENTITY_TYPES,
+  computeLevelGraph,
   entityTitle,
   findEntityType,
   findRelationType,
+  schemaReferenceEdges,
+  selectVisibleCards,
+  type CanvasEdge,
+  type CanvasNode,
   type EntityFields,
+  type LevelNumber,
   type Ontology,
 } from '@canvas/contract'
 
-import { colorFor, type CanvasFlowEdge, type CanvasFlowNode } from '../model/adapter'
+import {
+  colorFor,
+  toFlowEdge,
+  type CanvasFlowEdge,
+  type CanvasFlowNode,
+} from '../model/adapter'
 
 export type DerivedViewId = 'architecture' | 'runtime' | 'data-flow' | 'contracts' | 'pipeline'
 
@@ -44,6 +56,24 @@ export const DERIVED_VIEWS: DerivedViewDefinition[] = [
   },
 ]
 
+export interface DerivedContentChip {
+  typeId: string
+  typeLabel: string
+  count: number
+}
+
+export interface DerivedAnnotationBadge {
+  typeId: 'note' | 'decision' | 'risk'
+  label: string
+  count: number
+  highSeverity: boolean
+}
+
+export interface DerivedUnassignedItem {
+  id: string
+  label: string
+}
+
 export interface DerivedCard {
   id: string
   label: string
@@ -51,6 +81,15 @@ export interface DerivedCard {
   typeLabel: string
   detail?: string
   accent?: string
+  level?: LevelNumber
+  contents?: DerivedContentChip[]
+  canExpand?: boolean
+  expanded?: boolean
+  annotations?: DerivedAnnotationBadge[]
+  internalRelations?: number
+  isUnassigned?: boolean
+  unassignedItems?: DerivedUnassignedItem[]
+  height?: number
 }
 
 export interface DerivedRelation {
@@ -59,12 +98,29 @@ export interface DerivedRelation {
   to: string
   relationType?: string
   label: string
+  count?: number
+}
+
+export interface DerivedViewLevelState {
+  level: LevelNumber
+  visible: string[]
+  folded: Map<string, string[]>
+  unassigned: string[]
+  parents: Map<string, string>
 }
 
 export interface DerivedView {
   nodes: DerivedCard[]
   edges: DerivedRelation[]
+  levelState?: DerivedViewLevelState
 }
+
+export interface DerivedViewOptions {
+  level?: LevelNumber
+  expanded?: ReadonlySet<string>
+}
+
+export const UNASSIGNED_CARD_ID = '__unassigned__'
 
 interface DerivedSequenceMessage extends DerivedRelation {
   order: number
@@ -185,6 +241,82 @@ function relatedEdges(
   })
 }
 
+function plural(label: string, count: number): string {
+  const lower = label.toLowerCase()
+  if (count === 1) return lower
+  if (lower.endsWith('y')) return `${lower.slice(0, -1)}ies`
+  if (lower.endsWith('s')) return `${lower}es`
+  return `${lower}s`
+}
+
+interface AnnotationTally {
+  count: number
+  highSeverity: boolean
+}
+
+function annotationTallies(
+  rawNodes: CanvasNode[],
+  rawEdges: CanvasEdge[],
+  mapCard: (id: string) => string | undefined,
+): Map<string, Map<'note' | 'decision' | 'risk', AnnotationTally>> {
+  const rawById = new Map(rawNodes.map((node) => [node.id, node]))
+  const tallies = new Map<string, Map<'note' | 'decision' | 'risk', AnnotationTally>>()
+  const counted = new Set<string>()
+
+  for (const edge of rawEdges) {
+    if (getEdgeRelation(edge) !== 'relates_to') continue
+    const from = rawById.get(edge.fromNode)
+    const to = rawById.get(edge.toNode)
+    if (!from || !to) continue
+    const fromType = from.app?.entityType
+    const toType = to.app?.entityType
+    const annotation = fromType && ANNOTATION_ENTITY_TYPES.has(fromType)
+      ? from
+      : toType && ANNOTATION_ENTITY_TYPES.has(toType)
+        ? to
+        : undefined
+    if (!annotation) continue
+    const other = annotation === from ? to : from
+    const target = mapCard(other.id)
+    if (!target) continue
+    const tallyKey = `${target}:${annotation.id}`
+    if (counted.has(tallyKey)) continue
+    counted.add(tallyKey)
+    const typeId = annotation.app?.entityType as 'note' | 'decision' | 'risk'
+    const annotationFields = annotation.app?.fields ?? {}
+    const current = tallies.get(target) ?? new Map()
+    const entry = current.get(typeId) ?? { count: 0, highSeverity: false }
+    entry.count += 1
+    if (typeId === 'risk' && String(annotationFields.severity ?? '') === 'high') {
+      entry.highSeverity = true
+    }
+    current.set(typeId, entry)
+    tallies.set(target, current)
+  }
+
+  return tallies
+}
+
+function annotationBadges(
+  tallies: Map<'note' | 'decision' | 'risk', AnnotationTally> | undefined,
+): DerivedAnnotationBadge[] | undefined {
+  if (!tallies) return undefined
+  return (['note', 'decision', 'risk'] as const).flatMap((typeId) => {
+    const tally = tallies.get(typeId)
+    if (!tally) return []
+    return [{
+      typeId,
+      label: plural(typeId, tally.count),
+      count: tally.count,
+      highSeverity: tally.highSeverity,
+    }]
+  })
+}
+
+function getEdgeRelation(edge: CanvasEdge): string | undefined {
+  return (edge.app as Record<string, unknown> | undefined)?.relationType as string | undefined
+}
+
 function sortedCards(nodes: CanvasFlowNode[], included: Set<string>, ontology: Ontology): DerivedCard[] {
   return nodes
     .filter((node) => included.has(node.id))
@@ -201,8 +333,16 @@ export function deriveView(
   edges: CanvasFlowEdge[],
   viewId: DerivedViewId,
   ontology: Ontology,
+  options: DerivedViewOptions = {},
 ): DerivedView {
   const nodeById = new Map(nodes.map((node) => [node.id, node]))
+  const rawNodes = nodes.map((node) => node.data.raw)
+  const rawEdges = edges.flatMap((edge) => (edge.data?.raw ? [edge.data.raw] : []))
+  const schemaEdges = schemaReferenceEdges(rawNodes)
+  const allEdges = [
+    ...edges,
+    ...schemaEdges.map((edge) => toFlowEdge(edge, ontology)),
+  ]
   const included = new Set<string>()
 
   if (viewId === 'architecture') {
@@ -227,17 +367,17 @@ export function deriveView(
     for (const node of nodes) {
       if (entityTypeId(node) === 'schema') included.add(node.id)
     }
-    for (const edge of edges) {
+    for (const edge of allEdges) {
       const relation = edge.data?.relationType
       if (!relation || !['defines', 'describes', 'uses'].includes(relation)) continue
       const source = nodeById.get(edge.source)
       const target = nodeById.get(edge.target)
       if (!source || !target) continue
       if (entityTypeId(source) !== 'schema' && entityTypeId(target) !== 'schema') continue
-      if (['system', 'repository', 'process', 'schema'].includes(entityTypeId(source))) {
+      if (['system', 'repository', 'process', 'artifact', 'schema'].includes(entityTypeId(source))) {
         included.add(source.id)
       }
-      if (['system', 'repository', 'process', 'schema'].includes(entityTypeId(target))) {
+      if (['system', 'repository', 'process', 'artifact', 'schema'].includes(entityTypeId(target))) {
         included.add(target.id)
       }
     }
@@ -256,21 +396,153 @@ export function deriveView(
     pipeline: new Set(['runs', 'uses', 'produces']),
   }
 
-  const relations = relatedEdges(
-    edges,
+  const viewEdges = relatedEdges(
+    allEdges,
     included,
     viewId === 'architecture' ? undefined : allowedByView[viewId],
-  ).map((edge) => relationFor(edge, ontology))
+  )
+
+  const level = options.level
+  if (level == null) {
+    const relations = viewEdges.map((edge) => relationFor(edge, ontology))
+    return {
+      nodes: sortedCards(nodes, included, ontology),
+      edges: relations.sort(compareRelations),
+    }
+  }
+
+  const graph = computeLevelGraph(rawNodes, rawEdges)
+  const expanded = new Set(options.expanded ?? [])
+  const selection = selectVisibleCards(graph, included, level, expanded)
+  const unassigned = new Set(selection.unassigned)
+  const internal = new Map<string, number>()
+  const merged = new Map<string, Array<{ from: string; to: string; relation: DerivedRelation }>>()
+  const flowById = new Map(nodes.map((node) => [node.id, node]))
+  const rawById = new Map(rawNodes.map((node) => [node.id, node]))
+
+  function mapEnd(id: string): string | undefined {
+    if (selection.visible.has(id)) return id
+    const ancestor = selection.ancestors.get(id)
+    if (ancestor) return ancestor
+    if (unassigned.has(id)) return UNASSIGNED_CARD_ID
+    return undefined
+  }
+
+  for (const edge of viewEdges) {
+    const from = mapEnd(edge.source)
+    const to = mapEnd(edge.target)
+    if (!from || !to) continue
+    if (from === to) {
+      internal.set(from, (internal.get(from) ?? 0) + 1)
+      continue
+    }
+    const relation = relationFor(edge, ontology)
+    const key = `${from}\u0000${to}\u0000${relation.relationType ?? ''}`
+    merged.set(key, [...(merged.get(key) ?? []), { from, to, relation }])
+  }
+
+  const relations = [...merged.values()].map((group) => {
+    const first = group[0]!
+    const count = group.length
+    return {
+      ...first.relation,
+      id: count === 1
+        ? first.relation.id
+        : `merged:${first.from}:${first.to}:${first.relation.relationType ?? 'none'}`,
+      from: first.from,
+      to: first.to,
+      label: count > 1 ? `${first.relation.label} ×${count}` : first.relation.label,
+      count,
+    }
+  }).sort(compareRelations)
+
+  const annotations = annotationTallies(rawNodes, rawEdges, mapEnd)
+
+  const cards: DerivedCard[] = sortedCards(nodes, selection.visible, ontology).map((card) => {
+    const foldedIds = selection.folded.get(card.id) ?? []
+    const contents = foldedIds.length > 0 ? contentsFor(foldedIds, rawById, ontology) : undefined
+    const badges = annotationBadges(annotations.get(card.id))
+    const internalRelations = internal.get(card.id)
+    const height = contents || badges || internalRelations
+      ? 112
+      : undefined
+    return {
+      ...card,
+      level: graph.levels.get(card.id),
+      contents,
+      canExpand: foldedIds.length > 0,
+      expanded: expanded.has(card.id),
+      annotations: badges,
+      internalRelations,
+      height,
+    }
+  })
+
+  if (selection.unassigned.length > 0) {
+    const items = selection.unassigned
+      .map((id) => ({
+        id,
+        label: flowById.get(id) ? nodeLabel(flowById.get(id)!, ontology) : id,
+      }))
+      .sort((left, right) => left.label.localeCompare(right.label) || left.id.localeCompare(right.id))
+    const badges = annotationBadges(annotations.get(UNASSIGNED_CARD_ID))
+    const internalRelations = internal.get(UNASSIGNED_CARD_ID)
+    cards.push({
+      id: UNASSIGNED_CARD_ID,
+      label: `Unassigned (${items.length})`,
+      typeId: 'unassigned',
+      typeLabel: 'Unassigned',
+      detail: 'No owner at this level.',
+      accent: '#8a94a0',
+      level,
+      annotations: badges,
+      internalRelations,
+      isUnassigned: true,
+      unassignedItems: items,
+      height: Math.min(360, 84 + items.length * 22 + (badges ? 18 : 0)),
+    })
+  }
 
   return {
-    nodes: sortedCards(nodes, included, ontology),
-    edges: relations.sort((left, right) => (
-      (RELATION_RANK[left.relationType ?? ''] ?? 9) - (RELATION_RANK[right.relationType ?? ''] ?? 9)
-      || left.from.localeCompare(right.from)
-      || left.to.localeCompare(right.to)
-      || left.id.localeCompare(right.id)
-    )),
+    nodes: cards,
+    edges: relations,
+    levelState: {
+      level,
+      visible: [...selection.visible].sort(),
+      folded: selection.folded,
+      unassigned: selection.unassigned,
+      parents: graph.parents,
+    },
   }
+}
+
+function compareRelations(left: DerivedRelation, right: DerivedRelation): number {
+  return (RELATION_RANK[left.relationType ?? ''] ?? 9) - (RELATION_RANK[right.relationType ?? ''] ?? 9)
+    || left.from.localeCompare(right.from)
+    || left.to.localeCompare(right.to)
+    || left.id.localeCompare(right.id)
+}
+
+function contentsFor(
+  ids: string[],
+  rawById: Map<string, CanvasNode>,
+  ontology: Ontology,
+): DerivedContentChip[] {
+  const groups = new Map<string, DerivedContentChip>()
+  for (const id of ids) {
+    const node = rawById.get(id)
+    if (!node) continue
+    const typeId = node.app?.entityType ?? 'text'
+    const typeLabel = findEntityType(ontology, typeId)?.label
+      ?? (displayValue(typeId) || 'Card')
+    const current = groups.get(typeId) ?? { typeId, typeLabel, count: 0 }
+    current.count += 1
+    groups.set(typeId, current)
+  }
+  return [...groups.values()].sort((left, right) => (
+    (PARTICIPANT_RANK[left.typeId] ?? 9) - (PARTICIPANT_RANK[right.typeId] ?? 9)
+    || left.typeLabel.localeCompare(right.typeLabel)
+  ))
 }
 
 export function sequenceProcessOptions(

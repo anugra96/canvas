@@ -29,6 +29,10 @@ function nodeWidth(label: string): number {
   return Math.min(280, Math.max(200, label.length * 6.4 + 56))
 }
 
+function nodeHeight(node: Pick<DerivedCard, 'height'>): number {
+  return node.height ?? HEIGHT
+}
+
 function edgeGeometry(
   source: DiagramNode,
   target: DiagramNode,
@@ -86,7 +90,7 @@ export function layoutDerivedView(view: DerivedView): DerivedDiagram {
   const nodeIds = new Set(view.nodes.map((node) => node.id))
 
   for (const node of view.nodes) {
-    graph.setNode(node.id, { width: nodeWidth(node.label), height: HEIGHT })
+    graph.setNode(node.id, { width: nodeWidth(node.label), height: nodeHeight(node) })
   }
   for (const edge of view.edges) {
     if (!nodeIds.has(edge.from) || !nodeIds.has(edge.to)) continue
@@ -98,12 +102,13 @@ export function layoutDerivedView(view: DerivedView): DerivedDiagram {
   const nodes = view.nodes.map((node) => {
     const positioned = graph.node(node.id)
     const width = nodeWidth(node.label)
+    const height = nodeHeight(node)
     return {
       ...node,
       width,
-      height: HEIGHT,
+      height,
       x: positioned.x - width / 2,
-      y: positioned.y - HEIGHT / 2,
+      y: positioned.y - height / 2,
     }
   })
   const byId = new Map(nodes.map((node) => [node.id, node]))

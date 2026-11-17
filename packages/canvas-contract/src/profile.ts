@@ -75,6 +75,7 @@ export type ProfileIssueCode =
   | 'naming_inconsistent'
   | 'schema_unused'
   | 'endpoint_without_resource'
+  | 'level_unassigned'
 
 export interface CanvasProfileIssue {
   code: ProfileIssueCode
