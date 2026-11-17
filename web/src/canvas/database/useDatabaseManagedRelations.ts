@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react'
 
 import { deriveManagedReferences } from '@canvas/contract'
 
-import { toFlowEdge, type CanvasFlowEdge, type CanvasFlowNode } from '../model/adapter'
+import { nodeDimensions, toFlowEdge, type CanvasFlowEdge, type CanvasFlowNode } from '../model/adapter'
 
 export function useDatabaseManagedRelations({
   nodes,
@@ -15,7 +15,18 @@ export function useDatabaseManagedRelations({
 }) {
   const managed = useMemo(
     () => (enabled
-      ? deriveManagedReferences({ nodes: nodes.map((node) => node.data.raw) })
+      ? deriveManagedReferences({
+        nodes: nodes.map((node) => {
+          const size = nodeDimensions(node)
+          return {
+            ...node.data.raw,
+            x: node.position.x,
+            y: node.position.y,
+            width: size.width,
+            height: size.height,
+          }
+        }),
+      })
       : null),
     [enabled, nodes],
   )

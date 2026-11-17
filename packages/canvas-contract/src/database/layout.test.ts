@@ -3,10 +3,11 @@ import { createRequire } from 'node:module'
 
 import { describe, expect, it } from 'vitest'
 
-import type { CanvasNode, JsonCanvas } from '../jsonCanvas'
+import type { CanvasEdge, CanvasNode, JsonCanvas } from '../jsonCanvas'
 import { importDatabaseSql } from './importDatabase'
 import { estimateDatabaseSizes, layoutDatabaseCanvas } from './layout'
-import { schemaName, stringField } from './model'
+import { withManagedReferences } from './managedRelations'
+import { nodeTableDefinition, schemaName, stringField } from './model'
 
 const require = createRequire(import.meta.url)
 const wasm = readFileSync(require.resolve('libpg-query/wasm/libpg-query.wasm'))
@@ -50,6 +51,58 @@ function positions(canvas: JsonCanvas): Record<string, { x: number; y: number; w
   ]))
 }
 
+const TABLE_HEADER = 58
+const COLUMN_ROW = 26
+
+function columnHandlePoint(node: CanvasNode, column: string, side: string | undefined) {
+  const index = nodeTableDefinition(node)?.columns.findIndex((candidate) => candidate.name === column) ?? -1
+  if (index < 0) throw new Error(`Missing column ${column} on ${node.id}`)
+  return {
+    x: side === 'left' ? node.x : node.x + node.width,
+    y: node.y + TABLE_HEADER + index * COLUMN_ROW + COLUMN_ROW / 2,
+  }
+}
+
+function segmentIntersectsCard(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  card: CanvasNode,
+  inset = 0.5,
+): boolean {
+  const left = card.x + inset
+  const right = card.x + card.width - inset
+  const top = card.y + inset
+  const bottom = card.y + card.height - inset
+  if (right <= left || bottom <= top) return false
+  const dx = to.x - from.x
+  const dy = to.y - from.y
+  let start = 0
+  let end = 1
+  const checks: Array<[number, number]> = [
+    [-dx, from.x - left],
+    [dx, right - from.x],
+    [-dy, from.y - top],
+    [dy, bottom - from.y],
+  ]
+  for (const [p, q] of checks) {
+    if (p === 0) {
+      if (q < 0) return false
+      continue
+    }
+    const ratio = q / p
+    if (p < 0) start = Math.max(start, ratio)
+    else end = Math.min(end, ratio)
+    if (start > end) return false
+  }
+  return true
+}
+
+function referenceEdges(canvas: JsonCanvas): CanvasEdge[] {
+  return (canvas.edges ?? []).filter((edge) => (
+    (edge.app as Record<string, unknown> | undefined)?.relationType === 'references'
+  ))
+}
+
 describe('Database layout', () => {
   it.each(fixtures)('%s is deterministic, overlap-free, and keeps tables in lanes', async (name) => {
     const imported = await importDatabaseSql(fixture(name), { wasm })
@@ -87,6 +140,27 @@ describe('Database layout', () => {
       for (const parent of parents) {
         expect(parent.x, `${stringField(parent, 'name')} should be left of ${stringField(table, 'name')}`)
           .toBeLessThan(table.x)
+      }
+    }
+
+    const withReferences = withManagedReferences(first)
+    const references = referenceEdges(withReferences)
+    expect(references.length).toBeGreaterThan(0)
+    const tablesById = new Map(tables.map((table) => [table.id, table]))
+    for (const edge of references) {
+      const child = tablesById.get(edge.fromNode)
+      const parent = tablesById.get(edge.toNode)
+      expect(child, `missing child table for ${edge.id}`).toBeTruthy()
+      expect(parent, `missing parent table for ${edge.id}`).toBeTruthy()
+      const meta = edge.app as Record<string, unknown>
+      const from = columnHandlePoint(child!, String(meta.fromColumn), edge.fromSide)
+      const to = columnHandlePoint(parent!, String(meta.toColumn), edge.toSide)
+      for (const card of cards) {
+        if (card.id === edge.fromNode || card.id === edge.toNode) continue
+        expect(
+          segmentIntersectsCard(from, to, card),
+          `${stringField(child!, 'name')}.${meta.fromColumn} -> ${stringField(parent!, 'name')}.${meta.toColumn} crosses ${card.id}`,
+        ).toBe(false)
       }
     }
   })

@@ -17,6 +17,11 @@ const TABLE_GAP = 28
 const ENUM_GAP = 24
 const HEADER_GAP = 48
 const MAX_VISIBLE_COLUMNS = 12
+const DATABASE_HEADER = 58
+const DATABASE_ROW = 26
+const DATABASE_DESCRIPTION_LINE = 18
+const DATABASE_PADDING = 16
+const DATABASE_MIN_HEIGHT = 80
 
 function nodeType(node: CanvasNode): string {
   return getEntityMeta(node)?.entityType ?? ''
@@ -55,6 +60,22 @@ function enumWidth(node: CanvasNode): number {
   return Math.max(240, Math.min(420, 180 + longest * 8))
 }
 
+function databaseHeight(node: CanvasNode): number {
+  const fields = getEntityMeta(node)?.fields ?? {}
+  const rows = ['version', 'owner', 'extensions']
+    .filter((key) => String(fields[key] ?? '').trim()).length
+  const descriptionLines = stringField(node, 'description')
+    .split(/\r?\n/)
+    .filter((line) => line.trim()).length
+  return Math.max(
+    DATABASE_MIN_HEIGHT,
+    DATABASE_HEADER
+      + rows * DATABASE_ROW
+      + descriptionLines * DATABASE_DESCRIPTION_LINE
+      + DATABASE_PADDING,
+  )
+}
+
 export function estimateDatabaseSizes(canvas: JsonCanvas): DatabaseSizeMap {
   const sizes: DatabaseSizeMap = {}
   for (const node of canvas.nodes ?? []) {
@@ -66,7 +87,7 @@ export function estimateDatabaseSizes(canvas: JsonCanvas): DatabaseSizeMap {
         sizes[node.id] = { width: enumWidth(node), height: enumHeight(node) }
         break
       case 'database_definition':
-        sizes[node.id] = { width: 420, height: 280 }
+        sizes[node.id] = { width: 420, height: databaseHeight(node) }
         break
       case 'db_schema':
         sizes[node.id] = { width: 520, height: 320 }

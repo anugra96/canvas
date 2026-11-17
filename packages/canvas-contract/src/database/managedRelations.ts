@@ -34,6 +34,15 @@ function edgeMeta(edge: CanvasEdge): Record<string, unknown> {
   return (edge.app ?? {}) as Record<string, unknown>
 }
 
+function referenceSides(
+  child: CanvasNode,
+  parent: CanvasNode,
+): { fromSide: 'left' | 'right'; toSide: 'left' | 'right' } {
+  if (child.x >= parent.x + parent.width) return { fromSide: 'left', toSide: 'right' }
+  if (child.x + child.width <= parent.x) return { fromSide: 'right', toSide: 'left' }
+  return { fromSide: 'right', toSide: 'right' }
+}
+
 export function deriveManagedReferences(canvas: Pick<JsonCanvas, 'nodes'>): CanvasEdge[] {
   const tables = tableNodes(canvas)
   const byKey = new Map<string, CanvasNode>()
@@ -51,12 +60,12 @@ export function deriveManagedReferences(canvas: Pick<JsonCanvas, 'nodes'>): Canv
       const toColumn = foreignKey.references.columns[0]
       if (!fromColumn || !toColumn) continue
       const label = foreignKeyLabel(foreignKey)
+      const sides = referenceSides(table, parent)
       edges.push({
         id: `managed:references:${table.id}:${parent.id}:${index}`,
         fromNode: table.id,
         toNode: parent.id,
-        fromSide: 'right',
-        toSide: 'left',
+        ...sides,
         toEnd: 'arrow',
         ...(label ? { label } : {}),
         app: {

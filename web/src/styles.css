@@ -9534,6 +9534,11 @@ select {
 .db-column-handle.left { left: -5px; }
 .db-column-handle.right { right: -5px; }
 
+.db-column-handle.react-flow__handle.db-column-handle-ghost {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .db-enum-card {
   padding: 9px 11px;
   gap: 7px;

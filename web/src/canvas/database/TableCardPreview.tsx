@@ -54,6 +54,13 @@ export function TableCardPreview({
               id={databaseColumnHandleId(column.name, 'left')}
               className="db-column-handle left"
             />
+            <Handle
+              type="source"
+              position={Position.Left}
+              id={databaseColumnHandleId(column.name, 'left')}
+              className="db-column-handle left db-column-handle-ghost"
+              isConnectable={false}
+            />
             <span className="db-column-name">
               {definition?.primaryKey?.columns.includes(column.name) && <KeyRound size={10} />}
               {column.name}
@@ -69,6 +76,13 @@ export function TableCardPreview({
               position={Position.Right}
               id={databaseColumnHandleId(column.name, 'right')}
               className="db-column-handle right"
+            />
+            <Handle
+              type="target"
+              position={Position.Right}
+              id={databaseColumnHandleId(column.name, 'right')}
+              className="db-column-handle right db-column-handle-ghost"
+              isConnectable={false}
             />
           </div>
         ))}

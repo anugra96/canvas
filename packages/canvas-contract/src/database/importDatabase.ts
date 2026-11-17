@@ -649,11 +649,10 @@ export function importDatabaseSchema(
     edges: [],
     app: profileMetadata(DATABASE_PROFILE),
   }
-  const withReferences = withManagedReferences(canvas)
-  const laidOut = layoutDatabaseCanvas(withReferences, estimateDatabaseSizes(withReferences))
+  const laidOut = layoutDatabaseCanvas(canvas, estimateDatabaseSizes(canvas))
   return {
     title,
-    canvas: laidOut,
+    canvas: withManagedReferences(laidOut),
     warnings: summary.warnings,
   }
 }
