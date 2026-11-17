@@ -73,8 +73,8 @@ export function rfc3339FromLocalDateTime(text: string): string {
   )
   if (Number.isNaN(date.getTime())) return text
   const offset = -date.getTimezoneOffset()
-  const sign = offset === 0 ? 'Z' : offset > 0 ? '+' : '-'
+  const sign = offset > 0 ? '+' : '-'
   const absolute = Math.abs(offset)
-  const suffix = offset === 0 ? '' : `${sign}${pad(Math.floor(absolute / 60))}:${pad(absolute % 60)}`
+  const suffix = offset === 0 ? 'Z' : `${sign}${pad(Math.floor(absolute / 60))}:${pad(absolute % 60)}`
   return `${year}-${month}-${day}T${hour}:${minute}:${second}${suffix}`
 }

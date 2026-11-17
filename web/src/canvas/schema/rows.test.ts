@@ -69,9 +69,16 @@ describe('schema row validation', () => {
   })
 
   it('writes RFC 3339 date-times and shows them back in the input', () => {
-    const rfc3339 = rfc3339FromLocalDateTime('2026-11-16T10:30')
-    expect(rfc3339).toMatch(/^2026-11-16T10:30:00(?:Z|[+-]\d{2}:\d{2})$/)
-    expect(dateTimeInputValue(rfc3339)).toBe('2026-11-16T10:30:00')
+    const originalTimezone = process.env.TZ
+    process.env.TZ = 'UTC'
+    try {
+      const rfc3339 = rfc3339FromLocalDateTime('2026-11-16T10:30')
+      expect(rfc3339).toBe('2026-11-16T10:30:00Z')
+      expect(dateTimeInputValue(rfc3339)).toBe('2026-11-16T10:30:00')
+    } finally {
+      if (originalTimezone === undefined) delete process.env.TZ
+      else process.env.TZ = originalTimezone
+    }
     expect(rfc3339FromLocalDateTime('tomorrow')).toBe('tomorrow')
   })
 })
