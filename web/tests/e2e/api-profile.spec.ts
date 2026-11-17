@@ -38,6 +38,7 @@ test('imports the Engine fixture into API cards with zero review errors', async 
   await expect(panel).toBeVisible()
   await expect(panel.locator('.validation-group.error')).toHaveCount(0)
   await expect(panel.locator('.validation-item.error')).toHaveCount(0)
+  await panel.getByLabel('Review mode').selectOption('Publish')
   await expect(panel.locator('.validation-group.warning')).toHaveCount(3)
   const reviewGroup = panel.locator('.validation-group.warning').filter({ hasText: 'Schema review due' })
   await expect(reviewGroup).toContainText('1')

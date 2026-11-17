@@ -118,6 +118,11 @@ test('creates a Systems canvas with typed cards and profile persistence', async 
   await addCanvasItem(page, 'Note')
   await expect(page.locator('.entity-node')).toHaveCount(4)
   await expect(page.locator('.entity-type')).toContainText(['Actor', 'System', 'Note'])
+
+  await page.getByRole('button', { name: /Review/ }).click()
+  const panel = page.locator('.review-panel')
+  await panel.getByLabel('Review mode').selectOption('Publish')
+  await panel.getByRole('button', { name: 'Close review' }).click()
   await expect(page.locator('.canvas-warning-badge').first()).toBeVisible()
 
   await waitForSaved(page)
@@ -835,6 +840,7 @@ test('ignores and restores a warning with a reason', async ({ page }) => {
   await page.getByRole('button', { name: /Review/ }).click()
   const panel = page.locator('.review-panel')
   await expect(panel.getByRole('tab', { name: /Issues/ })).toHaveAttribute('aria-selected', 'true')
+  await panel.getByLabel('Review mode').selectOption('Publish')
   const fieldGroup = panel.locator('.validation-group').filter({ hasText: 'Missing required field' })
   await fieldGroup.locator('.validation-group-toggle').click()
   const fieldRows = fieldGroup.locator('.validation-item')
