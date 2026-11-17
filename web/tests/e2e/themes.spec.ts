@@ -112,6 +112,20 @@ test('offers optional background ambience themes', async ({ page }) => {
   await expect(picker).toHaveValue('space')
   await picker.selectOption('')
   await expect(picker).toHaveValue('')
+
+  const focus = appearance.getByLabel('Focus tones')
+  await focus.selectOption('alpha')
+  await expect(focus).toHaveValue('alpha')
+  await expect(appearance.getByLabel('Delivery')).toHaveValue('binaural')
+  await expect(appearance.getByLabel('Focus level')).toHaveValue('40')
+  await expect(appearance.getByText(
+    'Avoid if you have epilepsy or a seizure history. Stop if you feel discomfort.',
+    { exact: true },
+  )).toBeVisible()
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem('canvas-focus-tone'))).toBe('alpha')
+  await focus.selectOption('off')
+  await expect(focus).toHaveValue('off')
+  await expect.poll(async () => page.evaluate(() => localStorage.getItem('canvas-focus-tone'))).toBe('off')
   expect(errors).toEqual([])
 })
 

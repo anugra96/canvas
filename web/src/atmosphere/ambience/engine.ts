@@ -4,8 +4,46 @@ export interface AmbienceSpec {
   env: EnvStarter
 }
 
-function midiToHz(note: number): number {
-  return 440 * 2 ** ((note - 69) / 12)
+let tuningReference = 440
+
+export function setTuningReference(reference: number): void {
+  tuningReference = reference
+}
+
+export function currentTuningReference(): number {
+  return tuningReference
+}
+
+export function midiToHz(note: number, reference = 440): number {
+  return reference * 2 ** ((note - 69) / 12)
+}
+
+export interface LimiterParam {
+  value: number
+}
+
+export interface LimiterLike {
+  threshold: LimiterParam
+  knee: LimiterParam
+  ratio: LimiterParam
+  attack: LimiterParam
+  release: LimiterParam
+}
+
+export const SAFETY_LIMITER = {
+  threshold: -6,
+  knee: 0,
+  ratio: 20,
+  attack: 0.003,
+  release: 0.25,
+} as const
+
+export function applySafetyLimiter(compressor: LimiterLike): void {
+  compressor.threshold.value = SAFETY_LIMITER.threshold
+  compressor.knee.value = SAFETY_LIMITER.knee
+  compressor.ratio.value = SAFETY_LIMITER.ratio
+  compressor.attack.value = SAFETY_LIMITER.attack
+  compressor.release.value = SAFETY_LIMITER.release
 }
 
 export interface ToneOptions {
@@ -37,7 +75,7 @@ export function tone(
   const level = context.createGain()
   const panner = context.createStereoPanner()
   osc.type = type
-  osc.frequency.value = midiToHz(note)
+  osc.frequency.value = midiToHz(note, currentTuningReference())
   osc.detune.value = detune
   panner.pan.value = pan
   level.gain.setValueAtTime(0, start)
@@ -247,7 +285,7 @@ export function liveDrone(
   const level = context.createGain()
   const panner = context.createStereoPanner()
   osc.type = type
-  osc.frequency.value = midiToHz(note)
+  osc.frequency.value = midiToHz(note, currentTuningReference())
   level.gain.setValueAtTime(0, context.currentTime)
   level.gain.linearRampToValueAtTime(gain, context.currentTime + 3)
   panner.pan.value = pan

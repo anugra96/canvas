@@ -6992,6 +6992,92 @@ select {
   accent-color: var(--ui-accent);
 }
 
+.focus-controls {
+  display: grid;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--ui-line);
+}
+
+.focus-field {
+  display: grid;
+  gap: 4px;
+  color: var(--ui-muted);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.focus-field select {
+  width: 100%;
+  max-width: none;
+  min-height: var(--chrome-control-h);
+  padding: 0 6px;
+  border: 0.5px solid var(--ui-line);
+  border-radius: var(--chrome-radius);
+  color: var(--ui-text);
+  background: var(--ui-input-bg);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.focus-level-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  gap: 6px;
+  align-items: center;
+}
+
+.focus-level-value {
+  color: var(--ui-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.focus-caution {
+  color: var(--ui-warning-text);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.focus-evidence {
+  color: var(--ui-muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.focus-paused {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--radius);
+  color: var(--ui-text);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.focus-paused button {
+  flex: none;
+  padding: 4px 8px;
+  border: 1px solid var(--ui-line-strong);
+  border-radius: var(--radius);
+  color: var(--ui-text);
+  background: var(--ui-input-bg);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.focus-paused button:hover {
+  border-color: var(--ui-accent);
+}
+
 .appearance-switch {
   position: relative;
   width: 38px;
