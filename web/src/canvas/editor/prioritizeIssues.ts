@@ -24,6 +24,7 @@ const TYPE_WEIGHT: Record<string, number> = {
 
 const CODE_WEIGHT: Record<CanvasProfileIssue['code'], number> = {
   schema_invalid: 90,
+  schema_ref_missing: 91,
   example_invalid: 85,
   operation_invalid: 95,
   ref_unresolved: 88,

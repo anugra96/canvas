@@ -58,6 +58,7 @@ export type ProfileIssueCode =
   | 'schema_invalid'
   | 'schema_review'
   | 'schema_unlinked'
+  | 'schema_ref_missing'
   | 'schema_contract'
   | 'artifact_without_producer'
   | 'process_without_runner'

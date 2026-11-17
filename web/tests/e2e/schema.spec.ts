@@ -85,3 +85,30 @@ test('builds a required field in Fields and validates it in Rows', async ({ page
   await expect(row).toHaveClass(/invalid/)
   await expect(row.locator('.schema-row-status')).toContainText('✗')
 })
+
+test('defines an Artifact schema inline and extracts it to a shared card', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Canvas type').selectOption('systems')
+  await createCanvas(page)
+  await addCanvasItem(page, 'artifact')
+
+  const card = page.locator('.entity-card').first()
+  await card.dblclick()
+  const dialog = page.getByRole('dialog', { name: 'Edit Artifact' })
+  await expect(dialog).toBeVisible()
+  await dialog.getByLabel('Name', { exact: true }).fill('Job events export')
+  await dialog.getByLabel('Define here').check()
+
+  await dialog.getByRole('tab', { name: 'Fields' }).click()
+  await dialog.getByRole('button', { name: 'Add field' }).click()
+  const name = dialog.getByLabel('Field name field')
+  await name.fill('event_id')
+  await name.press('Tab')
+  await expect(dialog.getByLabel('Field name event_id')).toHaveValue('event_id')
+
+  await dialog.getByRole('button', { name: 'Extract to shared schema' }).click()
+  await expect(dialog.getByLabel('Shared schema')).not.toHaveValue('')
+  await page.getByRole('button', { name: 'Done' }).click()
+  await expect(page.locator('.artifact-schema-chip')).toContainText('Job events export schema (shared)')
+  await expect(page.locator('.schema-card')).toContainText('Job events export schema')
+})

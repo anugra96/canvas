@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { CanvasEdge, CanvasNode } from '@canvas/contract'
 
+import { extractArtifactSchema, inlineArtifactSchema, schemaKindForArtifact } from './embeddedSchema'
 import { analyzeJsonSchema, validateApiOperations, validateSchemaContracts } from './jsonSchema'
 
 const validSource = JSON.stringify({
@@ -108,6 +109,36 @@ describe('validateSchemaContracts', () => {
     expect(reviews[0]?.message).toContain('needs review')
   })
 
+  it('flags a shared schema reference that names no card', () => {
+    const artifact = entityNode('artifact', 'artifact', {
+      name: 'Job events export',
+      schemaMode: 'shared',
+      schemaRef: 'missing',
+    })
+    const issues = validateSchemaContracts([artifact], [], now)
+    expect(issues).toContainEqual(expect.objectContaining({
+      code: 'schema_ref_missing',
+      severity: 'error',
+      nodeId: 'artifact',
+      fieldKey: 'schemaRef',
+    }))
+  })
+
+  it('flags an invalid inline Artifact schema against the Artifact card', () => {
+    const artifact = entityNode('artifact', 'artifact', {
+      name: 'Job events export',
+      schemaMode: 'inline',
+      schema: '{"type":',
+    })
+    const issues = validateSchemaContracts([artifact], [], now)
+    expect(issues).toContainEqual(expect.objectContaining({
+      code: 'schema_invalid',
+      severity: 'error',
+      nodeId: 'artifact',
+      fieldKey: 'schema',
+    }))
+  })
+
   it('flags an active API System described by a draft schema', () => {
     const schema = entityNode('schema', 'schema', schemaFields({ status: 'draft' }))
     const api = entityNode('api', 'system', { name: 'Orders API', kind: 'api', status: 'active' })
@@ -117,6 +148,51 @@ describe('validateSchemaContracts', () => {
 })
 
 describe('schema links', () => {
+  it('treats an Artifact schemaRef as a schema link', () => {
+    const schema = entityNode('schema', 'schema', schemaFields({ name: 'JobEvent' }))
+    const artifact = entityNode('artifact', 'artifact', {
+      name: 'Job events export',
+      schemaMode: 'shared',
+      schemaRef: 'schema',
+    })
+    const issues = validateSchemaContracts([schema, artifact], [], new Date('2026-01-01T00:00:00Z'))
+    expect(issues.some((issue) => issue.code === 'schema_unlinked')).toBe(false)
+  })
+
+  it('keeps the extracted Schema card through an inline round trip', () => {
+    const original = JSON.stringify({
+      type: 'object',
+      properties: { event_id: { type: 'string' } },
+      required: ['event_id'],
+    }, null, 2)
+    const artifactFields = {
+      name: 'Job events export',
+      kind: 'dataset',
+      version: '2.1.0',
+      owner: 'Nimbus',
+      schemaMode: 'inline',
+      schema: original,
+      schemaRef: '',
+    }
+    const extracted = extractArtifactSchema(artifactFields, 'schema-1')
+    expect(extracted.schema).toMatchObject({
+      name: 'Job events export schema',
+      kind: 'dataset',
+      version: '2.1.0',
+      owner: 'Nimbus',
+      status: 'draft',
+      source: original,
+    })
+    expect(extracted.artifact).toMatchObject({ schemaMode: 'shared', schemaRef: 'schema-1' })
+
+    const inlined = inlineArtifactSchema(extracted.artifact, String(extracted.schema.source))
+    expect(inlined.schema).toBe(original)
+    expect(inlined.schemaMode).toBe('inline')
+    expect(extracted.schema.source).toBe(original)
+    expect(schemaKindForArtifact('config')).toBe('config')
+    expect(schemaKindForArtifact('model')).toBe('other')
+  })
+
   it('treats schema-to-schema uses as contract links', () => {
     const customer = entityNode('customer', 'schema', schemaFields({ name: 'Customer' }))
     const order = entityNode('order', 'schema', schemaFields({ name: 'Order' }))

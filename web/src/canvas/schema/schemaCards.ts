@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react'
 
 export interface SchemaCardSource {
+  id: string
   name: string
   source: string
 }

@@ -329,6 +329,43 @@ export function validateSchemaContracts(
     }
   }
 
+  for (const artifact of nodes) {
+    if (nodeEntityType(artifact) !== 'artifact') continue
+    const fields = getEntityMeta(artifact)?.fields ?? {}
+    const name = nodeName(artifact)
+    const artifactMode = stringField(fields.schemaMode) || 'none'
+    if (artifactMode === 'shared') {
+      const schemaRef = stringField(fields.schemaRef)
+      if (schemaRef && schemaIds.has(schemaRef)) {
+        linkedSchemas.add(schemaRef)
+      } else {
+        issues.push({
+          code: 'schema_ref_missing',
+          severity: 'error',
+          message: `Artifact "${name}" references a Schema card that is not on this canvas.`,
+          nodeId: artifact.id,
+          fieldKey: 'schemaRef',
+        })
+      }
+    }
+    if (artifactMode === 'inline') {
+      const analysis = analyzeJsonSchema(
+        stringField(fields.schema),
+        mode === 'api' ? { assumedDialect: '2020-12' } : {},
+      )
+      const firstError = analysis.diagnostics.find((diagnostic) => diagnostic.severity === 'error')
+      if (firstError) {
+        issues.push({
+          code: 'schema_invalid',
+          severity: 'error',
+          message: `Artifact "${name}" schema is invalid: ${firstError.message}`,
+          nodeId: artifact.id,
+          fieldKey: 'schema',
+        })
+      }
+    }
+  }
+
   for (const schema of schemas) {
     const fields = getEntityMeta(schema)?.fields ?? {}
     const name = nodeName(schema)

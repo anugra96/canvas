@@ -456,6 +456,22 @@ export const DEFAULT_ONTOLOGY: Ontology = {
           options: ['draft', 'published', 'deprecated'],
           defaultValue: 'draft',
         },
+        {
+          key: 'schemaMode',
+          label: 'Schema mode',
+          type: 'select',
+          options: ['none', 'inline', 'shared'],
+          defaultValue: 'none',
+          content: true,
+        },
+        {
+          key: 'schema',
+          label: 'Schema',
+          type: 'text',
+          content: true,
+          placeholder: 'JSON Schema source',
+        },
+        { key: 'schemaRef', label: 'Shared schema', type: 'text', content: true },
       ],
     },
     {

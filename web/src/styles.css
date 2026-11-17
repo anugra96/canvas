@@ -8468,3 +8468,84 @@ select {
   text-transform: none;
   letter-spacing: 0;
 }
+
+.artifact-form {
+  gap: 14px;
+}
+
+.artifact-form-section {
+  display: grid;
+  gap: 8px;
+}
+
+.artifact-form-section h3 {
+  margin: 0;
+  color: var(--ui-faint);
+  font-size: 8px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.artifact-schema-section {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--radius);
+  background: var(--ui-highlight);
+}
+
+.artifact-schema-section legend {
+  padding: 0 6px;
+  color: var(--ui-faint);
+  font-size: 8px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.artifact-schema-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+}
+
+.artifact-schema-modes label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ui-text);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.artifact-schema-shared {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.artifact-schema-shared .entity-field {
+  min-width: 240px;
+  flex: 1;
+}
+
+.artifact-schema-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.artifact-schema-chip {
+  align-self: flex-start;
+  padding: 3px 7px;
+  border: 1px solid var(--ui-line-strong);
+  border-radius: 999px;
+  color: var(--ui-muted);
+  background: var(--ui-highlight);
+  font-size: 10px;
+  font-weight: 700;
+}

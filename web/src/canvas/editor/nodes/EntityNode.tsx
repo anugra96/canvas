@@ -31,6 +31,8 @@ import {
 } from '@canvas/contract'
 
 import { useOntology } from '../../../ontology/OntologyContext'
+import { useSchemaCards } from '../../schema/schemaCards'
+import { artifactSchemaChip } from '../../schema/embeddedSchema'
 import { colorFor } from '../../model/adapter'
 import type { CanvasFlowNode } from '../../model/adapter'
 import { useCanvasEditorActions } from '../CanvasEditorContext'
@@ -44,6 +46,8 @@ import { ApiEndpointEditor, EndpointCopyCurlButton } from '../../apiDesign/ApiEn
 import { ResourceEditor } from '../../apiDesign/ResourceEditor'
 import { SecuritySchemeEditor } from '../../apiDesign/SecuritySchemeEditor'
 import { ApiCardPreview } from '../../apiDesign/ApiCardPreview'
+import { ArtifactEditor } from './ArtifactEditor'
+import { FieldInput } from './FieldInput'
 
 const ICONS = {
   boxes: Boxes,
@@ -71,77 +75,6 @@ function TypeIcon({ name }: { name: string }) {
   return <Icon size={16} strokeWidth={2.2} />
 }
 
-function inputType(field: OntologyField): string {
-  if (field.type === 'url') return 'url'
-  if (field.type === 'number') return 'number'
-  return 'text'
-}
-
-function FieldInput({
-  field,
-  value,
-  onChange,
-  className,
-  rows = 2,
-  readOnly = false,
-}: {
-  field: OntologyField
-  value: string
-  onChange: (value: string) => void
-  className?: string
-  rows?: number
-  readOnly?: boolean
-}) {
-  const labelClassName = `entity-field${className ? ` ${className}` : ''}`
-
-  if (field.type === 'textarea') {
-    return (
-      <label className={labelClassName}>
-        <span>{field.label}</span>
-        <textarea
-          rows={rows}
-          data-field-key={field.key}
-          value={value}
-          placeholder={field.placeholder}
-          readOnly={readOnly}
-          onChange={(event) => onChange(event.target.value)}
-        />
-      </label>
-    )
-  }
-
-  if (field.type === 'select') {
-    return (
-      <label className={labelClassName}>
-        <span>{field.label}</span>
-        <select
-          data-field-key={field.key}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-        >
-          <option value="">—</option>
-          {(field.options ?? []).map((option) => (
-            <option key={option} value={option}>{option}</option>
-          ))}
-        </select>
-      </label>
-    )
-  }
-
-  return (
-    <label className={labelClassName}>
-      <span>{field.label}</span>
-      <input
-        type={inputType(field)}
-        data-field-key={field.key}
-        value={value}
-        placeholder={field.placeholder}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </label>
-  )
-}
-
 function entityFields(
   entityType: EntityTypeDefinition,
   fields: Record<string, string | number | null>,
@@ -157,6 +90,7 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
   const actions = useCanvasEditorActions()
   const isMobile = useIsMobile()
   const ontology = useOntology()
+  const schemas = useSchemaCards()
   const meta = data.entity
   const [editing, setEditing] = useState(false)
   const [propertiesOpen, setPropertiesOpen] = useState(false)
@@ -221,12 +155,15 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
       ? new Set(['extra'])
       : entityType.id === 'security_scheme'
         ? new Set(['definition'])
-        : new Set<string>()
+        : entityType.id === 'artifact'
+          ? new Set(['schemaMode', 'schema', 'schemaRef'])
+          : new Set<string>()
   const rows = entityFields(entityType, meta.fields, contentField?.key)
     .filter(({ field }) => !hiddenSummaryKeys.has(field.key))
   const contentValue = contentField
     ? String(meta.fields[contentField.key] ?? '').trim()
     : ''
+  const schemaChip = entityType.id === 'artifact' ? artifactSchemaChip(meta.fields, schemas) : undefined
 
   const editorForm = (
     <div
@@ -357,6 +294,7 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
                 )}
               </div>
             ))}
+            {schemaChip && <span className="artifact-schema-chip">{schemaChip}</span>}
             {contentValue && (
               <div className="entity-content-preview">
                 <MarkdownContent text={contentValue} />
@@ -396,6 +334,17 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
             <ResourceEditor
               fields={meta.fields}
               onChange={(key, value) => actions.updateEntityField(id, key, value)}
+            />
+          ) : entityType.id === 'artifact' ? (
+            <ArtifactEditor
+              id={id}
+              entityType={entityType}
+              fields={meta.fields}
+              onChange={(key, value) => actions.updateEntityField(id, key, value)}
+              onOpenSchema={(schemaId) => {
+                setEditing(false)
+                actions.openNodeEditor(schemaId)
+              }}
             />
           ) : editorForm}
         </FocusEditor>

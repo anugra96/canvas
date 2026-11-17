@@ -12,7 +12,7 @@ import { entityTitle, findEntityType } from '@canvas/contract'
 import { useOntology } from '../../../ontology/OntologyContext'
 import type { CanvasFlowNode } from '../../model/adapter'
 import { analyzeJsonSchema, schemaReviewReasons } from '../../schema/jsonSchema'
-import { useCanvasEditorActions } from '../CanvasEditorContext'
+import { useCanvasEditorActions, useNodeEditRequest } from '../CanvasEditorContext'
 import { FocusEditor } from '../FocusEditor'
 import { SchemaEditor } from '../SchemaEditor'
 import { useApiDesign } from '../../apiDesign/ApiDesignContext'
@@ -27,6 +27,10 @@ export function SchemaNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
   const actions = useCanvasEditorActions()
   const ontology = useOntology()
   const [editing, setEditing] = useState(false)
+  const [seenEditToken, setSeenEditToken] = useState(0)
+  const editToken = useNodeEditRequest(id)
+  const requestedEditing = editToken > 0 && editToken !== seenEditToken
+  const editingOpen = editing || requestedEditing
   const apiDesign = useApiDesign()
   const meta = data.entity
   const entityType = meta ? findEntityType(ontology, meta.entityType) : undefined
@@ -57,6 +61,11 @@ export function SchemaNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
 
   function startEditing() {
     setEditing(true)
+  }
+
+  function closeEditor() {
+    setSeenEditToken(editToken)
+    setEditing(false)
   }
 
   return (
@@ -110,7 +119,7 @@ export function SchemaNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
           </div>
         </div>
       </div>
-      {editing && (
+      {editingOpen && (
         <FocusEditor
           label="Edit schema contract"
           title={name}
@@ -124,7 +133,7 @@ export function SchemaNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
               />
             </label>
           ) : undefined}
-          onClose={() => setEditing(false)}
+          onClose={closeEditor}
         >
           <SchemaEditor
             fields={meta.fields}

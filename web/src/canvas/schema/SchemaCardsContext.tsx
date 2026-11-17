@@ -16,7 +16,7 @@ export function SchemaCardsProvider({
     if (meta?.entityType !== 'schema') return []
     const name = String(meta.fields.name ?? '').trim()
     if (!name) return []
-    return [{ name, source: String(meta.fields.source ?? '') }]
+    return [{ id: node.id, name, source: String(meta.fields.source ?? '') }]
   }), [nodes])
   return <SchemaCardsContext.Provider value={value}>{children}</SchemaCardsContext.Provider>
 }

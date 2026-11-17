@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   addApiResource,
   applyStandardErrors,
+  createNodeId,
   deriveManagedRelations,
   exportOpenApiDocument,
   findEntityType,
@@ -12,6 +13,9 @@ import {
   renameApiResource,
   renderEntityMarkdown,
   stringifyOpenApiYaml,
+  type CanvasNode,
+  type EntityFields,
+  type Ontology,
   type AddApiResourceInput,
   type JsonObject,
 } from '@canvas/contract'
@@ -26,27 +30,62 @@ import {
 } from '../model/adapter'
 import { useOntology } from '../../ontology/OntologyContext'
 import { useCoarsePointer, useIsMobile } from '../../useMediaQuery'
-import { CanvasEditorActionsContext, type CanvasEditorActions, type CanvasEditorProps } from './CanvasEditorContext'
+import {
+  CanvasEditorActionsContext,
+  NodeEditRequestContext,
+  type CanvasEditorActions,
+  type CanvasSchemaResult,
+  type CanvasEditorProps,
+  type NodeEditRequest,
+} from './CanvasEditorContext'
 import { CanvasValidationContext } from './CanvasValidationContext'
 import { CanvasWorkspace } from './CanvasWorkspace'
 import { EditorChrome } from './EditorChrome'
 import { EditorDialogs } from './EditorDialogs'
 import { useCanvasCommands } from './commands'
 import { useCanvasDocument } from './document/useCanvasDocument'
+import { makeEntityNode } from './graph/nodes'
 import { useCanvasGraph } from './graph/useCanvasGraph'
 import { useCanvasCapture } from './capture/useCanvasCapture'
 import { useCanvasLinks } from './links/useCanvasLinks'
 import { useCanvasProfile } from './useCanvasProfile'
 import { useCanvasValidation } from './validation/useCanvasValidation'
 import { useApiManagedRelations } from '../apiDesign/useApiManagedRelations'
+import { insertNodes } from '../model/insertNodes'
 import { ApiDesignProvider } from '../apiDesign/ApiDesignProvider'
 import { SchemaCardsProvider } from '../schema/SchemaCardsContext'
+import {
+  artifactSchemaMode,
+  extractArtifactSchema,
+  inlineArtifactSchema,
+} from '../schema/embeddedSchema'
 import { AddResourceDialog } from '../apiDesign/AddResourceDialog'
 import { OpenApiCompareDialog } from '../apiDesign/OpenApiCompareDialog'
 import { useCanvasHistory } from './useCanvasHistory'
 import { useEditorShortcuts } from './useEditorShortcuts'
 import { readValidationSuppressions, type ValidationSuppression } from './validationSuppressions'
 import { readViewport } from './viewport'
+
+function withEntityFields(
+  node: CanvasFlowNode,
+  fields: EntityFields,
+  ontology: Ontology,
+): CanvasFlowNode {
+  const meta = node.data.entity
+  const entityType = meta ? findEntityType(ontology, meta.entityType) : undefined
+  if (!meta || !entityType) return node
+  const entity = { ...meta, fields }
+  const text = renderEntityMarkdown(entityType, fields)
+  return {
+    ...node,
+    data: {
+      ...node.data,
+      entity,
+      text,
+      raw: { ...node.data.raw, app: entity, text },
+    },
+  }
+}
 
 function titleSlug(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'api'
@@ -100,6 +139,8 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const [suppressions, setSuppressions] = useState<ValidationSuppression[]>(() => (
     readValidationSuppressions(document.canvas)
   ))
+  const [nodeEditRequest, setNodeEditRequest] = useState<NodeEditRequest | null>(null)
+  const editRequestToken = useRef(0)
   const flowRef = useRef<HTMLDivElement>(null)
   const { fitView } = useReactFlow()
 
@@ -242,6 +283,78 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     graph.updateEntityField(id, fieldKey, value)
   }, [baseCanvas, edges, graph, markDirty, nodes, ontology, setEdges, setNodes])
 
+  const openNodeEditor = useCallback((id: string) => {
+    editRequestToken.current += 1
+    setNodeEditRequest({ id, token: editRequestToken.current })
+    setNodes((current) => current.map((node) => ({ ...node, selected: node.id === id })))
+    window.setTimeout(() => {
+      void fitView({ nodes: [{ id }], padding: 0.35, maxZoom: 1.2 })
+    }, 0)
+  }, [fitView, setNodes])
+
+  const extractSchemaCard = useCallback((artifactId: string): CanvasSchemaResult => {
+    const artifact = nodes.find((node) => node.id === artifactId)
+    const meta = artifact?.data.entity
+    const fields = meta?.fields
+    if (!artifact || !meta || meta.entityType !== 'artifact' || !fields) {
+      return { ok: false, error: 'Artifact not found.' }
+    }
+    if (artifactSchemaMode(fields) !== 'inline') {
+      return { ok: false, error: 'Define the schema here before extracting it.' }
+    }
+    const schemaType = findEntityType(ontology, 'schema')
+    if (!schemaType) return { ok: false, error: 'The schema card type is unavailable.' }
+    const schemaId = createNodeId()
+    const extracted = extractArtifactSchema(fields, schemaId)
+    const placement = graph.placementPosition(schemaType.defaultSize.width, schemaType.defaultSize.height)
+    const base = makeEntityNode('schema', placement, ontology)
+    if (!base) return { ok: false, error: 'Could not create the Schema card.' }
+    const schemaFields = { ...(base.app?.fields ?? {}), ...extracted.schema }
+    const schemaText = renderEntityMarkdown(schemaType, schemaFields)
+    const created = {
+      ...base,
+      id: schemaId,
+      app: { ...(base.app ?? {}), entityType: 'schema', fields: schemaFields },
+      text: schemaText,
+    } as CanvasNode
+    setNodes((current) => insertNodes(
+      current.map((node) => (
+        node.id === artifactId ? withEntityFields(node, extracted.artifact, ontology) : node
+      )),
+      [{ ...toFlowNode(created), selected: true }],
+    ))
+    markDirty()
+    graph.revealPlacement(placement.visible)
+    setNotice(`Extracted schema to "${String(extracted.schema.name ?? 'Schema')}".`)
+    return { ok: true, schemaId }
+  }, [graph, markDirty, nodes, ontology, setNodes, setNotice])
+
+  const inlineSchemaCard = useCallback((artifactId: string): CanvasSchemaResult => {
+    const artifact = nodes.find((node) => node.id === artifactId)
+    const meta = artifact?.data.entity
+    const fields = meta?.fields
+    if (!artifact || !meta || meta.entityType !== 'artifact' || !fields) {
+      return { ok: false, error: 'Artifact not found.' }
+    }
+    if (artifactSchemaMode(fields) !== 'shared') {
+      return { ok: false, error: 'Choose a shared schema before inlining it.' }
+    }
+    const schemaRef = String(fields.schemaRef ?? '')
+    const card = nodes.find((node) => (
+      node.id === schemaRef && node.data.entity?.entityType === 'schema'
+    ))
+    if (!card) return { ok: false, error: 'The shared Schema card is missing.' }
+    const source = String(card.data.entity?.fields.source ?? '')
+    setNodes((current) => current.map((node) => (
+      node.id === artifactId
+        ? withEntityFields(node, inlineArtifactSchema(fields, source), ontology)
+        : node
+    )))
+    markDirty()
+    setNotice(`Inlined schema from "${String(card.data.entity?.fields.name ?? 'Schema')}".`)
+    return { ok: true }
+  }, [markDirty, nodes, ontology, setNodes, setNotice])
+
   const actions = useMemo<CanvasEditorActions>(
     () => ({
       updateText: graph.updateText,
@@ -253,16 +366,22 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       selectEdge: graph.selectEdge,
       openCanvasLinks: links.openCanvasLinks,
       createOrOpenApiCanvas: links.createOrOpenApiCanvas,
+      openNodeEditor,
+      extractSchemaCard,
+      inlineSchemaCard,
     }),
     [
+      extractSchemaCard,
       graph.autoFitNode,
       graph.openEdgeLabelEditor,
       graph.resizeNode,
       graph.selectEdge,
       graph.updateLabel,
       graph.updateText,
+      inlineSchemaCard,
       links.createOrOpenApiCanvas,
       links.openCanvasLinks,
+      openNodeEditor,
       updateEntityField,
     ],
   )
@@ -461,6 +580,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
             error={error}
           />
           <ApiDesignProvider nodes={nodes} enabled={isApi}>
+            <NodeEditRequestContext.Provider value={nodeEditRequest}>
             <CanvasWorkspace
             documentId={document.id}
             nodes={nodes}
@@ -482,6 +602,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
             setNotice={setNotice}
               onOpenHelp={() => setHelpOpen(true)}
             />
+            </NodeEditRequestContext.Provider>
           </ApiDesignProvider>
           <EditorDialogs
             documentId={document.id}

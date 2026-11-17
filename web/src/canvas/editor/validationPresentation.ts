@@ -102,6 +102,10 @@ const ISSUE_COPY: Record<CanvasProfileIssue['code'], { label: string; why: strin
     label: 'Invalid schema',
     why: 'Fix the schema source.',
   },
+  schema_ref_missing: {
+    label: 'Missing shared schema',
+    why: 'Choose a Schema card on this canvas.',
+  },
   schema_review: {
     label: 'Schema review due',
     why: 'Review the contract or update its review date.',
