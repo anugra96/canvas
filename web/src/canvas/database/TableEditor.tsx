@@ -133,10 +133,13 @@ export function TableEditor({
   function updateColumn(index: number, patch: Partial<TableColumn>): void {
     const current = definition.columns[index]
     if (!current) return
+    const required = patch.identity === 'always' || patch.identity === 'by_default'
     let next: TableDefinition = {
       ...definition,
       columns: definition.columns.map((column, position) => (
-        position === index ? { ...column, ...patch } : column
+        position === index
+          ? { ...column, ...patch, ...(required ? { nullable: false } : {}) }
+          : column
       )),
     }
     if (patch.name !== undefined) next = renameReferences(next, current.name, patch.name)
@@ -158,8 +161,12 @@ export function TableEditor({
     const columns = current.includes(column.name)
       ? current.filter((name) => name !== column.name)
       : [...current, column.name]
+    const primary = new Set(columns)
     commit({
       ...definition,
+      columns: definition.columns.map((candidate) => (
+        primary.has(candidate.name) ? { ...candidate, nullable: false } : candidate
+      )),
       ...(columns.length > 0
         ? { primaryKey: { ...(definition.primaryKey?.name ? { name: definition.primaryKey.name } : {}), columns } }
         : { primaryKey: undefined }),

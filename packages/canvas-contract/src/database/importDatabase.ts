@@ -535,6 +535,13 @@ export function extractDatabaseSchema(
     }
   }
 
+  for (const current of tables.values()) {
+    const primaryKey = new Set(current.primaryKey?.columns ?? [])
+    for (const col of current.columns) {
+      if (primaryKey.has(col.name) || col.identity) col.nullable = false
+    }
+  }
+
   const databaseVersion = /Dumped from database version ([0-9][0-9.]*)/.exec(sql)?.[1]
   if (!serialSequences.size) {
     // No warning needed when the input has no serial patterns.
