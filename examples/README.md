@@ -17,3 +17,10 @@ Import them with **Import .canvas**.
 - `model-delivery-migrated.canvas` — migrated copy of the Model Delivery canvas
   using Systems cards, JSON Schema contracts, data-flow layout, and preserved
   examples as Notes.
+
+- `simple-tasks-db.sql` — PostgreSQL schema behind `simple-tasks-api.yaml`:
+  two schemas, nine tables, two enums, identity and uuid keys, a generated
+  column, checks, partial and expression indexes, and a function plus trigger
+  kept as Extra DDL. Import it with **Import DDL**.
+- `simple-tasks-db.canvas` — the same schema already imported into a Database
+  canvas. Import it with **Import .canvas**.

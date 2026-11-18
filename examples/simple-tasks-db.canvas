@@ -1,0 +1,450 @@
+{
+  "nodes": [
+    {
+      "id": "673b002c6df04619",
+      "type": "text",
+      "x": 0,
+      "y": 328,
+      "width": 2359,
+      "height": 740,
+      "text": "",
+      "app": {
+        "entityType": "db_schema",
+        "fields": {
+          "name": "app",
+          "description": "Workspaces, projects, and tasks served by the Tasks API"
+        }
+      }
+    },
+    {
+      "id": "4d4ac74bf619941b",
+      "type": "text",
+      "x": 0,
+      "y": 1124,
+      "width": 541,
+      "height": 328,
+      "text": "",
+      "app": {
+        "entityType": "db_schema",
+        "fields": {
+          "name": "audit",
+          "description": "Append-only history of task changes"
+        }
+      }
+    },
+    {
+      "id": "f61b5c7c59853f48",
+      "type": "text",
+      "x": 0,
+      "y": 148,
+      "width": 268,
+      "height": 132,
+      "text": "",
+      "app": {
+        "entityType": "db_enum",
+        "fields": {
+          "name": "member_role",
+          "schema": "app",
+          "values": "owner\neditor\nviewer",
+          "description": ""
+        }
+      }
+    },
+    {
+      "id": "0d087e2595b2e6a6",
+      "type": "text",
+      "x": 292,
+      "y": 148,
+      "width": 268,
+      "height": 132,
+      "text": "",
+      "app": {
+        "entityType": "db_enum",
+        "fields": {
+          "name": "task_status",
+          "schema": "app",
+          "values": "open\nin_progress\ndone",
+          "description": ""
+        }
+      }
+    },
+    {
+      "id": "d1ca98056978cc18",
+      "type": "text",
+      "x": 24,
+      "y": 404,
+      "width": 486,
+      "height": 178,
+      "text": "",
+      "app": {
+        "entityType": "table",
+        "fields": {
+          "name": "account",
+          "schema": "app",
+          "description": "A person who signs in",
+          "status": "active",
+          "definition": "{\n  \"columns\": [\n    {\n      \"name\": \"id\",\n      \"type\": \"uuid\",\n      \"nullable\": false,\n      \"default\": \"gen_random_uuid()\"\n    },\n    {\n      \"name\": \"email\",\n      \"type\": \"text\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"display_name\",\n      \"type\": \"text\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"created_at\",\n      \"type\": \"timestamp with time zone\",\n      \"nullable\": false,\n      \"default\": \"now()\"\n    }\n  ],\n  \"primaryKey\": {\n    \"name\": \"account_pkey\",\n    \"columns\": [\n      \"id\"\n    ]\n  },\n  \"uniques\": [],\n  \"checks\": [\n    {\n      \"name\": \"account_email_check\",\n      \"expression\": \"POSITION('@' IN email) > 1\"\n    }\n  ],\n  \"foreignKeys\": [],\n  \"indexes\": [\n    {\n      \"name\": \"account_email_lower_key\",\n      \"unique\": true,\n      \"method\": \"btree\",\n      \"columns\": [\n        \"(lower(email))\"\n      ]\n    }\n  ]\n}"
+        }
+      }
+    },
+    {
+      "id": "ea1f98f03efb55e7",
+      "type": "text",
+      "x": 1849,
+      "y": 404,
+      "width": 486,
+      "height": 204,
+      "text": "",
+      "app": {
+        "entityType": "table",
+        "fields": {
+          "name": "comment",
+          "schema": "app",
+          "description": "",
+          "status": "active",
+          "definition": "{\n  \"columns\": [\n    {\n      \"name\": \"id\",\n      \"type\": \"bigint\",\n      \"nullable\": true,\n      \"identity\": \"always\"\n    },\n    {\n      \"name\": \"task_id\",\n      \"type\": \"uuid\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"author_id\",\n      \"type\": \"uuid\",\n      \"nullable\": true\n    },\n    {\n      \"name\": \"body\",\n      \"type\": \"text\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"created_at\",\n      \"type\": \"timestamp with time zone\",\n      \"nullable\": false,\n      \"default\": \"now()\"\n    }\n  ],\n  \"primaryKey\": {\n    \"name\": \"comment_pkey\",\n    \"columns\": [\n      \"id\"\n    ]\n  },\n  \"uniques\": [],\n  \"checks\": [],\n  \"foreignKeys\": [\n    {\n      \"name\": \"comment_task_id_fkey\",\n      \"columns\": [\n        \"task_id\"\n      ],\n      \"references\": {\n        \"schema\": \"app\",\n        \"table\": \"task\",\n        \"columns\": [\n          \"id\"\n        ]\n      },\n      \"onDelete\": \"cascade\"\n    },\n    {\n      \"name\": \"comment_author_id_fkey\",\n      \"columns\": [\n        \"author_id\"\n      ],\n      \"references\": {\n        \"schema\": \"app\",\n        \"table\": \"account\",\n        \"columns\": [\n          \"id\"\n        ]\n      },\n      \"onDelete\": \"set_null\"\n    }\n  ],\n  \"indexes\": [\n    {\n      \"name\": \"comment_task_idx\",\n      \"unique\": false,\n      \"method\": \"btree\",\n      \"columns\": [\n        \"task_id\",\n        \"created_at\"\n      ]\n    }\n  ]\n}"
+        }
+      }
+    },
+    {
+      "id": "9cd20aeb04a8225e",
+      "type": "text",
+      "x": 630,
+      "y": 404,
+      "width": 360,
+      "height": 178,
+      "text": "",
+      "app": {
+        "entityType": "table",
+        "fields": {
+          "name": "label",
+          "schema": "app",
+          "description": "",
+          "status": "active",
+          "definition": "{\n  \"columns\": [\n    {\n      \"name\": \"id\",\n      \"type\": \"bigint\",\n      \"nullable\": true,\n      \"identity\": \"always\"\n    },\n    {\n      \"name\": \"workspace_id\",\n      \"type\": \"uuid\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"name\",\n      \"type\": \"text\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"color\",\n      \"type\": \"text\",\n      \"nullable\": false,\n      \"default\": \"'#888888'\"\n    }\n  ],\n  \"primaryKey\": {\n    \"name\": \"label_pkey\",\n    \"columns\": [\n      \"id\"\n    ]\n  },\n  \"uniques\": [\n    {\n      \"name\": \"label_workspace_name_key\",\n      \"columns\": [\n        \"workspace_id\",\n        \"name\"\n      ]\n    }\n  ],\n  \"checks\": [],\n  \"foreignKeys\": [\n    {\n      \"name\": \"label_workspace_id_fkey\",\n      \"columns\": [\n        \"workspace_id\"\n      ],\n      \"references\": {\n        \"schema\": \"app\",\n        \"table\": \"workspace\",\n        \"columns\": [\n          \"id\"\n        ]\n      },\n      \"onDelete\": \"cascade\"\n    }\n  ],\n  \"indexes\": []\n}"
+        }
+      }
+    },
+    {
+      "id": "6d33d88fe51e28a3",
+      "type": "text",
+      "x": 630,
+      "y": 610,
+      "width": 493,
+      "height": 204,
+      "text": "",
+      "app": {
+        "entityType": "table",
+        "fields": {
+          "name": "project",
+          "schema": "app",
+          "description": "",
+          "status": "active",
+          "definition": "{\n  \"columns\": [\n    {\n      \"name\": \"id\",\n      \"type\": \"uuid\",\n      \"nullable\": false,\n      \"default\": \"gen_random_uuid()\"\n    },\n    {\n      \"name\": \"workspace_id\",\n      \"type\": \"uuid\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"name\",\n      \"type\": \"text\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"archived_at\",\n      \"type\": \"timestamp with time zone\",\n      \"nullable\": true\n    },\n    {\n      \"name\": \"created_at\",\n      \"type\": \"timestamp with time zone\",\n      \"nullable\": false,\n      \"default\": \"now()\"\n    }\n  ],\n  \"primaryKey\": {\n    \"name\": \"project_pkey\",\n    \"columns\": [\n      \"id\"\n    ]\n  },\n  \"uniques\": [\n    {\n      \"name\": \"project_workspace_name_key\",\n      \"columns\": [\n        \"workspace_id\",\n        \"name\"\n      ]\n    }\n  ],\n  \"checks\": [],\n  \"foreignKeys\": [\n    {\n      \"name\": \"project_workspace_id_fkey\",\n      \"columns\": [\n        \"workspace_id\"\n      ],\n      \"references\": {\n        \"schema\": \"app\",\n        \"table\": \"workspace\",\n        \"columns\": [\n          \"id\"\n        ]\n      },\n      \"onDelete\": \"cascade\"\n    }\n  ],\n  \"indexes\": []\n}"
+        }
+      }
+    },
+    {
+      "id": "65af36b9d0aef107",
+      "type": "text",
+      "x": 1243,
+      "y": 404,
+      "width": 486,
+      "height": 360,
+      "text": "",
+      "app": {
+        "entityType": "table",
+        "fields": {
+          "name": "task",
+          "schema": "app",
+          "description": "One task; the Task schema in the Tasks API",
+          "status": "active",
+          "definition": "{\n  \"columns\": [\n    {\n      \"name\": \"id\",\n      \"type\": \"uuid\",\n      \"nullable\": false,\n      \"default\": \"gen_random_uuid()\"\n    },\n    {\n      \"name\": \"project_id\",\n      \"type\": \"uuid\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"parent_task_id\",\n      \"type\": \"uuid\",\n      \"nullable\": true,\n      \"comment\": \"Optional parent for sub-tasks\"\n    },\n    {\n      \"name\": \"assignee_id\",\n      \"type\": \"uuid\",\n      \"nullable\": true\n    },\n    {\n      \"name\": \"title\",\n      \"type\": \"text\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"status\",\n      \"type\": \"app.task_status\",\n      \"nullable\": false,\n      \"default\": \"'open'\"\n    },\n    {\n      \"name\": \"due_date\",\n      \"type\": \"date\",\n      \"nullable\": true\n    },\n    {\n      \"name\": \"estimate_minutes\",\n      \"type\": \"integer\",\n      \"nullable\": true\n    },\n    {\n      \"name\": \"estimate_hours\",\n      \"type\": \"numeric(6,2)\",\n      \"nullable\": true,\n      \"generated\": \"estimate_minutes / 60.0\"\n    },\n    {\n      \"name\": \"created_at\",\n      \"type\": \"timestamp with time zone\",\n      \"nullable\": false,\n      \"default\": \"now()\"\n    },\n    {\n      \"name\": \"updated_at\",\n      \"type\": \"timestamp with time zone\",\n      \"nullable\": false,\n      \"default\": \"now()\"\n    }\n  ],\n  \"primaryKey\": {\n    \"name\": \"task_pkey\",\n    \"columns\": [\n      \"id\"\n    ]\n  },\n  \"uniques\": [],\n  \"checks\": [\n    {\n      \"name\": \"task_title_check\",\n      \"expression\": \"char_length(title) BETWEEN 1 AND 120\"\n    },\n    {\n      \"name\": \"task_estimate_check\",\n      \"expression\": \"estimate_minutes IS NULL\\n  OR estimate_minutes > 0\"\n    }\n  ],\n  \"foreignKeys\": [\n    {\n      \"name\": \"task_project_id_fkey\",\n      \"columns\": [\n        \"project_id\"\n      ],\n      \"references\": {\n        \"schema\": \"app\",\n        \"table\": \"project\",\n        \"columns\": [\n          \"id\"\n        ]\n      },\n      \"onDelete\": \"cascade\"\n    },\n    {\n      \"name\": \"task_parent_task_id_fkey\",\n      \"columns\": [\n        \"parent_task_id\"\n      ],\n      \"references\": {\n        \"schema\": \"app\",\n        \"table\": \"task\",\n        \"columns\": [\n          \"id\"\n        ]\n      },\n      \"onDelete\": \"set_null\"\n    },\n    {\n      \"name\": \"task_assignee_id_fkey\",\n      \"columns\": [\n        \"assignee_id\"\n      ],\n      \"references\": {\n        \"schema\": \"app\",\n        \"table\": \"account\",\n        \"columns\": [\n          \"id\"\n        ]\n      },\n      \"onDelete\": \"set_null\"\n    }\n  ],\n  \"indexes\": [\n    {\n      \"name\": \"task_project_status_idx\",\n      \"unique\": false,\n      \"method\": \"btree\",\n      \"columns\": [\n        \"project_id\",\n        \"status\"\n      ]\n    },\n    {\n      \"name\": \"task_open_due_idx\",\n      \"unique\": false,\n      \"method\": \"btree\",\n      \"columns\": [\n        \"due_date\"\n      ],\n      \"where\": \"status <> 'done'\"\n    },\n    {\n      \"name\": \"task_assignee_idx\",\n      \"unique\": false,\n      \"method\": \"btree\",\n      \"columns\": [\n        \"assignee_id\"\n      ]\n    }\n  ]\n}"
+        }
+      }
+    },
+    {
+      "id": "309d05b9fc2fe86e",
+      "type": "text",
+      "x": 1849,
+      "y": 636,
+      "width": 346,
+      "height": 126,
+      "text": "",
+      "app": {
+        "entityType": "table",
+        "fields": {
+          "name": "task_label",
+          "schema": "app",
+          "description": "",
+          "status": "active",
+          "definition": "{\n  \"columns\": [\n    {\n      \"name\": \"task_id\",\n      \"type\": \"uuid\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"label_id\",\n      \"type\": \"bigint\",\n      \"nullable\": false\n    }\n  ],\n  \"primaryKey\": {\n    \"name\": \"task_label_pkey\",\n    \"columns\": [\n      \"task_id\",\n      \"label_id\"\n    ]\n  },\n  \"uniques\": [],\n  \"checks\": [],\n  \"foreignKeys\": [\n    {\n      \"name\": \"task_label_task_id_fkey\",\n      \"columns\": [\n        \"task_id\"\n      ],\n      \"references\": {\n        \"schema\": \"app\",\n        \"table\": \"task\",\n        \"columns\": [\n          \"id\"\n        ]\n      },\n      \"onDelete\": \"cascade\"\n    },\n    {\n      \"name\": \"task_label_label_id_fkey\",\n      \"columns\": [\n        \"label_id\"\n      ],\n      \"references\": {\n        \"schema\": \"app\",\n        \"table\": \"label\",\n        \"columns\": [\n          \"id\"\n        ]\n      },\n      \"onDelete\": \"cascade\"\n    }\n  ],\n  \"indexes\": []\n}"
+        }
+      }
+    },
+    {
+      "id": "4219b838276d4f3c",
+      "type": "text",
+      "x": 24,
+      "y": 610,
+      "width": 486,
+      "height": 178,
+      "text": "",
+      "app": {
+        "entityType": "table",
+        "fields": {
+          "name": "workspace",
+          "schema": "app",
+          "description": "",
+          "status": "active",
+          "definition": "{\n  \"columns\": [\n    {\n      \"name\": \"id\",\n      \"type\": \"uuid\",\n      \"nullable\": false,\n      \"default\": \"gen_random_uuid()\"\n    },\n    {\n      \"name\": \"slug\",\n      \"type\": \"text\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"name\",\n      \"type\": \"text\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"created_at\",\n      \"type\": \"timestamp with time zone\",\n      \"nullable\": false,\n      \"default\": \"now()\"\n    }\n  ],\n  \"primaryKey\": {\n    \"name\": \"workspace_pkey\",\n    \"columns\": [\n      \"id\"\n    ]\n  },\n  \"uniques\": [\n    {\n      \"name\": \"workspace_slug_key\",\n      \"columns\": [\n        \"slug\"\n      ]\n    }\n  ],\n  \"checks\": [\n    {\n      \"name\": \"workspace_slug_check\",\n      \"expression\": \"slug ~ '^[a-z0-9-]{3,40}$'\"\n    }\n  ],\n  \"foreignKeys\": [],\n  \"indexes\": []\n}"
+        }
+      }
+    },
+    {
+      "id": "4f6f0b21bbc94e86",
+      "type": "text",
+      "x": 630,
+      "y": 842,
+      "width": 479,
+      "height": 178,
+      "text": "",
+      "app": {
+        "entityType": "table",
+        "fields": {
+          "name": "workspace_member",
+          "schema": "app",
+          "description": "Who can see a workspace, and with which role",
+          "status": "active",
+          "definition": "{\n  \"columns\": [\n    {\n      \"name\": \"workspace_id\",\n      \"type\": \"uuid\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"account_id\",\n      \"type\": \"uuid\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"role\",\n      \"type\": \"app.member_role\",\n      \"nullable\": false,\n      \"default\": \"'editor'\"\n    },\n    {\n      \"name\": \"joined_at\",\n      \"type\": \"timestamp with time zone\",\n      \"nullable\": false,\n      \"default\": \"now()\"\n    }\n  ],\n  \"primaryKey\": {\n    \"name\": \"workspace_member_pkey\",\n    \"columns\": [\n      \"workspace_id\",\n      \"account_id\"\n    ]\n  },\n  \"uniques\": [],\n  \"checks\": [],\n  \"foreignKeys\": [\n    {\n      \"name\": \"workspace_member_workspace_id_fkey\",\n      \"columns\": [\n        \"workspace_id\"\n      ],\n      \"references\": {\n        \"schema\": \"app\",\n        \"table\": \"workspace\",\n        \"columns\": [\n          \"id\"\n        ]\n      },\n      \"onDelete\": \"cascade\"\n    },\n    {\n      \"name\": \"workspace_member_account_id_fkey\",\n      \"columns\": [\n        \"account_id\"\n      ],\n      \"references\": {\n        \"schema\": \"app\",\n        \"table\": \"account\",\n        \"columns\": [\n          \"id\"\n        ]\n      },\n      \"onDelete\": \"cascade\"\n    }\n  ],\n  \"indexes\": []\n}"
+        }
+      }
+    },
+    {
+      "id": "69d497643868f123",
+      "type": "text",
+      "x": 24,
+      "y": 1200,
+      "width": 493,
+      "height": 204,
+      "text": "",
+      "app": {
+        "entityType": "table",
+        "fields": {
+          "name": "task_event",
+          "schema": "audit",
+          "description": "",
+          "status": "active",
+          "definition": "{\n  \"columns\": [\n    {\n      \"name\": \"id\",\n      \"type\": \"bigint\",\n      \"nullable\": true,\n      \"identity\": \"always\"\n    },\n    {\n      \"name\": \"task_id\",\n      \"type\": \"uuid\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"actor_id\",\n      \"type\": \"uuid\",\n      \"nullable\": true\n    },\n    {\n      \"name\": \"change\",\n      \"type\": \"jsonb\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"happened_at\",\n      \"type\": \"timestamp with time zone\",\n      \"nullable\": false,\n      \"default\": \"now()\"\n    }\n  ],\n  \"primaryKey\": {\n    \"name\": \"task_event_pkey\",\n    \"columns\": [\n      \"id\"\n    ]\n  },\n  \"uniques\": [],\n  \"checks\": [],\n  \"foreignKeys\": [\n    {\n      \"name\": \"task_event_task_id_fkey\",\n      \"columns\": [\n        \"task_id\"\n      ],\n      \"references\": {\n        \"schema\": \"app\",\n        \"table\": \"task\",\n        \"columns\": [\n          \"id\"\n        ]\n      },\n      \"onDelete\": \"cascade\"\n    }\n  ],\n  \"indexes\": [\n    {\n      \"name\": \"task_event_task_idx\",\n      \"unique\": false,\n      \"method\": \"btree\",\n      \"columns\": [\n        \"task_id\",\n        \"happened_at\"\n      ]\n    }\n  ]\n}"
+        }
+      }
+    },
+    {
+      "id": "c8fc98e1b9ee9ffe",
+      "type": "text",
+      "x": 0,
+      "y": 0,
+      "width": 420,
+      "height": 100,
+      "text": "",
+      "app": {
+        "entityType": "database_definition",
+        "fields": {
+          "name": "simple_tasks",
+          "version": "16",
+          "description": "Backs examples/simple-tasks-api.yaml",
+          "owner": "",
+          "extensions": "pgcrypto public",
+          "extra": "CREATE FUNCTION app.touch_updated_at() RETURNS trigger\n    LANGUAGE plpgsql\n    AS $$\nBEGIN\n  NEW.updated_at := now();\n  RETURN NEW;\nEND\n$$;\n\nCREATE TRIGGER task_touch_updated_at BEFORE UPDATE ON app.task\n  FOR EACH ROW EXECUTE FUNCTION app.touch_updated_at();"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "managed:references:ea1f98f03efb55e7:65af36b9d0aef107:0",
+      "fromNode": "ea1f98f03efb55e7",
+      "toNode": "65af36b9d0aef107",
+      "fromSide": "left",
+      "toSide": "right",
+      "toEnd": "arrow",
+      "label": "ON DELETE CASCADE",
+      "app": {
+        "relationType": "references",
+        "managed": true,
+        "fromColumn": "task_id",
+        "toColumn": "id"
+      }
+    },
+    {
+      "id": "managed:references:ea1f98f03efb55e7:d1ca98056978cc18:1",
+      "fromNode": "ea1f98f03efb55e7",
+      "toNode": "d1ca98056978cc18",
+      "fromSide": "left",
+      "toSide": "right",
+      "toEnd": "arrow",
+      "label": "ON DELETE SET NULL",
+      "app": {
+        "relationType": "references",
+        "managed": true,
+        "fromColumn": "author_id",
+        "toColumn": "id"
+      }
+    },
+    {
+      "id": "managed:references:9cd20aeb04a8225e:4219b838276d4f3c:0",
+      "fromNode": "9cd20aeb04a8225e",
+      "toNode": "4219b838276d4f3c",
+      "fromSide": "left",
+      "toSide": "right",
+      "toEnd": "arrow",
+      "label": "ON DELETE CASCADE",
+      "app": {
+        "relationType": "references",
+        "managed": true,
+        "fromColumn": "workspace_id",
+        "toColumn": "id"
+      }
+    },
+    {
+      "id": "managed:references:6d33d88fe51e28a3:4219b838276d4f3c:0",
+      "fromNode": "6d33d88fe51e28a3",
+      "toNode": "4219b838276d4f3c",
+      "fromSide": "left",
+      "toSide": "right",
+      "toEnd": "arrow",
+      "label": "ON DELETE CASCADE",
+      "app": {
+        "relationType": "references",
+        "managed": true,
+        "fromColumn": "workspace_id",
+        "toColumn": "id"
+      }
+    },
+    {
+      "id": "managed:references:65af36b9d0aef107:6d33d88fe51e28a3:0",
+      "fromNode": "65af36b9d0aef107",
+      "toNode": "6d33d88fe51e28a3",
+      "fromSide": "left",
+      "toSide": "right",
+      "toEnd": "arrow",
+      "label": "ON DELETE CASCADE",
+      "app": {
+        "relationType": "references",
+        "managed": true,
+        "fromColumn": "project_id",
+        "toColumn": "id"
+      }
+    },
+    {
+      "id": "managed:references:65af36b9d0aef107:65af36b9d0aef107:1",
+      "fromNode": "65af36b9d0aef107",
+      "toNode": "65af36b9d0aef107",
+      "fromSide": "right",
+      "toSide": "right",
+      "toEnd": "arrow",
+      "label": "ON DELETE SET NULL",
+      "app": {
+        "relationType": "references",
+        "managed": true,
+        "fromColumn": "parent_task_id",
+        "toColumn": "id"
+      }
+    },
+    {
+      "id": "managed:references:65af36b9d0aef107:d1ca98056978cc18:2",
+      "fromNode": "65af36b9d0aef107",
+      "toNode": "d1ca98056978cc18",
+      "fromSide": "left",
+      "toSide": "right",
+      "toEnd": "arrow",
+      "label": "ON DELETE SET NULL",
+      "app": {
+        "relationType": "references",
+        "managed": true,
+        "fromColumn": "assignee_id",
+        "toColumn": "id"
+      }
+    },
+    {
+      "id": "managed:references:309d05b9fc2fe86e:65af36b9d0aef107:0",
+      "fromNode": "309d05b9fc2fe86e",
+      "toNode": "65af36b9d0aef107",
+      "fromSide": "left",
+      "toSide": "right",
+      "toEnd": "arrow",
+      "label": "ON DELETE CASCADE",
+      "app": {
+        "relationType": "references",
+        "managed": true,
+        "fromColumn": "task_id",
+        "toColumn": "id"
+      }
+    },
+    {
+      "id": "managed:references:309d05b9fc2fe86e:9cd20aeb04a8225e:1",
+      "fromNode": "309d05b9fc2fe86e",
+      "toNode": "9cd20aeb04a8225e",
+      "fromSide": "left",
+      "toSide": "right",
+      "toEnd": "arrow",
+      "label": "ON DELETE CASCADE",
+      "app": {
+        "relationType": "references",
+        "managed": true,
+        "fromColumn": "label_id",
+        "toColumn": "id"
+      }
+    },
+    {
+      "id": "managed:references:4f6f0b21bbc94e86:4219b838276d4f3c:0",
+      "fromNode": "4f6f0b21bbc94e86",
+      "toNode": "4219b838276d4f3c",
+      "fromSide": "left",
+      "toSide": "right",
+      "toEnd": "arrow",
+      "label": "ON DELETE CASCADE",
+      "app": {
+        "relationType": "references",
+        "managed": true,
+        "fromColumn": "workspace_id",
+        "toColumn": "id"
+      }
+    },
+    {
+      "id": "managed:references:4f6f0b21bbc94e86:d1ca98056978cc18:1",
+      "fromNode": "4f6f0b21bbc94e86",
+      "toNode": "d1ca98056978cc18",
+      "fromSide": "left",
+      "toSide": "right",
+      "toEnd": "arrow",
+      "label": "ON DELETE CASCADE",
+      "app": {
+        "relationType": "references",
+        "managed": true,
+        "fromColumn": "account_id",
+        "toColumn": "id"
+      }
+    },
+    {
+      "id": "managed:references:69d497643868f123:65af36b9d0aef107:0",
+      "fromNode": "69d497643868f123",
+      "toNode": "65af36b9d0aef107",
+      "fromSide": "right",
+      "toSide": "left",
+      "toEnd": "arrow",
+      "label": "ON DELETE CASCADE",
+      "app": {
+        "relationType": "references",
+        "managed": true,
+        "fromColumn": "task_id",
+        "toColumn": "id"
+      }
+    }
+  ],
+  "app": {
+    "profile": "database",
+    "profileVersion": 1,
+    "scope": "container"
+  }
+}
