@@ -7,7 +7,8 @@ import type { CanvasEdge, CanvasNode, JsonCanvas } from '../jsonCanvas'
 import { importDatabaseSql } from './importDatabase'
 import { estimateDatabaseSizes, layoutDatabaseCanvas } from './layout'
 import { withManagedReferences } from './managedRelations'
-import { nodeTableDefinition, schemaName, stringField } from './model'
+import { routeReferences } from './routeReference'
+import { schemaName, stringField } from './model'
 
 const require = createRequire(import.meta.url)
 const wasm = readFileSync(require.resolve('libpg-query/wasm/libpg-query.wasm'))
@@ -16,10 +17,14 @@ const fixtures = [
   'auth-better-auth.sql',
   'order-erd.sql',
   'pg-dump-synthetic.sql',
+  'simple-tasks-db.sql',
 ] as const
 
 function fixture(name: string): string {
-  return readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8')
+  const url = name === 'simple-tasks-db.sql'
+    ? new URL('../../../../examples/simple-tasks-db.sql', import.meta.url)
+    : new URL(`./fixtures/${name}`, import.meta.url)
+  return readFileSync(url, 'utf8')
 }
 
 function typeOf(node: CanvasNode): string {
@@ -49,18 +54,6 @@ function positions(canvas: JsonCanvas): Record<string, { x: number; y: number; w
     node.id,
     { x: node.x, y: node.y, width: node.width, height: node.height },
   ]))
-}
-
-const TABLE_HEADER = 58
-const COLUMN_ROW = 26
-
-function columnHandlePoint(node: CanvasNode, column: string, side: string | undefined) {
-  const index = nodeTableDefinition(node)?.columns.findIndex((candidate) => candidate.name === column) ?? -1
-  if (index < 0) throw new Error(`Missing column ${column} on ${node.id}`)
-  return {
-    x: side === 'left' ? node.x : node.x + node.width,
-    y: node.y + TABLE_HEADER + index * COLUMN_ROW + COLUMN_ROW / 2,
-  }
 }
 
 function segmentIntersectsCard(
@@ -135,6 +128,7 @@ describe('Database layout', () => {
     for (const table of tables) {
       const parents = tables.filter((candidate) => (
         candidate.id !== table.id
+        && schemaName(candidate) === schemaName(table)
         && (first.edges ?? []).some((edge) => edge.fromNode === table.id && edge.toNode === candidate.id)
       ))
       for (const parent of parents) {
@@ -146,21 +140,39 @@ describe('Database layout', () => {
     const withReferences = withManagedReferences(first)
     const references = referenceEdges(withReferences)
     expect(references.length).toBeGreaterThan(0)
+    const inputs = references.map((edge) => {
+      const meta = edge.app as Record<string, unknown>
+      return {
+        fromNode: edge.fromNode,
+        toNode: edge.toNode,
+        fromColumn: String(meta.fromColumn),
+        toColumn: String(meta.toColumn),
+        ...(edge.fromSide ? { fromSide: edge.fromSide } : {}),
+        ...(edge.toSide ? { toSide: edge.toSide } : {}),
+      }
+    })
+    const routes = routeReferences(inputs, cards)
+    expect(routeReferences(inputs, cards)).toEqual(routes)
     const tablesById = new Map(tables.map((table) => [table.id, table]))
-    for (const edge of references) {
+    for (const [edgeIndex, edge] of references.entries()) {
       const child = tablesById.get(edge.fromNode)
       const parent = tablesById.get(edge.toNode)
       expect(child, `missing child table for ${edge.id}`).toBeTruthy()
       expect(parent, `missing parent table for ${edge.id}`).toBeTruthy()
       const meta = edge.app as Record<string, unknown>
-      const from = columnHandlePoint(child!, String(meta.fromColumn), edge.fromSide)
-      const to = columnHandlePoint(parent!, String(meta.toColumn), edge.toSide)
-      for (const card of cards) {
-        if (card.id === edge.fromNode || card.id === edge.toNode) continue
-        expect(
-          segmentIntersectsCard(from, to, card),
-          `${stringField(child!, 'name')}.${meta.fromColumn} -> ${stringField(parent!, 'name')}.${meta.toColumn} crosses ${card.id}`,
-        ).toBe(false)
+      const route = routes[edgeIndex]
+      expect(
+        route,
+        `no clean route for ${stringField(child!, 'name')}.${meta.fromColumn} -> ${stringField(parent!, 'name')}.${meta.toColumn}`,
+      ).toBeTruthy()
+      for (let index = 1; index < route!.length; index += 1) {
+        for (const card of cards) {
+          if (card.id === edge.fromNode || card.id === edge.toNode) continue
+          expect(
+            segmentIntersectsCard(route![index - 1]!, route![index]!, card),
+            `${stringField(child!, 'name')}.${meta.fromColumn} -> ${stringField(parent!, 'name')}.${meta.toColumn} crosses ${typeOf(card)} ${stringField(card, 'name') || card.id}`,
+          ).toBe(false)
+        }
       }
     }
   })

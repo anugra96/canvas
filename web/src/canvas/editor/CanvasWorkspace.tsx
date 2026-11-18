@@ -15,7 +15,9 @@ import {
   columnFromDatabaseHandle,
   edgeOrigin,
   getEdgeMeta,
+  referenceRouteEdge,
   removeModelReference,
+  routeReferences,
   responseHasOtherContent,
   type CanvasProfile,
   type EdgeOrigin,
@@ -26,7 +28,7 @@ import {
 import type { Connection, EdgeChange } from '@xyflow/react'
 
 import { CanvasBackdrop } from '../backdrop/CanvasBackdrop'
-import type { CanvasFlowEdge, CanvasFlowNode } from '../model/adapter'
+import { nodeDimensions, type CanvasFlowEdge, type CanvasFlowNode } from '../model/adapter'
 import { useCanvasEditorActions } from './CanvasEditorContext'
 import { writeViewport } from './viewport'
 import { useApiDesign } from '../apiDesign/ApiDesignContext'
@@ -40,6 +42,7 @@ import { EdgeLabelEditor } from './EdgeLabelEditor'
 import { ReviewPanel } from './ReviewPanel'
 import { SelectionToolbar } from './SelectionToolbar'
 import { CanvasEdge as CanvasEdgeComponent } from './edges/CanvasEdge'
+import { DatabaseReferenceEdge } from './edges/DatabaseReferenceEdge'
 import { CodeNode } from './nodes/CodeNode'
 import { SchemaNode } from './nodes/SchemaNode'
 import { EntityNode } from './nodes/EntityNode'
@@ -60,6 +63,7 @@ const nodeTypes = {
 
 const edgeTypes = {
   canvas: CanvasEdgeComponent,
+  'database-reference': DatabaseReferenceEdge,
 }
 
 interface CanvasWorkspaceProps {
@@ -121,6 +125,28 @@ export function CanvasWorkspace({
   } | null>(null)
   const renderedEdges = useMemo(() => {
     const nodeById = new Map(nodes.map((node) => [node.id, node]))
+    const databaseRoutes = profile.id === 'database'
+      ? (() => {
+        const cards = nodes.map((node) => {
+          const size = nodeDimensions(node)
+          return {
+            ...node.data.raw,
+            x: node.position.x,
+            y: node.position.y,
+            width: size.width,
+            height: size.height,
+          }
+        })
+        const referenceEdges = edges.filter((edge) => (
+          edge.data?.relationType === 'references' && edge.data.raw
+        ))
+        const routes = routeReferences(
+          referenceEdges.map((edge) => referenceRouteEdge(edge.data!.raw)),
+          cards,
+        )
+        return new Map(referenceEdges.map((edge, index) => [edge.id, routes[index]]))
+      })()
+      : undefined
     return edges.map((edge) => {
       if (!edge.data) return edge
       const raw = edge.data.raw
@@ -141,6 +167,17 @@ export function CanvasWorkspace({
             : {}),
         },
       }
+      if (profile.id === 'database' && edge.data.relationType === 'references') {
+        const route = databaseRoutes?.get(edge.id)
+        const routed: CanvasFlowEdge = {
+          ...next,
+          type: 'database-reference',
+          data: route && route.length >= 2
+            ? { ...edge.data, referenceRoute: route }
+            : next.data,
+        }
+        return routed
+      }
       if (edge.data.relationType !== 'uses') return next
       const source = nodeById.get(edge.source)
       const target = nodeById.get(edge.target)
@@ -158,7 +195,7 @@ export function CanvasWorkspace({
         targetHandle: target.position.x > source.position.x ? 'left' : 'right',
       }
     })
-  }, [edges, nodes])
+  }, [edges, nodes, profile.id])
 
   const selectedOrigin = graph.selectedEdges.length === 1
     ? renderedEdges.find((edge) => edge.selected)?.data

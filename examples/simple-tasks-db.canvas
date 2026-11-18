@@ -1,7 +1,7 @@
 {
   "nodes": [
     {
-      "id": "673b002c6df04619",
+      "id": "ab3bfa67ffda4fbf",
       "type": "text",
       "x": 0,
       "y": 328,
@@ -17,7 +17,7 @@
       }
     },
     {
-      "id": "4d4ac74bf619941b",
+      "id": "e00ed9b7b6ab7571",
       "type": "text",
       "x": 0,
       "y": 1124,
@@ -33,7 +33,7 @@
       }
     },
     {
-      "id": "f61b5c7c59853f48",
+      "id": "9bbe7704e35ae460",
       "type": "text",
       "x": 0,
       "y": 148,
@@ -51,7 +51,7 @@
       }
     },
     {
-      "id": "0d087e2595b2e6a6",
+      "id": "f0a64abbe92328e6",
       "type": "text",
       "x": 292,
       "y": 148,
@@ -69,7 +69,7 @@
       }
     },
     {
-      "id": "d1ca98056978cc18",
+      "id": "2b428ee95e823765",
       "type": "text",
       "x": 24,
       "y": 404,
@@ -88,7 +88,7 @@
       }
     },
     {
-      "id": "ea1f98f03efb55e7",
+      "id": "64e9cb8c58ee5001",
       "type": "text",
       "x": 1849,
       "y": 404,
@@ -102,12 +102,12 @@
           "schema": "app",
           "description": "",
           "status": "active",
-          "definition": "{\n  \"columns\": [\n    {\n      \"name\": \"id\",\n      \"type\": \"bigint\",\n      \"nullable\": true,\n      \"identity\": \"always\"\n    },\n    {\n      \"name\": \"task_id\",\n      \"type\": \"uuid\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"author_id\",\n      \"type\": \"uuid\",\n      \"nullable\": true\n    },\n    {\n      \"name\": \"body\",\n      \"type\": \"text\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"created_at\",\n      \"type\": \"timestamp with time zone\",\n      \"nullable\": false,\n      \"default\": \"now()\"\n    }\n  ],\n  \"primaryKey\": {\n    \"name\": \"comment_pkey\",\n    \"columns\": [\n      \"id\"\n    ]\n  },\n  \"uniques\": [],\n  \"checks\": [],\n  \"foreignKeys\": [\n    {\n      \"name\": \"comment_task_id_fkey\",\n      \"columns\": [\n        \"task_id\"\n      ],\n      \"references\": {\n        \"schema\": \"app\",\n        \"table\": \"task\",\n        \"columns\": [\n          \"id\"\n        ]\n      },\n      \"onDelete\": \"cascade\"\n    },\n    {\n      \"name\": \"comment_author_id_fkey\",\n      \"columns\": [\n        \"author_id\"\n      ],\n      \"references\": {\n        \"schema\": \"app\",\n        \"table\": \"account\",\n        \"columns\": [\n          \"id\"\n        ]\n      },\n      \"onDelete\": \"set_null\"\n    }\n  ],\n  \"indexes\": [\n    {\n      \"name\": \"comment_task_idx\",\n      \"unique\": false,\n      \"method\": \"btree\",\n      \"columns\": [\n        \"task_id\",\n        \"created_at\"\n      ]\n    }\n  ]\n}"
+          "definition": "{\n  \"columns\": [\n    {\n      \"name\": \"id\",\n      \"type\": \"bigint\",\n      \"nullable\": false,\n      \"identity\": \"always\"\n    },\n    {\n      \"name\": \"task_id\",\n      \"type\": \"uuid\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"author_id\",\n      \"type\": \"uuid\",\n      \"nullable\": true\n    },\n    {\n      \"name\": \"body\",\n      \"type\": \"text\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"created_at\",\n      \"type\": \"timestamp with time zone\",\n      \"nullable\": false,\n      \"default\": \"now()\"\n    }\n  ],\n  \"primaryKey\": {\n    \"name\": \"comment_pkey\",\n    \"columns\": [\n      \"id\"\n    ]\n  },\n  \"uniques\": [],\n  \"checks\": [],\n  \"foreignKeys\": [\n    {\n      \"name\": \"comment_task_id_fkey\",\n      \"columns\": [\n        \"task_id\"\n      ],\n      \"references\": {\n        \"schema\": \"app\",\n        \"table\": \"task\",\n        \"columns\": [\n          \"id\"\n        ]\n      },\n      \"onDelete\": \"cascade\"\n    },\n    {\n      \"name\": \"comment_author_id_fkey\",\n      \"columns\": [\n        \"author_id\"\n      ],\n      \"references\": {\n        \"schema\": \"app\",\n        \"table\": \"account\",\n        \"columns\": [\n          \"id\"\n        ]\n      },\n      \"onDelete\": \"set_null\"\n    }\n  ],\n  \"indexes\": [\n    {\n      \"name\": \"comment_task_idx\",\n      \"unique\": false,\n      \"method\": \"btree\",\n      \"columns\": [\n        \"task_id\",\n        \"created_at\"\n      ]\n    }\n  ]\n}"
         }
       }
     },
     {
-      "id": "9cd20aeb04a8225e",
+      "id": "583e7059b9b7f6c5",
       "type": "text",
       "x": 630,
       "y": 404,
@@ -121,12 +121,12 @@
           "schema": "app",
           "description": "",
           "status": "active",
-          "definition": "{\n  \"columns\": [\n    {\n      \"name\": \"id\",\n      \"type\": \"bigint\",\n      \"nullable\": true,\n      \"identity\": \"always\"\n    },\n    {\n      \"name\": \"workspace_id\",\n      \"type\": \"uuid\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"name\",\n      \"type\": \"text\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"color\",\n      \"type\": \"text\",\n      \"nullable\": false,\n      \"default\": \"'#888888'\"\n    }\n  ],\n  \"primaryKey\": {\n    \"name\": \"label_pkey\",\n    \"columns\": [\n      \"id\"\n    ]\n  },\n  \"uniques\": [\n    {\n      \"name\": \"label_workspace_name_key\",\n      \"columns\": [\n        \"workspace_id\",\n        \"name\"\n      ]\n    }\n  ],\n  \"checks\": [],\n  \"foreignKeys\": [\n    {\n      \"name\": \"label_workspace_id_fkey\",\n      \"columns\": [\n        \"workspace_id\"\n      ],\n      \"references\": {\n        \"schema\": \"app\",\n        \"table\": \"workspace\",\n        \"columns\": [\n          \"id\"\n        ]\n      },\n      \"onDelete\": \"cascade\"\n    }\n  ],\n  \"indexes\": []\n}"
+          "definition": "{\n  \"columns\": [\n    {\n      \"name\": \"id\",\n      \"type\": \"bigint\",\n      \"nullable\": false,\n      \"identity\": \"always\"\n    },\n    {\n      \"name\": \"workspace_id\",\n      \"type\": \"uuid\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"name\",\n      \"type\": \"text\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"color\",\n      \"type\": \"text\",\n      \"nullable\": false,\n      \"default\": \"'#888888'\"\n    }\n  ],\n  \"primaryKey\": {\n    \"name\": \"label_pkey\",\n    \"columns\": [\n      \"id\"\n    ]\n  },\n  \"uniques\": [\n    {\n      \"name\": \"label_workspace_name_key\",\n      \"columns\": [\n        \"workspace_id\",\n        \"name\"\n      ]\n    }\n  ],\n  \"checks\": [],\n  \"foreignKeys\": [\n    {\n      \"name\": \"label_workspace_id_fkey\",\n      \"columns\": [\n        \"workspace_id\"\n      ],\n      \"references\": {\n        \"schema\": \"app\",\n        \"table\": \"workspace\",\n        \"columns\": [\n          \"id\"\n        ]\n      },\n      \"onDelete\": \"cascade\"\n    }\n  ],\n  \"indexes\": []\n}"
         }
       }
     },
     {
-      "id": "6d33d88fe51e28a3",
+      "id": "5fef0f3019401916",
       "type": "text",
       "x": 630,
       "y": 610,
@@ -145,7 +145,7 @@
       }
     },
     {
-      "id": "65af36b9d0aef107",
+      "id": "95fe916dc7b49a3f",
       "type": "text",
       "x": 1243,
       "y": 404,
@@ -164,7 +164,7 @@
       }
     },
     {
-      "id": "309d05b9fc2fe86e",
+      "id": "fbe4bf4c3aee582c",
       "type": "text",
       "x": 1849,
       "y": 636,
@@ -183,7 +183,7 @@
       }
     },
     {
-      "id": "4219b838276d4f3c",
+      "id": "d8859e047fcafb27",
       "type": "text",
       "x": 24,
       "y": 610,
@@ -202,7 +202,7 @@
       }
     },
     {
-      "id": "4f6f0b21bbc94e86",
+      "id": "4fa6a5b20efd657e",
       "type": "text",
       "x": 630,
       "y": 842,
@@ -221,7 +221,7 @@
       }
     },
     {
-      "id": "69d497643868f123",
+      "id": "3934f0ac9a0e6455",
       "type": "text",
       "x": 24,
       "y": 1200,
@@ -235,12 +235,12 @@
           "schema": "audit",
           "description": "",
           "status": "active",
-          "definition": "{\n  \"columns\": [\n    {\n      \"name\": \"id\",\n      \"type\": \"bigint\",\n      \"nullable\": true,\n      \"identity\": \"always\"\n    },\n    {\n      \"name\": \"task_id\",\n      \"type\": \"uuid\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"actor_id\",\n      \"type\": \"uuid\",\n      \"nullable\": true\n    },\n    {\n      \"name\": \"change\",\n      \"type\": \"jsonb\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"happened_at\",\n      \"type\": \"timestamp with time zone\",\n      \"nullable\": false,\n      \"default\": \"now()\"\n    }\n  ],\n  \"primaryKey\": {\n    \"name\": \"task_event_pkey\",\n    \"columns\": [\n      \"id\"\n    ]\n  },\n  \"uniques\": [],\n  \"checks\": [],\n  \"foreignKeys\": [\n    {\n      \"name\": \"task_event_task_id_fkey\",\n      \"columns\": [\n        \"task_id\"\n      ],\n      \"references\": {\n        \"schema\": \"app\",\n        \"table\": \"task\",\n        \"columns\": [\n          \"id\"\n        ]\n      },\n      \"onDelete\": \"cascade\"\n    }\n  ],\n  \"indexes\": [\n    {\n      \"name\": \"task_event_task_idx\",\n      \"unique\": false,\n      \"method\": \"btree\",\n      \"columns\": [\n        \"task_id\",\n        \"happened_at\"\n      ]\n    }\n  ]\n}"
+          "definition": "{\n  \"columns\": [\n    {\n      \"name\": \"id\",\n      \"type\": \"bigint\",\n      \"nullable\": false,\n      \"identity\": \"always\"\n    },\n    {\n      \"name\": \"task_id\",\n      \"type\": \"uuid\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"actor_id\",\n      \"type\": \"uuid\",\n      \"nullable\": true\n    },\n    {\n      \"name\": \"change\",\n      \"type\": \"jsonb\",\n      \"nullable\": false\n    },\n    {\n      \"name\": \"happened_at\",\n      \"type\": \"timestamp with time zone\",\n      \"nullable\": false,\n      \"default\": \"now()\"\n    }\n  ],\n  \"primaryKey\": {\n    \"name\": \"task_event_pkey\",\n    \"columns\": [\n      \"id\"\n    ]\n  },\n  \"uniques\": [],\n  \"checks\": [],\n  \"foreignKeys\": [\n    {\n      \"name\": \"task_event_task_id_fkey\",\n      \"columns\": [\n        \"task_id\"\n      ],\n      \"references\": {\n        \"schema\": \"app\",\n        \"table\": \"task\",\n        \"columns\": [\n          \"id\"\n        ]\n      },\n      \"onDelete\": \"cascade\"\n    }\n  ],\n  \"indexes\": [\n    {\n      \"name\": \"task_event_task_idx\",\n      \"unique\": false,\n      \"method\": \"btree\",\n      \"columns\": [\n        \"task_id\",\n        \"happened_at\"\n      ]\n    }\n  ]\n}"
         }
       }
     },
     {
-      "id": "c8fc98e1b9ee9ffe",
+      "id": "1d1d525017241a35",
       "type": "text",
       "x": 0,
       "y": 0,
@@ -262,9 +262,9 @@
   ],
   "edges": [
     {
-      "id": "managed:references:ea1f98f03efb55e7:65af36b9d0aef107:0",
-      "fromNode": "ea1f98f03efb55e7",
-      "toNode": "65af36b9d0aef107",
+      "id": "managed:references:64e9cb8c58ee5001:95fe916dc7b49a3f:0",
+      "fromNode": "64e9cb8c58ee5001",
+      "toNode": "95fe916dc7b49a3f",
       "fromSide": "left",
       "toSide": "right",
       "toEnd": "arrow",
@@ -277,9 +277,9 @@
       }
     },
     {
-      "id": "managed:references:ea1f98f03efb55e7:d1ca98056978cc18:1",
-      "fromNode": "ea1f98f03efb55e7",
-      "toNode": "d1ca98056978cc18",
+      "id": "managed:references:64e9cb8c58ee5001:2b428ee95e823765:1",
+      "fromNode": "64e9cb8c58ee5001",
+      "toNode": "2b428ee95e823765",
       "fromSide": "left",
       "toSide": "right",
       "toEnd": "arrow",
@@ -292,9 +292,9 @@
       }
     },
     {
-      "id": "managed:references:9cd20aeb04a8225e:4219b838276d4f3c:0",
-      "fromNode": "9cd20aeb04a8225e",
-      "toNode": "4219b838276d4f3c",
+      "id": "managed:references:583e7059b9b7f6c5:d8859e047fcafb27:0",
+      "fromNode": "583e7059b9b7f6c5",
+      "toNode": "d8859e047fcafb27",
       "fromSide": "left",
       "toSide": "right",
       "toEnd": "arrow",
@@ -307,9 +307,9 @@
       }
     },
     {
-      "id": "managed:references:6d33d88fe51e28a3:4219b838276d4f3c:0",
-      "fromNode": "6d33d88fe51e28a3",
-      "toNode": "4219b838276d4f3c",
+      "id": "managed:references:5fef0f3019401916:d8859e047fcafb27:0",
+      "fromNode": "5fef0f3019401916",
+      "toNode": "d8859e047fcafb27",
       "fromSide": "left",
       "toSide": "right",
       "toEnd": "arrow",
@@ -322,9 +322,9 @@
       }
     },
     {
-      "id": "managed:references:65af36b9d0aef107:6d33d88fe51e28a3:0",
-      "fromNode": "65af36b9d0aef107",
-      "toNode": "6d33d88fe51e28a3",
+      "id": "managed:references:95fe916dc7b49a3f:5fef0f3019401916:0",
+      "fromNode": "95fe916dc7b49a3f",
+      "toNode": "5fef0f3019401916",
       "fromSide": "left",
       "toSide": "right",
       "toEnd": "arrow",
@@ -337,9 +337,9 @@
       }
     },
     {
-      "id": "managed:references:65af36b9d0aef107:65af36b9d0aef107:1",
-      "fromNode": "65af36b9d0aef107",
-      "toNode": "65af36b9d0aef107",
+      "id": "managed:references:95fe916dc7b49a3f:95fe916dc7b49a3f:1",
+      "fromNode": "95fe916dc7b49a3f",
+      "toNode": "95fe916dc7b49a3f",
       "fromSide": "right",
       "toSide": "right",
       "toEnd": "arrow",
@@ -352,9 +352,9 @@
       }
     },
     {
-      "id": "managed:references:65af36b9d0aef107:d1ca98056978cc18:2",
-      "fromNode": "65af36b9d0aef107",
-      "toNode": "d1ca98056978cc18",
+      "id": "managed:references:95fe916dc7b49a3f:2b428ee95e823765:2",
+      "fromNode": "95fe916dc7b49a3f",
+      "toNode": "2b428ee95e823765",
       "fromSide": "left",
       "toSide": "right",
       "toEnd": "arrow",
@@ -367,9 +367,9 @@
       }
     },
     {
-      "id": "managed:references:309d05b9fc2fe86e:65af36b9d0aef107:0",
-      "fromNode": "309d05b9fc2fe86e",
-      "toNode": "65af36b9d0aef107",
+      "id": "managed:references:fbe4bf4c3aee582c:95fe916dc7b49a3f:0",
+      "fromNode": "fbe4bf4c3aee582c",
+      "toNode": "95fe916dc7b49a3f",
       "fromSide": "left",
       "toSide": "right",
       "toEnd": "arrow",
@@ -382,9 +382,9 @@
       }
     },
     {
-      "id": "managed:references:309d05b9fc2fe86e:9cd20aeb04a8225e:1",
-      "fromNode": "309d05b9fc2fe86e",
-      "toNode": "9cd20aeb04a8225e",
+      "id": "managed:references:fbe4bf4c3aee582c:583e7059b9b7f6c5:1",
+      "fromNode": "fbe4bf4c3aee582c",
+      "toNode": "583e7059b9b7f6c5",
       "fromSide": "left",
       "toSide": "right",
       "toEnd": "arrow",
@@ -397,9 +397,9 @@
       }
     },
     {
-      "id": "managed:references:4f6f0b21bbc94e86:4219b838276d4f3c:0",
-      "fromNode": "4f6f0b21bbc94e86",
-      "toNode": "4219b838276d4f3c",
+      "id": "managed:references:4fa6a5b20efd657e:d8859e047fcafb27:0",
+      "fromNode": "4fa6a5b20efd657e",
+      "toNode": "d8859e047fcafb27",
       "fromSide": "left",
       "toSide": "right",
       "toEnd": "arrow",
@@ -412,9 +412,9 @@
       }
     },
     {
-      "id": "managed:references:4f6f0b21bbc94e86:d1ca98056978cc18:1",
-      "fromNode": "4f6f0b21bbc94e86",
-      "toNode": "d1ca98056978cc18",
+      "id": "managed:references:4fa6a5b20efd657e:2b428ee95e823765:1",
+      "fromNode": "4fa6a5b20efd657e",
+      "toNode": "2b428ee95e823765",
       "fromSide": "left",
       "toSide": "right",
       "toEnd": "arrow",
@@ -427,9 +427,9 @@
       }
     },
     {
-      "id": "managed:references:69d497643868f123:65af36b9d0aef107:0",
-      "fromNode": "69d497643868f123",
-      "toNode": "65af36b9d0aef107",
+      "id": "managed:references:3934f0ac9a0e6455:95fe916dc7b49a3f:0",
+      "fromNode": "3934f0ac9a0e6455",
+      "toNode": "95fe916dc7b49a3f",
       "fromSide": "right",
       "toSide": "left",
       "toEnd": "arrow",

@@ -11,7 +11,7 @@ import type { EdgeOrigin } from '@canvas/contract'
 import type { CanvasFlowEdge } from '../../model/adapter'
 import { useCanvasEditorActions } from '../CanvasEditorContext'
 import { useCanvasValidation } from '../CanvasValidationContext'
-import { getCanvasEdgePath } from '../../model/edgePath'
+import { getCanvasEdgePath, type EdgePathResult } from '../../model/edgePath'
 import { useEdgeStyle } from '../../model/edgeStyle'
 
 export function CanvasEdge({
@@ -28,13 +28,14 @@ export function CanvasEdge({
   data,
   selected,
   interactionWidth = 24,
-}: EdgeProps<CanvasFlowEdge>) {
+  pathOverride,
+}: EdgeProps<CanvasFlowEdge> & { pathOverride?: EdgePathResult }) {
   const actions = useCanvasEditorActions()
   const validation = useCanvasValidation()
   const edgeStyle = useEdgeStyle()
   const issues = validation.edgeIssues.get(id) ?? []
   const hasError = issues.some((issue) => issue.severity === 'error')
-  const pathResult = getCanvasEdgePath({
+  const pathResult = pathOverride ?? getCanvasEdgePath({
     id,
     sourceX,
     sourceY,
