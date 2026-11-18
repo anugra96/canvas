@@ -105,7 +105,9 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
   const focusedForEdit = useRef(false)
 
   const entityType = meta ? findEntityType(ontology, meta.entityType) : undefined
-  const contentField = entityType?.fields.find((field) => field.type === 'textarea')
+  const contentField = entityType?.id === 'db_enum'
+    ? undefined
+    : entityType?.fields.find((field) => field.type === 'textarea')
   const propertyFields = entityType
     ? entityType.fields.filter((field) => field.key !== contentField?.key)
     : []

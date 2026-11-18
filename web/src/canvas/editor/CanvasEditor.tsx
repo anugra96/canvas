@@ -697,8 +697,14 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       ...toFlowNode(node),
       selected: node.app?.entityType === 'table',
     }))
+    const schemaUpdates = new Map(result.schemaUpdates.map((node) => [node.id, node]))
     setNodes((current) => [
-      ...current.map((node) => ({ ...node, selected: false })),
+      ...current.map((node) => {
+        const raw = schemaUpdates.get(node.id)
+        return raw
+          ? { ...toFlowNode(raw), selected: false }
+          : { ...node, selected: false }
+      }),
       ...additions,
     ])
     markDirty()

@@ -306,18 +306,25 @@ export function layoutDatabaseCanvas(
   return { ...canvas, nodes: nextNodes }
 }
 
+export interface PlacedDatabaseCards {
+  nodes: CanvasNode[]
+  updates: CanvasNode[]
+}
+
 export function placeNewDatabaseCards(
   canvas: JsonCanvas,
   additions: CanvasNode[],
   sizes: DatabaseSizeMap = {},
-): CanvasNode[] {
-  if (additions.length === 0) return []
+): PlacedDatabaseCards {
+  if (additions.length === 0) return { nodes: [], updates: [] }
   const existing = canvas.nodes ?? []
   const placed = additions.map((node) => ({ ...node }))
+  const updates = new Map<string, CanvasNode>()
   const handled = new Set<string>()
   const existingSchema = existing.filter((node) => nodeType(node) === 'db_schema')
   const movedSchemas = placed.filter((node) => nodeType(node) === 'db_schema')
   const schemaNodes = [...existingSchema, ...movedSchemas]
+  const laneByName = new Map(schemaNodes.map((node) => [stringField(node, 'name'), node]))
   const tables = existing.filter((node) => nodeType(node) === 'table')
   const enums = existing.filter((node) => nodeType(node) === 'db_enum')
   const existingBottom = Math.max(
@@ -357,23 +364,39 @@ export function placeNewDatabaseCards(
     handled.add(node.id)
   }
 
+  const placedTables: CanvasNode[] = []
   for (const node of placed.filter((candidate) => nodeType(candidate) === 'table')) {
     const size = sizes[node.id] ?? { width: 360, height: 300 }
     node.width = size.width
     node.height = size.height
-    const schema = schemaNodes.find((candidate) => stringField(candidate, 'name') === schemaName(node))
-    const laneTables = tables.filter((candidate) => schemaName(candidate) === schemaName(node))
+    const schema = laneByName.get(schemaName(node))
+    const laneTables = [...tables, ...placedTables].filter((candidate) => (
+      schemaName(candidate) === schemaName(node)
+    ))
     if (schema) {
-      const laneRight = laneTables.reduce(
+      const contentRight = laneTables.reduce(
         (max, candidate) => Math.max(max, candidate.x + nodeSize(candidate, sizes).width),
         schema.x + LANE_PADDING,
       )
-      node.x = laneRight + COLUMN_GAP
-      node.y = schema.y + LANE_HEADER
+      node.x = laneTables.length > 0 ? contentRight + COLUMN_GAP : contentRight
+      node.y = schema.y + LANE_HEADER + LANE_PADDING
+      const nextWidth = Math.max(schema.width, node.x + node.width + LANE_PADDING - schema.x)
+      const nextHeight = Math.max(schema.height, node.y + node.height + LANE_PADDING - schema.y)
+      if (movedSchemas.includes(schema)) {
+        schema.width = nextWidth
+        schema.height = nextHeight
+      } else {
+        const update = updates.get(schema.id) ?? { ...schema }
+        update.width = nextWidth
+        update.height = nextHeight
+        updates.set(schema.id, update)
+        laneByName.set(stringField(schema, 'name'), update)
+      }
     } else {
       node.x = 0
       node.y = existingBottom + HEADER_GAP
     }
+    placedTables.push(node)
     handled.add(node.id)
   }
 
@@ -383,5 +406,5 @@ export function placeNewDatabaseCards(
     node.y = existingBottom + HEADER_GAP
   }
 
-  return placed
+  return { nodes: placed, updates: [...updates.values()] }
 }

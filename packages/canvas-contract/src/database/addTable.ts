@@ -14,6 +14,7 @@ export interface AddDatabaseTableInput {
 
 export interface AddDatabaseTableResult {
   nodes: CanvasNode[]
+  schemaUpdates: CanvasNode[]
   errors: string[]
 }
 
@@ -46,7 +47,7 @@ export function addDatabaseTable(
     && String(node.app.fields?.schema ?? '').trim() === schema
   ))
   if (duplicate) errors.push(`Table "${schema}.${name}" already exists.`)
-  if (errors.length > 0) return { nodes: [], errors }
+  if (errors.length > 0) return { nodes: [], schemaUpdates: [], errors }
 
   const definition: TableDefinition = {
     columns: [
@@ -108,8 +109,10 @@ export function addDatabaseTable(
     ...canvas,
     nodes: [...(canvas.nodes ?? []), ...additions],
   })
+  const placed = placeNewDatabaseCards(canvas, additions, sizes)
   return {
-    nodes: placeNewDatabaseCards(canvas, additions, sizes),
+    nodes: placed.nodes,
+    schemaUpdates: placed.updates,
     errors: [],
   }
 }

@@ -149,3 +149,61 @@ test('overlays editor notices without moving the canvas and dismisses them', asy
 
   await expect(notice).toHaveCount(0, { timeout: 6_500 })
 })
+
+test('edits enum values as plain lines and keeps Extra DDL read-only', async ({ page }) => {
+  await createDatabaseCanvas(page, 'Enum and database forms')
+
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Enum', exact: true }).click()
+  await page.locator('.db-enum-card').dblclick()
+  let editor = page.getByRole('dialog', { name: 'Edit Enum' })
+  await expect(editor).toBeVisible()
+  await editor.getByLabel('Name', { exact: true }).fill('task_status')
+  const values = editor.getByLabel('Values', { exact: true })
+  await expect(values).toHaveJSProperty('tagName', 'TEXTAREA')
+  await values.fill('open\nin_progress\ndone')
+  await editor.getByRole('button', { name: 'Done' }).click()
+  await expect(page.locator('.db-enum-card')).toContainText('in_progress')
+
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Database', exact: true }).click()
+  await page.locator('.entity-node').filter({ hasText: 'Database' }).dblclick()
+  editor = page.getByRole('dialog', { name: 'Edit Database' })
+  await expect(editor).toBeVisible()
+  await expect(editor.getByLabel('Extra DDL', { exact: true })).not.toBeEditable()
+})
+
+test('places new tables inside their lane and sizes a new Database card', async ({ page }) => {
+  await createDatabaseCanvas(page, 'Lane growth')
+
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Database', exact: true }).click()
+  const databaseCard = page.locator('.entity-node').filter({ hasText: 'Database' })
+  await expect(databaseCard).toBeVisible()
+  const databaseBox = await databaseCard.boundingBox()
+  if (!databaseBox) throw new Error('Missing Database card')
+  expect(databaseBox.height).toBeLessThan(160)
+
+  await addTable(page, 'parent')
+  const lane = page.locator('.react-flow__node').filter({ has: page.locator('.db-schema-card') }).first()
+  const laneBefore = await lane.boundingBox()
+  if (!laneBefore) throw new Error('Missing schema lane')
+
+  await addTable(page, 'child')
+  await page.waitForTimeout(500)
+  const laneAfter = await lane.boundingBox()
+  if (!laneAfter) throw new Error('Missing grown schema lane')
+  expect(laneAfter.width).toBeGreaterThanOrEqual(laneBefore.width - 1)
+  expect(laneAfter.height).toBeGreaterThanOrEqual(laneBefore.height - 1)
+
+  const tables = page.locator('.db-table-card')
+  await expect(tables).toHaveCount(2)
+  for (let index = 0; index < await tables.count(); index += 1) {
+    const box = await tables.nth(index).boundingBox()
+    if (!box) throw new Error(`Missing table card ${index}`)
+    expect(box.x).toBeGreaterThanOrEqual(laneAfter.x - 1)
+    expect(box.y).toBeGreaterThanOrEqual(laneAfter.y - 1)
+    expect(box.x + box.width).toBeLessThanOrEqual(laneAfter.x + laneAfter.width + 1)
+    expect(box.y + box.height).toBeLessThanOrEqual(laneAfter.y + laneAfter.height + 1)
+  }
+})
