@@ -2,6 +2,13 @@
 
 A lightweight web editor for Obsidian-compatible `.canvas` files.
 
+## Agents
+
+To build or edit canvases through the real UI, as a person would, agents use
+the skill in [skills/canvas-ui/SKILL.md](skills/canvas-ui/SKILL.md). It covers
+locators, step order, verification, and known limits, with a working reference
+that designs `examples/simple-tasks-db.sql` by hand.
+
 ## Local development
 
 ```bash
