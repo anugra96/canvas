@@ -207,3 +207,39 @@ test('places new tables inside their lane and sizes a new Database card', async 
     expect(box.y + box.height).toBeLessThanOrEqual(laneAfter.y + laneAfter.height + 1)
   }
 })
+
+test('opens the schema lane editor and keeps checks and column comments', async ({ page }) => {
+  await createDatabaseCanvas(page, 'Schema and checks')
+
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Schema', exact: true }).click()
+  await page.locator('.db-schema-head').dblclick()
+  const schemaEditor = page.getByRole('dialog', { name: 'Edit Schema' })
+  await expect(schemaEditor.getByLabel('Name', { exact: true })).toBeVisible()
+  await expect(schemaEditor.getByLabel('Description', { exact: true })).toBeVisible()
+  await schemaEditor.getByLabel('Name', { exact: true }).fill('app')
+  await schemaEditor.getByLabel('Description', { exact: true }).fill('Application tables')
+  await schemaEditor.getByRole('button', { name: 'Done' }).click()
+  await expect(page.locator('.db-schema-card')).toContainText('Application tables')
+
+  await addTable(page, 'audit_log')
+  await page.locator('.db-table-card').filter({ hasText: 'audit_log' }).dblclick()
+  let editor = page.getByRole('dialog', { name: 'Edit Table' })
+  await editor.getByRole('button', { name: 'Add check' }).click()
+  await editor.getByLabel('Check 1 name').fill('audit_log_created_check')
+  await editor.getByLabel('Check 1 expression').fill('created_at IS NOT NULL')
+  await editor.getByLabel('Column 2 comment').fill('When the row was written')
+  await editor.getByRole('button', { name: 'Done' }).click()
+
+  await page.locator('.db-table-card').filter({ hasText: 'audit_log' }).dblclick()
+  editor = page.getByRole('dialog', { name: 'Edit Table' })
+  await expect(editor.getByLabel('Check 1 name')).toHaveValue('audit_log_created_check')
+  await expect(editor.getByLabel('Check 1 expression')).toHaveValue('created_at IS NOT NULL')
+  await expect(editor.getByLabel('Column 2 comment')).toHaveValue('When the row was written')
+  await editor.getByRole('button', { name: 'Done' }).click()
+
+  const ddl = await exportDdl(page)
+  expect(ddl).toContain('CONSTRAINT audit_log_created_check CHECK (created_at IS NOT NULL)')
+  expect(ddl).toContain("COMMENT ON COLUMN public.audit_log.created_at IS 'When the row was written'")
+  expect(ddl).toContain("COMMENT ON SCHEMA app IS 'Application tables'")
+})

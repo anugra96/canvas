@@ -9609,13 +9609,13 @@ select {
 .database-column-grid {
   display: grid;
   gap: 4px;
-  min-width: 900px;
+  min-width: 1080px;
 }
 
 .database-grid-head,
 .database-grid-row {
   display: grid;
-  grid-template-columns: 1.1fr 1.2fr 48px 1.1fr 34px 34px 110px 1fr 92px;
+  grid-template-columns: 1.1fr 1.2fr 48px 1.1fr 34px 34px 110px 1fr 1fr 92px;
   gap: 5px;
   align-items: center;
 }
@@ -9670,6 +9670,10 @@ select {
   grid-template-columns: 1.1fr 14px 1.3fr 1fr 100px 100px 32px;
   gap: 5px;
   align-items: center;
+}
+
+.database-check-grid {
+  grid-template-columns: 1fr 2fr 32px;
 }
 
 .database-editor-actions {

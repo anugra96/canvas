@@ -347,6 +347,7 @@ export function TableEditor({
             <span>UQ</span>
             <span>Identity</span>
             <span>Generated</span>
+            <span>Comment</span>
             <span />
           </div>
           {definition.columns.map((column, index) => (
@@ -417,6 +418,14 @@ export function TableEditor({
                   ...(event.target.value ? { default: undefined, identity: undefined } : {}),
                 })}
               />
+              <input
+                aria-label={`Column ${index + 1} comment`}
+                value={column.comment ?? ''}
+                placeholder="comment"
+                onChange={(event) => updateColumn(index, {
+                  comment: event.target.value || undefined,
+                })}
+              />
               <span className="database-row-actions">
                 <button type="button" className="icon-button" aria-label={`Move ${column.name} up`} onClick={() => moveColumn(index, -1)}>
                   <ArrowUp size={13} />
@@ -434,6 +443,63 @@ export function TableEditor({
         <datalist id="database-type-suggestions">
           {typeOptions.map((type) => <option key={type} value={type} />)}
         </datalist>
+      </section>
+
+      <section className="database-editor-section">
+        <header>
+          <h3>Checks</h3>
+          <button
+            type="button"
+            className="button"
+            onClick={() => commit({
+              ...definition,
+              checks: [...definition.checks, { expression: 'true' }],
+            })}
+          >
+            <Plus size={14} /> Add check
+          </button>
+        </header>
+        {definition.checks.map((check, index) => (
+          <div className="database-subgrid database-check-grid" key={`check-${index}`}>
+            <input
+              aria-label={`Check ${index + 1} name`}
+              value={check.name ?? ''}
+              onChange={(event) => commit({
+                ...definition,
+                checks: definition.checks.map((item, position) => (
+                  position === index
+                    ? { ...item, name: event.target.value || undefined }
+                    : item
+                )),
+              })}
+              placeholder="constraint name"
+            />
+            <input
+              aria-label={`Check ${index + 1} expression`}
+              value={check.expression}
+              onChange={(event) => commit({
+                ...definition,
+                checks: definition.checks.map((item, position) => (
+                  position === index
+                    ? { ...item, expression: event.target.value }
+                    : item
+                )),
+              })}
+              placeholder="expression"
+            />
+            <button
+              type="button"
+              className="icon-button"
+              aria-label={`Remove check ${index + 1}`}
+              onClick={() => commit({
+                ...definition,
+                checks: definition.checks.filter((_, position) => position !== index),
+              })}
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
+        ))}
       </section>
 
       <section className="database-editor-section">
