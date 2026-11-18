@@ -1,4 +1,5 @@
 import { X } from 'lucide-react'
+import { useEffect } from 'react'
 
 import { CanvasToolbar, type SaveStatus } from './CanvasToolbar'
 import type { DisplayControlProps } from './DisplayControl'
@@ -31,6 +32,12 @@ export function EditorChrome({
   onDismissNotice,
   error,
 }: EditorChromeProps) {
+  useEffect(() => {
+    if (!notice) return
+    const timer = window.setTimeout(onDismissNotice, 5_000)
+    return () => window.clearTimeout(timer)
+  }, [notice, onDismissNotice])
+
   return (
     <>
       {trail.length > 1 && (

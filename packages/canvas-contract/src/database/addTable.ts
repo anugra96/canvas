@@ -70,6 +70,7 @@ export function addDatabaseTable(
         default: 'now()',
       },
     ],
+    primaryKey: { columns: ['id'] },
     uniques: [],
     checks: [],
     foreignKeys: [],

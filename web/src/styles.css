@@ -525,19 +525,25 @@ p {
 }
 
 .editor-notice {
+  position: fixed;
+  top: calc(var(--topbar-height) + 64px);
+  left: 50%;
+  z-index: 40;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: 10px 16px 0;
+  width: min(560px, calc(100vw - 32px));
   padding: 8px 11px;
   border: 1px solid color-mix(in srgb, var(--ui-accent) 32%, transparent);
   border-left: 3px solid var(--ui-accent);
   border-radius: var(--radius);
   color: var(--ui-muted);
   background: var(--ui-notice-bg);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
   font-size: 11px;
   font-weight: 650;
+  transform: translateX(-50%);
 }
 
 .editor-notice .icon-button {

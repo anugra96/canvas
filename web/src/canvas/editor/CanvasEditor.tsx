@@ -687,6 +687,8 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     setNotice('Removed the foreign key.')
   }, [applyDatabaseCanvas, baseCanvas, edges, markDirty, nodes, setNotice])
 
+  const dismissNotice = useCallback(() => setNotice(''), [setNotice])
+
   const addTable = useCallback((input: AddDatabaseTableInput): string[] => {
     const canvas = fromFlowCanvas(nodes, edges, baseCanvas)
     const result = addDatabaseTable(canvas, input)
@@ -833,7 +835,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
               onReset: resetDisplay,
             }}
             notice={notice}
-            onDismissNotice={() => setNotice('')}
+            onDismissNotice={dismissNotice}
             error={error}
           />
           <DatabaseDesignProvider nodes={rawNodes} enabled={isDatabase}>
