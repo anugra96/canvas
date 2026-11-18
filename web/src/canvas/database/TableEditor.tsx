@@ -1,9 +1,11 @@
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 
 import {
   emptyTableDefinition,
   parseTableDefinition,
   stringifyTableDefinition,
+  tableDefinitionError,
   type ForeignKeyAction,
   type TableColumn,
   type TableDefinition,
@@ -11,7 +13,7 @@ import {
   type TableIndex,
 } from '@canvas/contract'
 
-import { useDatabaseDesign } from './DatabaseDesignContext'
+import { useDatabaseDesign, type DatabaseTableOption } from './DatabaseDesignContext'
 
 const COMMON_TYPES = [
   'uuid',
@@ -115,6 +117,14 @@ function uniqueColumnName(columns: TableColumn[]): string {
   return name
 }
 
+function referenceColumns(table: DatabaseTableOption): string[] {
+  return table.primaryKey.length > 0 ? table.primaryKey : table.columns.slice(0, 1)
+}
+
+function tableOptionKey(table: { schema: string; name?: string; table?: string }): string {
+  return `${table.schema}.${table.name ?? table.table ?? ''}`
+}
+
 export function TableEditor({
   fields,
   onChange,
@@ -125,9 +135,55 @@ export function TableEditor({
   const design = useDatabaseDesign()
   const parsed = parseTableDefinition(fields.definition)
   const definition = parsed ?? emptyTableDefinition()
+  const [validationError, setValidationError] = useState('')
 
   function commit(next: TableDefinition): void {
+    const error = tableDefinitionError(next)
+    if (error) {
+      setValidationError(error)
+      return
+    }
+    setValidationError('')
     onChange('definition', stringifyTableDefinition(next))
+  }
+
+  const thisSchema = String(fields.schema ?? 'public').trim() || 'public'
+  const thisName = String(fields.name ?? '').trim()
+  const otherTables = design.tables.filter((table) => (
+    table.name !== thisName || table.schema !== thisSchema
+  ))
+  const orderedParents = [
+    ...otherTables.filter((table) => table.schema === thisSchema),
+    ...otherTables.filter((table) => table.schema !== thisSchema),
+  ]
+  const addedForeignKeyParent = orderedParents.find((table) => referenceColumns(table).length > 0)
+  const primaryColumns = new Set(definition.primaryKey?.columns ?? [])
+  const addedForeignKeyColumn = (
+    definition.columns.find((column) => !primaryColumns.has(column.name)) ?? definition.columns[0]
+  )?.name
+  const canAddForeignKey = Boolean(addedForeignKeyParent && addedForeignKeyColumn)
+  const addForeignKeyHint = definition.columns.length === 0
+    ? 'Add a column first'
+    : otherTables.length === 0
+      ? 'Add another table first'
+      : 'Add a table with columns first'
+
+  function addForeignKey(): void {
+    if (!addedForeignKeyParent || !addedForeignKeyColumn) return
+    commit({
+      ...definition,
+      foreignKeys: [
+        ...definition.foreignKeys,
+        {
+          columns: [addedForeignKeyColumn],
+          references: {
+            schema: addedForeignKeyParent.schema,
+            table: addedForeignKeyParent.name,
+            columns: referenceColumns(addedForeignKeyParent),
+          },
+        },
+      ],
+    })
   }
 
   function updateColumn(index: number, patch: Partial<TableColumn>): void {
@@ -258,6 +314,11 @@ export function TableEditor({
           The Definition JSON is invalid. Fix it below or edit it as text.
         </div>
       )}
+      {validationError && (
+        <div className="alert" role="alert">
+          {validationError}
+        </div>
+      )}
 
       <section className="database-editor-section">
         <header>
@@ -378,24 +439,22 @@ export function TableEditor({
       <section className="database-editor-section">
         <header>
           <h3>Foreign keys</h3>
-          <button
-            type="button"
-            className="button"
-            onClick={() => commit({
-              ...definition,
-              foreignKeys: [
-                ...definition.foreignKeys,
-                {
-                  columns: [definition.columns[0]?.name ?? ''],
-                  references: { schema: 'public', table: '', columns: ['id'] },
-                },
-              ],
-            })}
-          >
-            <Plus size={14} /> Add foreign key
-          </button>
+          <span className="database-editor-actions">
+            {!canAddForeignKey && <span className="database-editor-hint">{addForeignKeyHint}</span>}
+            <button
+              type="button"
+              className="button"
+              disabled={!canAddForeignKey}
+              onClick={addForeignKey}
+            >
+              <Plus size={14} /> Add foreign key
+            </button>
+          </span>
         </header>
-        {definition.foreignKeys.map((foreignKey, index) => (
+        {definition.foreignKeys.map((foreignKey, index) => {
+          const selectedTable = tableOptionKey(foreignKey.references)
+          const selectedKnown = design.tables.some((table) => tableOptionKey(table) === selectedTable)
+          return (
           <div className="database-subgrid" key={`fk-${index}`}>
             <input
               aria-label={`Foreign key ${index + 1} columns`}
@@ -404,22 +463,32 @@ export function TableEditor({
               placeholder="column"
             />
             <span className="database-subgrid-arrow">→</span>
-            <input
-              aria-label={`Foreign key ${index + 1} schema`}
-              value={foreignKey.references.schema}
-              onChange={(event) => updateForeignKey(index, {
-                references: { ...foreignKey.references, schema: event.target.value },
-              })}
-              placeholder="public"
-            />
-            <input
+            <select
               aria-label={`Foreign key ${index + 1} table`}
-              value={foreignKey.references.table}
-              onChange={(event) => updateForeignKey(index, {
-                references: { ...foreignKey.references, table: event.target.value },
-              })}
-              placeholder="table"
-            />
+              value={selectedTable}
+              onChange={(event) => {
+                const table = design.tables.find((candidate) => (
+                  tableOptionKey(candidate) === event.target.value
+                ))
+                if (!table) return
+                updateForeignKey(index, {
+                  references: {
+                    schema: table.schema,
+                    table: table.name,
+                    columns: referenceColumns(table),
+                  },
+                })
+              }}
+            >
+              {!selectedKnown && foreignKey.references.table && (
+                <option value={selectedTable}>{selectedTable}</option>
+              )}
+              {design.tables.map((table) => (
+                <option key={tableOptionKey(table)} value={tableOptionKey(table)}>
+                  {tableOptionKey(table)}
+                </option>
+              ))}
+            </select>
             <input
               aria-label={`Foreign key ${index + 1} referenced columns`}
               value={foreignKey.references.columns.join(', ')}
@@ -458,7 +527,8 @@ export function TableEditor({
               <Trash2 size={13} />
             </button>
           </div>
-        ))}
+          )
+        })}
       </section>
 
       <section className="database-editor-section">

@@ -102,6 +102,17 @@ export function tableDefinitionFromUnknown(value: unknown): TableDefinition | un
   return parsed.success ? normalizeTableDefinition(parsed.data) : undefined
 }
 
+export function tableDefinitionError(value: unknown): string | undefined {
+  const parsed = tableDefinitionSchema.safeParse(value)
+  if (parsed.success) return undefined
+  return parsed.error.issues
+    .map((issue) => {
+      const path = issue.path.length > 0 ? `${issue.path.join('.')}: ` : ''
+      return `${path}${issue.message}`
+    })
+    .join('; ') || 'Invalid table Definition.'
+}
+
 export function parseTableDefinition(source: unknown): TableDefinition | undefined {
   if (typeof source === 'string') {
     if (!source.trim()) return emptyTableDefinition()

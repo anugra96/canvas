@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from 'react'
 
-import { getEntityMeta, type CanvasNode } from '@canvas/contract'
+import { getEntityMeta, nodeTableDefinition, type CanvasNode } from '@canvas/contract'
 
 import { DatabaseDesignContext, type DatabaseDesign } from './DatabaseDesignContext'
 
@@ -22,6 +22,7 @@ export function DatabaseDesignProvider({
     if (!enabled) return null
     const schemas = new Set<string>(['public'])
     const enums: DatabaseDesign['enums'] = []
+    const tables: DatabaseDesign['tables'] = []
     for (const node of nodes) {
       const entityType = getEntityMeta(node)?.entityType
       if (entityType === 'db_schema') schemas.add(stringField(node, 'name'))
@@ -35,10 +36,21 @@ export function DatabaseDesignProvider({
           values: stringField(node, 'values').split(/\r?\n/).map((value) => value.trim()).filter(Boolean),
         })
       }
+      if (entityType === 'table') {
+        const definition = nodeTableDefinition(node)
+        tables.push({
+          schema: stringField(node, 'schema') || 'public',
+          name: stringField(node, 'name'),
+          columns: definition?.columns.map((column) => column.name) ?? [],
+          primaryKey: definition?.primaryKey?.columns ?? [],
+        })
+      }
     }
     return {
       schemas: [...schemas].filter(Boolean).sort((left, right) => left.localeCompare(right)),
       enums: enums.sort((left, right) =>
+        `${left.schema}.${left.name}`.localeCompare(`${right.schema}.${right.name}`)),
+      tables: tables.sort((left, right) =>
         `${left.schema}.${left.name}`.localeCompare(`${right.schema}.${right.name}`)),
     }
   }, [enabled, nodes])

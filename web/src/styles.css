@@ -9661,9 +9661,22 @@ select {
 
 .database-subgrid {
   display: grid;
-  grid-template-columns: 1.1fr 14px 0.7fr 1fr 1fr 100px 100px 32px;
+  grid-template-columns: 1.1fr 14px 1.3fr 1fr 100px 100px 32px;
   gap: 5px;
   align-items: center;
+}
+
+.database-editor-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.database-editor-hint {
+  color: var(--ui-muted);
+  font-size: 10px;
+  font-weight: 650;
+  white-space: nowrap;
 }
 
 .database-subgrid-arrow {
