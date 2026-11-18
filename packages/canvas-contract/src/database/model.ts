@@ -5,6 +5,16 @@ import { getEntityMeta } from '../ontology'
 
 export const TABLE_DEFINITION_VERSION = 1
 
+const optionalText = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+  z.string().optional(),
+)
+
+const requiredText = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+  z.string().min(1),
+)
+
 export const foreignKeyActionSchema = z.enum([
   'no_action',
   'restrict',
@@ -17,29 +27,29 @@ export const tableColumnSchema = z.object({
   name: z.string().min(1),
   type: z.string().min(1),
   nullable: z.boolean(),
-  default: z.string().optional(),
+  default: optionalText,
   identity: z.enum(['always', 'by_default']).optional(),
-  generated: z.string().optional(),
-  comment: z.string().optional(),
+  generated: optionalText,
+  comment: optionalText,
 })
 
 export const tablePrimaryKeySchema = z.object({
-  name: z.string().optional(),
+  name: optionalText,
   columns: z.array(z.string().min(1)).min(1),
 })
 
 export const tableUniqueSchema = z.object({
-  name: z.string().optional(),
+  name: optionalText,
   columns: z.array(z.string().min(1)).min(1),
 })
 
 export const tableCheckSchema = z.object({
-  name: z.string().optional(),
-  expression: z.string().min(1),
+  name: optionalText,
+  expression: requiredText,
 })
 
 export const tableForeignKeySchema = z.object({
-  name: z.string().optional(),
+  name: optionalText,
   columns: z.array(z.string().min(1)).min(1),
   references: z.object({
     schema: z.string().min(1),
@@ -55,14 +65,24 @@ export const tableIndexSchema = z.object({
   unique: z.boolean(),
   method: z.string().min(1),
   columns: z.array(z.string().min(1)).min(1),
-  where: z.string().optional(),
+  where: optionalText,
 })
+
+const tableChecksSchema = z.preprocess(
+  (value) => (Array.isArray(value)
+    ? value.filter((item) => {
+      const expression = (item as { expression?: unknown } | null)?.expression
+      return typeof expression !== 'string' || expression.trim() !== ''
+    })
+    : value),
+  z.array(tableCheckSchema),
+)
 
 export const tableDefinitionSchema = z.object({
   columns: z.array(tableColumnSchema),
   primaryKey: tablePrimaryKeySchema.optional(),
   uniques: z.array(tableUniqueSchema),
-  checks: z.array(tableCheckSchema),
+  checks: tableChecksSchema,
   foreignKeys: z.array(tableForeignKeySchema),
   indexes: z.array(tableIndexSchema),
 })
@@ -86,14 +106,51 @@ export function emptyTableDefinition(): TableDefinition {
   }
 }
 
+function presentText(value: string | undefined): string | undefined {
+  return value === undefined || value.trim() === '' ? undefined : value
+}
+
+function withoutBlankName<T extends { name?: string }>(item: T): T {
+  const { name, ...rest } = item
+  const nextName = presentText(name)
+  return {
+    ...rest,
+    ...(nextName !== undefined ? { name: nextName } : {}),
+  } as T
+}
+
 export function normalizeTableDefinition(definition: TableDefinition): TableDefinition {
   return {
-    columns: definition.columns,
-    ...(definition.primaryKey ? { primaryKey: definition.primaryKey } : {}),
-    uniques: definition.uniques,
-    checks: definition.checks,
-    foreignKeys: definition.foreignKeys,
-    indexes: definition.indexes,
+    columns: definition.columns.map((column) => {
+      const { default: defaultValue, generated, comment, ...rest } = column
+      const nextDefault = presentText(defaultValue)
+      const nextGenerated = presentText(generated)
+      const nextComment = presentText(comment)
+      return {
+        ...rest,
+        ...(nextDefault !== undefined ? { default: nextDefault } : {}),
+        ...(nextGenerated !== undefined ? { generated: nextGenerated } : {}),
+        ...(nextComment !== undefined ? { comment: nextComment } : {}),
+      }
+    }),
+    ...(definition.primaryKey && definition.primaryKey.columns.length > 0
+      ? { primaryKey: withoutBlankName(definition.primaryKey) }
+      : {}),
+    uniques: definition.uniques
+      .filter((unique) => unique.columns.length > 0)
+      .map(withoutBlankName),
+    checks: definition.checks
+      .filter((check) => presentText(check.expression) !== undefined)
+      .map(withoutBlankName),
+    foreignKeys: definition.foreignKeys.map(withoutBlankName),
+    indexes: definition.indexes.map((index) => {
+      const { where, ...rest } = index
+      const nextWhere = presentText(where)
+      return {
+        ...rest,
+        ...(nextWhere !== undefined ? { where: nextWhere } : {}),
+      }
+    }),
   }
 }
 

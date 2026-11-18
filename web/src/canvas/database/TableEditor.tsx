@@ -46,6 +46,10 @@ function columnNames(value: string): string[] {
   return value.split(',').map((name) => name.trim()).filter(Boolean)
 }
 
+function optionalText(value: string): string | undefined {
+  return value.trim() ? value : undefined
+}
+
 function renameReferences(definition: TableDefinition, oldName: string, newName: string): TableDefinition {
   if (!newName || oldName === newName) return definition
   return {
@@ -74,14 +78,15 @@ function renameReferences(definition: TableDefinition, oldName: string, newName:
 }
 
 function removeColumnFromDefinition(definition: TableDefinition, columnName: string): TableDefinition {
+  const primaryColumns = definition.primaryKey?.columns.filter((name) => name !== columnName) ?? []
   return {
     ...definition,
     columns: definition.columns.filter((column) => column.name !== columnName),
-    ...(definition.primaryKey
+    ...(definition.primaryKey && primaryColumns.length > 0
       ? {
         primaryKey: {
           ...definition.primaryKey,
-          columns: definition.primaryKey.columns.filter((name) => name !== columnName),
+          columns: primaryColumns,
         },
       }
       : {}),
@@ -138,6 +143,10 @@ export function TableEditor({
   const [validationError, setValidationError] = useState('')
 
   function commit(next: TableDefinition): void {
+    if (next.columns.length === 0) {
+      setValidationError('A table needs at least one column.')
+      return
+    }
     const error = tableDefinitionError(next)
     if (error) {
       setValidationError(error)
@@ -238,6 +247,15 @@ export function TableEditor({
       uniques: existing
         ? definition.uniques.filter((unique) => unique !== existing)
         : [...definition.uniques, { columns: [column.name] }],
+    })
+  }
+
+  function updateUnique(index: number, patch: Partial<TableDefinition['uniques'][number]>): void {
+    commit({
+      ...definition,
+      uniques: definition.uniques.map((unique, position) => (
+        position === index ? { ...unique, ...patch } : unique
+      )),
     })
   }
 
@@ -374,10 +392,13 @@ export function TableEditor({
               <input
                 aria-label={`Column ${index + 1} default`}
                 value={column.default ?? ''}
-                onChange={(event) => updateColumn(index, {
-                  default: event.target.value,
-                  ...(event.target.value ? { identity: undefined, generated: undefined } : {}),
-                })}
+                onChange={(event) => {
+                  const nextDefault = optionalText(event.target.value)
+                  updateColumn(index, {
+                    default: nextDefault,
+                    ...(nextDefault ? { identity: undefined, generated: undefined } : {}),
+                  })
+                }}
               />
               <label className="database-check">
                 <input
@@ -413,17 +434,20 @@ export function TableEditor({
                 aria-label={`Column ${index + 1} generated`}
                 value={column.generated ?? ''}
                 placeholder="expression"
-                onChange={(event) => updateColumn(index, {
-                  generated: event.target.value || undefined,
-                  ...(event.target.value ? { default: undefined, identity: undefined } : {}),
-                })}
+                onChange={(event) => {
+                  const nextGenerated = optionalText(event.target.value)
+                  updateColumn(index, {
+                    generated: nextGenerated,
+                    ...(nextGenerated ? { default: undefined, identity: undefined } : {}),
+                  })
+                }}
               />
               <input
                 aria-label={`Column ${index + 1} comment`}
                 value={column.comment ?? ''}
                 placeholder="comment"
                 onChange={(event) => updateColumn(index, {
-                  comment: event.target.value || undefined,
+                  comment: optionalText(event.target.value),
                 })}
               />
               <span className="database-row-actions">
@@ -443,6 +467,53 @@ export function TableEditor({
         <datalist id="database-type-suggestions">
           {typeOptions.map((type) => <option key={type} value={type} />)}
         </datalist>
+      </section>
+
+      <section className="database-editor-section">
+        <header>
+          <h3>Unique constraints</h3>
+          <button
+            type="button"
+            className="button"
+            disabled={definition.columns.length === 0}
+            onClick={() => commit({
+              ...definition,
+              uniques: [
+                ...definition.uniques,
+                { columns: [definition.columns[0]!.name] },
+              ],
+            })}
+          >
+            <Plus size={14} /> Add unique
+          </button>
+        </header>
+        {definition.uniques.map((unique, index) => (
+          <div className="database-subgrid" key={`unique-${index}`}>
+            <input
+              aria-label={`Unique ${index + 1} name`}
+              value={unique.name ?? ''}
+              onChange={(event) => updateUnique(index, { name: optionalText(event.target.value) })}
+              placeholder="constraint name"
+            />
+            <input
+              aria-label={`Unique ${index + 1} columns`}
+              value={unique.columns.join(', ')}
+              onChange={(event) => updateUnique(index, { columns: columnNames(event.target.value) })}
+              placeholder="column, column"
+            />
+            <button
+              type="button"
+              className="icon-button"
+              aria-label={`Remove unique ${index + 1}`}
+              onClick={() => commit({
+                ...definition,
+                uniques: definition.uniques.filter((_, position) => position !== index),
+              })}
+            >
+              <Trash2 size={13} />
+            </button>
+          </div>
+        ))}
       </section>
 
       <section className="database-editor-section">
@@ -468,7 +539,7 @@ export function TableEditor({
                 ...definition,
                 checks: definition.checks.map((item, position) => (
                   position === index
-                    ? { ...item, name: event.target.value || undefined }
+                    ? { ...item, name: optionalText(event.target.value) }
                     : item
                 )),
               })}
@@ -477,14 +548,23 @@ export function TableEditor({
             <input
               aria-label={`Check ${index + 1} expression`}
               value={check.expression}
-              onChange={(event) => commit({
-                ...definition,
-                checks: definition.checks.map((item, position) => (
-                  position === index
-                    ? { ...item, expression: event.target.value }
-                    : item
-                )),
-              })}
+              onChange={(event) => {
+                if (!event.target.value.trim()) {
+                  commit({
+                    ...definition,
+                    checks: definition.checks.filter((_, position) => position !== index),
+                  })
+                  return
+                }
+                commit({
+                  ...definition,
+                  checks: definition.checks.map((item, position) => (
+                    position === index
+                      ? { ...item, expression: event.target.value }
+                      : item
+                  )),
+                })
+              }}
               placeholder="expression"
             />
             <button
@@ -651,7 +731,7 @@ export function TableEditor({
             <input
               aria-label={`Index ${position + 1} where`}
               value={index.where ?? ''}
-              onChange={(event) => updateIndex(position, { where: event.target.value || undefined })}
+              onChange={(event) => updateIndex(position, { where: optionalText(event.target.value) })}
               placeholder="predicate"
             />
             <button

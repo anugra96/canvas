@@ -126,6 +126,62 @@ test('hand-designs a foreign key without losing the table columns', async ({ pag
   expect(ddl).toContain('ON DELETE CASCADE')
 })
 
+test('clears a starter column default without exporting an empty DEFAULT', async ({ page }) => {
+  await createDatabaseCanvas(page, 'Cleared default')
+  await addTable(page, 'account')
+
+  await page.locator('.db-table-card').filter({ hasText: 'account' }).dblclick()
+  const editor = page.getByRole('dialog', { name: 'Edit Table' })
+  await expect(editor.getByLabel('Column 1 default')).toHaveValue('gen_random_uuid()')
+  await editor.getByLabel('Column 1 default').fill('')
+  await editor.getByRole('button', { name: 'Done' }).click()
+
+  const ddl = await exportDdl(page)
+  expect(ddl).toContain('id uuid NOT NULL')
+  expect(ddl).not.toContain('DEFAULT  ')
+})
+
+test('adds a named composite unique constraint from the table form', async ({ page }) => {
+  await createDatabaseCanvas(page, 'Composite unique')
+  await addTable(page, 'workspace_member')
+
+  await page.locator('.db-table-card').filter({ hasText: 'workspace_member' }).dblclick()
+  const editor = page.getByRole('dialog', { name: 'Edit Table' })
+
+  await editor.getByRole('button', { name: 'Add column' }).click()
+  let row = editor.locator('.database-grid-row').last()
+  await row.locator('input').nth(0).fill('workspace_id')
+  await editor.getByRole('button', { name: 'Add column' }).click()
+  row = editor.locator('.database-grid-row').last()
+  await row.locator('input').nth(0).fill('name')
+
+  await editor.getByRole('button', { name: 'Add unique' }).click()
+  await editor.getByLabel('Unique 1 name').fill('workspace_member_workspace_name_key')
+  await editor.getByLabel('Unique 1 columns').fill('workspace_id, name')
+  await editor.getByRole('button', { name: 'Done' }).click()
+
+  const ddl = await exportDdl(page)
+  expect(ddl).toContain('CONSTRAINT workspace_member_workspace_name_key UNIQUE (workspace_id, name)')
+})
+
+test('explains why the last table column cannot be removed', async ({ page }) => {
+  await createDatabaseCanvas(page, 'Last column refusal')
+  await addTable(page, 'standalone')
+  const card = page.locator('.db-table-card').filter({ hasText: 'standalone' })
+
+  await card.dblclick()
+  const editor = page.getByRole('dialog', { name: 'Edit Table' })
+  await editor.getByRole('button', { name: 'Remove id' }).click()
+  await expect(editor.getByLabel('Column 1 name')).toHaveValue('created_at')
+
+  await editor.getByRole('button', { name: 'Remove created_at' }).click()
+  await expect(editor.getByRole('alert')).toHaveText('A table needs at least one column.')
+  await expect(editor.getByLabel('Column 1 name')).toHaveValue('created_at')
+
+  await editor.getByRole('button', { name: 'Done' }).click()
+  await expect(card.locator('.db-column-row')).toHaveCount(1)
+})
+
 test('overlays editor notices without moving the canvas and dismisses them', async ({ page }) => {
   await createDatabaseCanvas(page, 'Notice overlay')
   const flow = page.locator('.canvas-flow')

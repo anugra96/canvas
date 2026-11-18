@@ -73,11 +73,11 @@ function schemas(canvas: JsonCanvas): Array<{ name: string; description: string 
 
 function columnSql(column: TableColumn): string {
   const parts = [quoteIdentifier(column.name), column.type]
-  if (column.generated !== undefined) {
+  if (column.generated?.trim()) {
     parts.push(`GENERATED ALWAYS AS (${column.generated}) STORED`)
   } else if (column.identity) {
     parts.push(`GENERATED ${column.identity === 'always' ? 'ALWAYS' : 'BY DEFAULT'} AS IDENTITY`)
-  } else if (column.default !== undefined) {
+  } else if (column.default?.trim()) {
     parts.push(`DEFAULT ${column.default}`)
   }
   if (!column.nullable) parts.push('NOT NULL')
@@ -106,6 +106,7 @@ function tableSql(
     )
   }
   for (const check of definition.checks) {
+    if (!check.expression.trim()) continue
     parts.push(`${namedConstraint(check.name)}CHECK (${check.expression})`)
   }
   return `CREATE TABLE ${qualified(schema, name)} (\n    ${parts.join(',\n    ')}\n);`
@@ -134,9 +135,10 @@ function foreignKeySql(
 }
 
 function indexSql(schema: string, name: string, definition: TableDefinition): string[] {
-  return definition.indexes.map((index) => (
-    `CREATE ${index.unique ? 'UNIQUE ' : ''}INDEX ${quoteIdentifier(index.name)} ON ${qualified(schema, name)} USING ${index.method} (${index.columns.join(', ')})${index.where ? ` WHERE ${index.where}` : ''};`
-  ))
+  return definition.indexes.map((index) => {
+    const where = index.where?.trim() ? ` WHERE ${index.where}` : ''
+    return `CREATE ${index.unique ? 'UNIQUE ' : ''}INDEX ${quoteIdentifier(index.name)} ON ${qualified(schema, name)} USING ${index.method} (${index.columns.join(', ')})${where};`
+  })
 }
 
 function extensionStatements(canvas: JsonCanvas): string[] {
