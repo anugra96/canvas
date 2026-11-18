@@ -21,11 +21,12 @@ async function dismissNotice(page: Page) {
   if (await dismiss.count() > 0) await dismiss.first().click()
 }
 
-async function addTable(page: Page, name: string) {
+async function addTable(page: Page, name: string, schema?: string) {
   await page.getByRole('button', { name: 'Add', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Table', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Add table' })
   await dialog.getByLabel('Table name').fill(name)
+  if (schema) await dialog.getByLabel('Schema').fill(schema)
   await dialog.getByRole('button', { name: 'Add table', exact: true }).click()
   await expect(page.locator('.db-table-card').filter({ hasText: name })).toBeVisible()
   await dismissNotice(page)
@@ -242,4 +243,50 @@ test('opens the schema lane editor and keeps checks and column comments', async 
   expect(ddl).toContain('CONSTRAINT audit_log_created_check CHECK (created_at IS NOT NULL)')
   expect(ddl).toContain("COMMENT ON COLUMN public.audit_log.created_at IS 'When the row was written'")
   expect(ddl).toContain("COMMENT ON SCHEMA app IS 'Application tables'")
+})
+
+
+test('names cards and Add menu items for assistive technology', async ({ page }) => {
+  await createDatabaseCanvas(page, 'Accessible database')
+
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  const menuItems = await page.getByRole('menuitem').evaluateAll((items) => (
+    items.map((item) => ({
+      text: item.textContent?.trim() ?? '',
+      label: item.getAttribute('aria-label'),
+    }))
+  ))
+  expect(menuItems.length).toBeGreaterThan(0)
+  for (const item of menuItems) {
+    expect(item.label, item.text).toBe(item.text)
+  }
+  await page.keyboard.press('Escape')
+
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Database', exact: true }).click()
+  await page.locator('.entity-node').filter({ hasText: 'Database' }).dblclick()
+  let editor = page.getByRole('dialog', { name: 'Edit Database' })
+  await editor.getByLabel('Name', { exact: true }).fill('simple_tasks')
+  await editor.getByRole('button', { name: 'Done' }).click()
+
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Schema', exact: true }).click()
+  await page.locator('.db-schema-head').dblclick()
+  editor = page.getByRole('dialog', { name: 'Edit Schema' })
+  await editor.getByLabel('Name', { exact: true }).fill('app')
+  await editor.getByRole('button', { name: 'Done' }).click()
+
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Enum', exact: true }).click()
+  await page.locator('.db-enum-card').dblclick()
+  editor = page.getByRole('dialog', { name: 'Edit Enum' })
+  await editor.getByLabel('Name', { exact: true }).fill('task_status')
+  await editor.getByRole('button', { name: 'Done' }).click()
+
+  await addTable(page, 'task', 'app')
+
+  await expect(page.locator('[aria-label="Database simple_tasks"]')).toBeVisible()
+  await expect(page.locator('[aria-label="Schema app"]')).toBeVisible()
+  await expect(page.locator('[aria-label="Enum public.task_status"]')).toBeVisible()
+  await expect(page.locator('[aria-label="Table app.task"]')).toBeVisible()
 })

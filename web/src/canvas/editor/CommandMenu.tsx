@@ -93,6 +93,7 @@ export function CommandMenu({
                   type="button"
                   className="command-menu-item"
                   role="menuitem"
+                  aria-label={command.label}
                   disabled={command.disabled}
                   onClick={() => choose(command)}
                 >
@@ -184,6 +185,7 @@ export function CommandSheet({
                 type="button"
                 className="command-sheet-item"
                 role="menuitem"
+                aria-label={command.label}
                 disabled={command.disabled}
                 onClick={() => choose(command)}
               >

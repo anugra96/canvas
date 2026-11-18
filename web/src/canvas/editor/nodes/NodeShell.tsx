@@ -2,11 +2,12 @@ import { Handle, NodeResizer, Position } from '@xyflow/react'
 import { AlertCircle, AlertTriangle, Link2 } from 'lucide-react'
 import type { CSSProperties, ReactNode } from 'react'
 
-import { getCanvasLinks } from '@canvas/contract'
+import { entityTitle, findEntityType, getCanvasLinks } from '@canvas/contract'
 
 import { colorFor, groupBackgroundFor, type CanvasFlowNode } from '../../model/adapter'
 import { useCanvasEditorActions } from '../CanvasEditorContext'
 import { useCanvasValidation } from '../CanvasValidationContext'
+import { useOntology } from '../../../ontology/OntologyContext'
 
 const SIDES = [
   { id: 'top', position: Position.Top },
@@ -26,8 +27,18 @@ interface NodeShellProps {
 export function NodeShell({ node, selected, className, children, onEdit }: NodeShellProps) {
   const actions = useCanvasEditorActions()
   const validation = useCanvasValidation()
+  const ontology = useOntology()
   const issues = validation.nodeIssues.get(node.id) ?? []
   const canvasLinks = getCanvasLinks(node.data.raw)
+  const entity = node.data.entity
+  const entityType = entity ? findEntityType(ontology, entity.entityType) : undefined
+  const entityName = entityType && entity ? entityTitle(entityType, entity.fields) : ''
+  const qualifiedName = entity && (entity.entityType === 'table' || entity.entityType === 'db_enum')
+    ? `${String(entity.fields.schema ?? '').trim() || 'public'}.${entityName}`
+    : entityName
+  const accessibleName = entityType
+    ? `${entityType.label} ${qualifiedName}`.trim()
+    : undefined
   const hasError = issues.some((issue) => issue.severity === 'error')
   const accent = colorFor(node.data.raw.color)
   const isGroup = node.data.raw.type === 'group'
@@ -100,6 +111,8 @@ export function NodeShell({ node, selected, className, children, onEdit }: NodeS
       <div
         className={`canvas-node ${className}${selected ? ' selected' : ''}${hasCardColor ? ' has-card-color' : ''}`}
         style={Object.keys(style).length > 0 ? style : undefined}
+        role={accessibleName ? 'group' : undefined}
+        aria-label={accessibleName}
         onDoubleClickCapture={(event) => {
           if (node.data.raw.type === 'group') return
           const target = event.target as HTMLElement

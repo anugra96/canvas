@@ -46,7 +46,11 @@ export function ConnectionTemplateMenu({
           </button>
         </header>
         {!systems && (
-          <button className="connection-option" onClick={() => onSelect('text')}>
+          <button
+            className="connection-option"
+            aria-label="Text card"
+            onClick={() => onSelect('text')}
+          >
             <span className="template-dot" />
             Text card
           </button>
@@ -58,6 +62,7 @@ export function ConnectionTemplateMenu({
           <button
             className="connection-option"
             key={entityType.id}
+            aria-label={entityType.label}
             onClick={() => onSelect(entityType.id)}
           >
             <span
