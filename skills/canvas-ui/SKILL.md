@@ -1,6 +1,6 @@
 ---
 name: canvas-ui
-description: Drive the Canvas web app by hand, like a person, to create and edit canvases from scratch. Use when an agent must build or change a canvas through the real UI (Database tables, columns, keys, indexes, enums, schemas; export DDL) with Playwright or a browser tool, instead of importing a file or calling the API.
+description: Drive the Canvas web app by hand, like a person, to create and edit canvases from scratch. Use when an agent must build or change a canvas through the real UI with Playwright or a browser tool, instead of importing a file or calling the API. Covers Systems (architecture cards and typed lines), API (OpenAPI resources, endpoints, schemas, security; export YAML), and Database (PostgreSQL tables, keys, indexes, enums; export DDL).
 ---
 
 # Canvas UI: build by hand
@@ -18,15 +18,18 @@ card before the next one. Never edit stored canvas JSON or call the API to
 2. **Exact names only.** Always pass `exact: true`. `Add table` also matches
    `Close add table dialog` without it.
 3. **Locate by role, label, or card name.** Never by CSS class, position, or
-   screenshot coordinates.
+   screenshot coordinates. One exception: a card you just added is selected,
+   so open it with `.react-flow__node.selected` before anything changes the selection.
    - Buttons and menu items: `getByRole('button' | 'menuitem', { name, exact: true })`.
-   - Form fields: `getByLabel('<label>', { exact: true })`.
-   - Cards: `page.locator('[aria-label="<Type> <name>"]')`. Names are
-     `Table <schema>.<table>`, `Enum <schema>.<enum>`, `Schema <name>`,
-     `Database <name>`. Names follow the saved fields, so a card's name changes
-     when you rename it or change its schema.
-4. **Open a card editor** by double-clicking the card. For a Schema lane,
-   double-click its title (`header strong`), not its body: the body holds tables.
+   - Text fields and checkboxes: `getByLabel('<label>', { exact: true })`.
+   - Selects: `getByRole('combobox', { name: '<label>', exact: true })`. Some
+     select labels include their option text, so `getByLabel` misses them.
+   - Cards: `getByRole('group', { name: '<Type> <name>', exact: true })`, e.g.
+     `System Tasks API`, `Endpoint GET /tasks`, `Table app.task`. Names follow the
+     saved fields, so a card's name changes when you rename it.
+4. **Open a card editor** by double-clicking the card. For a lane (Schema,
+   Resource), double-click its title (`header strong`), not its body: the body
+   holds other cards.
 5. **Edit, then Done.** Every editor closes with `button "Done"`. Read the card
    afterwards to confirm the change.
 6. **The form refuses invalid edits silently or with an alert.** After Done,
@@ -34,6 +37,9 @@ card before the next one. Never edit stored canvas JSON or call the API to
    editor. Never retry blindly.
 7. **One canvas, one profile.** The profile (Raw, Systems, API, Database) is
    chosen at creation and cannot change.
+8. **Panels cover the toolbar.** Close `Review` (`button "Close review"`) and
+   editors (`Done`) before you click the toolbar again. `Escape` does not
+   close every editor.
 
 ## Start an isolated app
 
@@ -62,24 +68,31 @@ the first accessibility read after load can be empty.
 | --- | --- |
 | `button "Add"` | Menu of card types for this profile (`menuitem` per type) |
 | `button "Display"` | Edge and label visibility presets |
-| `button "More canvas actions"` | `Tidy database layout`, `Fit cards to content`, `Zoom to fit`, `Export DDL`, `Copy DDL`, `Download .canvas`, `Screenshot`, `Keyboard shortcuts` |
+| `button "More canvas actions"` | Tidy layout for the profile, `Fit cards to content`, `Zoom to fit`, export for the profile (`Export DDL`, `Export OpenAPI YAML`), `Download .canvas`, `Screenshot`, `Keyboard shortcuts` |
+| `button "Connect"` | Shown when one card is selected (Raw, Systems): click it, then the target card |
+| `button "Review"` | Issues and level readiness; close with `button "Close review"` |
 | `button "Fit View"` | Fit all cards in view. Use it before double-clicking a card that may be off-screen |
 | `button "Undo"`, `button "Redo"` | Undo the last change |
 
 ## Recipes
 
-- Database profile (tables, columns, keys, indexes, enums, schemas, export):
-  [recipes/database.md](recipes/database.md)
-- Working reference: [reference/build-simple-tasks.spec.ts](reference/build-simple-tasks.spec.ts)
-  builds `examples/simple-tasks-db.sql` entirely by hand.
+Read the recipe for the profile before the first action. Each has a working
+reference script that builds a full example by hand and checks the export.
+
+| Profile | Recipe | Reference |
+| --- | --- | --- |
+| Systems | [recipes/systems.md](recipes/systems.md) | [build-simple-tasks-system.spec.ts](reference/build-simple-tasks-system.spec.ts) |
+| API | [recipes/api.md](recipes/api.md) | [build-simple-tasks-api.spec.ts](reference/build-simple-tasks-api.spec.ts) |
+| Database | [recipes/database.md](recipes/database.md) | [build-simple-tasks.spec.ts](reference/build-simple-tasks.spec.ts) |
 
 ## Verify the result
 
 - **Cards:** read the card text. Table cards list `name type` per column with
   badges `PK`, `FK`, `UQ`, `NULL` (nullable), `IDX` (leads an index).
-- **Database export:** `More canvas actions` → `Export DDL` downloads `<canvas>.sql`.
-  Compare it with the intended design. Casts may be spelled differently
-  (`'open'::app.task_status` exports as `CAST('open' AS app.task_status)`).
+- **Any profile:** `More canvas actions` → `Download .canvas` saves pending
+  edits, then downloads the canvas JSON (`nodes[].app`, `edges[].app.relationType`).
+- **API export:** `Export OpenAPI YAML`. **Database export:** `Export DDL`.
+  Compare by meaning, not text (key order, cast spelling, and quoting may differ).
 
 ## Known limits (check before you promise a result)
 
@@ -87,3 +100,5 @@ the first accessibility read after load can be empty.
 | --- | --- |
 | Functions, triggers, policies, grants, views | Only via `Import DDL`; they are kept read-only as Extra DDL |
 | Remove the last column of a table | Edit it instead; the form shows "A table needs at least one column." |
+| An empty API resource | `Add resource` always scaffolds five endpoints; delete the ones you do not need |
+| A Systems database used by two systems at one level | Accept the "Unassigned at level" warning |
