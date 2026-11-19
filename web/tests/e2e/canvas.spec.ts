@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import { expect, test } from '@playwright/test'
@@ -102,6 +103,22 @@ test('adds a repository template and edits its fields', async ({ page }) => {
 
   await waitForSaved(page)
   await page.screenshot({ path: 'test-results/entity-card.png', fullPage: true })
+})
+
+test('downloads unsaved edits instead of the last saved copy', async ({ page }) => {
+  await page.goto('/')
+  await createCanvas(page)
+  await addCanvasItem(page, 'Repository')
+  await page.locator('.entity-node').dblclick()
+  await page.getByLabel('Name', { exact: true }).fill('Fresh edit')
+  await page.getByRole('button', { name: 'Done' }).click()
+
+  const downloadPromise = page.waitForEvent('download')
+  await runCanvasCommand(page, 'Download .canvas')
+  const path = await (await downloadPromise).path()
+  if (!path) throw new Error('Missing downloaded canvas file')
+  const canvas = JSON.parse(readFileSync(path, 'utf8')) as { nodes: { app?: { fields?: { name?: string } } }[] }
+  expect(canvas.nodes.map((node) => node.app?.fields?.name)).toEqual(['Fresh edit'])
 })
 
 

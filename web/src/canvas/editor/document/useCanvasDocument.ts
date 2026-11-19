@@ -187,6 +187,11 @@ export function useCanvasDocument({
   async function download() {
     setError('')
     try {
+      // The download is the stored copy: save unsaved edits first so the file matches the screen.
+      if (dirty) {
+        const saved = await save()
+        if (!saved) return
+      }
       await client.downloadCanvas(document.id, title)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not download the canvas.')
