@@ -20,8 +20,13 @@ Create canvas (API) → API card → Security → Resource (scaffolds endpoints 
 
 1. `Add` → `menuitem "Security"`. Double-click `.react-flow__node.selected`.
 2. `dialog "Edit Security"`: `Name` (the OpenAPI scheme name, e.g. `BearerAuth`),
-   `Type` (`http`, `apiKey`, `oauth2`, `openIdConnect`, `mutualTLS`), then the
-   fields for that type (http: `Scheme`, `Bearer format`). `Done`.
+   combobox `Type`, then the fields for that type. `Done`.
+
+| Type | Fields after `Type` |
+| --- | --- |
+| `http` | combobox `Scheme` (`bearer`, `basic`), `Bearer format` |
+| `apiKey` | combobox `In` (`header`, `query`, `cookie`), `Parameter name` (e.g. `X-API-Key`) |
+| `oauth2`, `openIdConnect` | `Discovery URL` or flows JSON; check the form after choosing the type |
 3. To apply it to the whole API: open the API card, check
    `Default security <Name>`. Endpoints inherit it.
 
@@ -42,8 +47,8 @@ A resource is a group of endpoints and the OpenAPI tag.
 | `Endpoint PATCH /tasks/{task_id}` | `TaskUpdate` in, `Task` out |
 | `Endpoint DELETE /tasks/{task_id}` | none |
 
-4. Rename the tag: double-click the lane title
-   `group "Resource tasks"` → `header strong`. `dialog "Edit Resource"`: `Name`
+4. The lane is named by the **plural**: `group "Resource tasks"`. Rename the
+   tag: double-click its `header strong`. `dialog "Edit Resource"`: `Name`
    (e.g. `Tasks`), `Description`. `Done`.
 5. Remove what you do not need: click the card, then `button "Delete"`.
 
@@ -66,7 +71,8 @@ Rules:
 - **Labels follow the field name.** After you rename `field` to `status`,
   press `Tab`; the row is then `Field name status`, `Field type status`, and
   so on.
-- A field is required by default. Uncheck `Required <field>` for optional.
+- Scaffolded fields start required; fields from `Add field` start optional.
+  Set `Required <field>` (checkbox) explicitly either way.
 - Enum: set `Field type <field>` to `enum`, open `Details <field>`, fill
   `Enum values`.
 - `ref` points to another schema card; use it for nesting (`items: Task`).
@@ -78,14 +84,16 @@ Open `group "Endpoint <METHOD> <path>"` → `dialog "Edit Endpoint"`.
 | Area | Labels |
 | --- | --- |
 | Operation | combobox `Method`, `Path`, combobox `Status`, `Summary`, `Description` |
-| Parameters | `button "Add"`, `Parameter N name`, combobox `Parameter N location` (`path`, `query`, `header`, `cookie`), `Parameter N required`, combobox `Parameter N type`, combobox `Parameter N format`, `Parameter N description`, `Remove parameter N` |
+| Parameters | `button "Add"` (adds row N), `Parameter N name`, combobox `Parameter N location` (`path`, `query`, `header`, `cookie`), `Parameter N required` (checkbox), combobox `Parameter N type`, combobox `Parameter N format`, `Parameter N description`, `Remove parameter N` |
 | Request body | combobox `Body` (`none`, `model`, `inline`) |
 | Responses | `button "Add response"`, `Response <code> status`, `Response <code> description`, combobox `Response <code> model`, `Remove response <code>` |
 | Security | combobox `Requirement` (`inherit`, `public`, `schemes`); with `schemes`, one checkbox per scheme |
 
 New endpoint in an existing resource: `Add` → `menuitem "Endpoint"` →
-`dialog "Add endpoint"`: combobox `Resource`, combobox `Method`, `Path`,
-`Summary`, `button "Add endpoint"`. The menu item is disabled until a resource exists.
+`dialog "Add endpoint"`: combobox `Resource` (options are resource names as
+shown on the lane, e.g. `Books` after a rename: use `selectOption({ label })`),
+combobox `Method`, `Path`, `Summary`, `button "Add endpoint"`. The menu item is
+disabled until a resource exists.
 
 ## 6. Standard errors
 

@@ -90,7 +90,9 @@ reference script that builds a full example by hand and checks the export.
 - **Cards:** read the card text. Table cards list `name type` per column with
   badges `PK`, `FK`, `UQ`, `NULL` (nullable), `IDX` (leads an index).
 - **Any profile:** `More canvas actions` → `Download .canvas` saves pending
-  edits, then downloads the canvas JSON (`nodes[].app`, `edges[].app.relationType`).
+  edits, then downloads the canvas JSON. Cards: `nodes[].id`, `nodes[].app.entityType`,
+  `nodes[].app.fields`. Lines: `edges[].fromNode` and `edges[].toNode` (card ids),
+  `edges[].app.relationType`.
 - **API export:** `Export OpenAPI YAML`. **Database export:** `Export DDL`.
   Compare by meaning, not text (key order, cast spelling, and quoting may differ).
 
