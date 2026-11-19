@@ -2,8 +2,26 @@ import { Plus, Trash2 } from 'lucide-react'
 
 import type { EntityFields } from '@canvas/contract'
 
+import { useApiDesign } from './ApiDesignContext'
+
+type JsonObject = Record<string, unknown>
+
 function value(fields: EntityFields, key: string): string {
   return fields[key] == null ? '' : String(fields[key])
+}
+
+function isObject(value: unknown): value is JsonObject {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function parseExtra(source: string): JsonObject {
+  if (!source.trim()) return {}
+  try {
+    const parsed: unknown = JSON.parse(source)
+    return isObject(parsed) ? parsed : {}
+  } catch {
+    return {}
+  }
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -25,6 +43,15 @@ export function ApiDefinitionEditor({
   fields: EntityFields
   onChange: (key: string, value: string) => void
 }) {
+  const api = useApiDesign()
+  const schemeNames = Object.keys(api?.securitySchemes ?? {})
+  const extra = parseExtra(value(fields, 'extra'))
+  const securityEntries = Array.isArray(extra.security) ? extra.security.filter(isObject) : []
+  const selectedSecurity = new Set(securityEntries.flatMap((entry) => Object.keys(entry)))
+  const securityScopes = new Map<string, unknown>()
+  for (const entry of securityEntries) {
+    for (const [name, scopes] of Object.entries(entry)) securityScopes.set(name, scopes)
+  }
   const servers = value(fields, 'servers').split(/\r?\n/)
 
   function updateServer(index: number, next: string) {
@@ -39,6 +66,21 @@ export function ApiDefinitionEditor({
 
   function removeServer(index: number) {
     onChange('servers', servers.filter((_, current) => current !== index).join('\n'))
+  }
+
+  function toggleDefaultSecurity(name: string) {
+    const selected = new Set(selectedSecurity)
+    if (selected.has(name)) selected.delete(name)
+    else selected.add(name)
+    const nextExtra = { ...extra }
+    if (selected.size === 0) {
+      delete nextExtra.security
+    } else {
+      nextExtra.security = schemeNames
+        .filter((candidate) => selected.has(candidate))
+        .map((candidate) => ({ [candidate]: securityScopes.get(candidate) ?? [] }))
+    }
+    onChange('extra', JSON.stringify(nextExtra, null, 2))
   }
 
   return (
@@ -118,6 +160,26 @@ export function ApiDefinitionEditor({
             <input type="number" min={0} value={value(fields, 'reviewIntervalDays')} onChange={(event) => onChange('reviewIntervalDays', event.target.value)} />
           </label>
         </div>
+      </section>
+
+      <section className="api-form-section">
+        <h3>Default security</h3>
+        {schemeNames.length === 0 ? (
+          <p className="api-endpoint-muted">Add a Security card first</p>
+        ) : (
+          <div className="api-endpoint-security-list">
+            {schemeNames.map((name) => (
+              <label key={name} className="api-endpoint-security-choice">
+                <input
+                  type="checkbox"
+                  checked={selectedSecurity.has(name)}
+                  onChange={() => toggleDefaultSecurity(name)}
+                />
+                Default security {name}
+              </label>
+            ))}
+          </div>
+        )}
       </section>
 
       <details className="api-form-advanced">

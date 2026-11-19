@@ -94,11 +94,13 @@ export function CommandMenu({
                   className="command-menu-item"
                   role="menuitem"
                   aria-label={command.label}
+                  title={command.description}
                   disabled={command.disabled}
                   onClick={() => choose(command)}
                 >
                   <Icon size={14} />
                   <span>{command.label}</span>
+                  {command.description && <small className="command-menu-description">{command.description}</small>}
                   {command.shortcut && <kbd>{shortcutLabel(command)}</kbd>}
                 </button>
               </div>
@@ -186,11 +188,13 @@ export function CommandSheet({
                 className="command-sheet-item"
                 role="menuitem"
                 aria-label={command.label}
+                title={command.description}
                 disabled={command.disabled}
                 onClick={() => choose(command)}
               >
                 <Icon size={16} />
                 <span>{command.label}</span>
+                {command.description && <small className="command-menu-description">{command.description}</small>}
                 {command.shortcut && <kbd>{shortcutLabel(command)}</kbd>}
               </button>
             )

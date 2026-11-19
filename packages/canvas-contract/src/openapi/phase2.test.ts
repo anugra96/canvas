@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest'
 
 import { getEntityMeta } from '../ontology'
 import type { CanvasNode } from '../jsonCanvas'
-import { exportOpenApiDocument, OpenApiExportError } from './exportOpenApi'
+import { addApiEndpoint } from './addEndpoint'
+import { exportOpenApiDocument, exportOpenApiCanvas, OpenApiExportError } from './exportOpenApi'
 import { generateExample } from './examples'
 import { importOpenApi } from './importOpenApi'
+import { estimateApiSizes } from './layout'
+import { deriveManagedRelations } from './managedRelations'
 import { buildCurlSnippet } from './requestSnippet'
 import { applyStandardErrors } from './standardErrors'
 
@@ -64,6 +67,54 @@ describe('Phase 2 API tools', () => {
         'Orders', '/a', 'Thing', 'BearerAuth', 'BearerAuth',
       ])
     }
+  })
+
+  it('adds an endpoint to an existing resource with its tag, lane, and managed line', () => {
+    const imported = importOpenApi({
+      openapi: '3.1.0',
+      info: { title: 'Tasks', version: '1.0.0' },
+      tags: [{ name: 'tasks' }],
+      paths: {
+        '/tasks': { get: { tags: ['tasks'], responses: { '200': { description: 'OK' } } } },
+      },
+    })
+    const canvas = imported.canvas
+    const resource = (canvas.nodes ?? []).find((node) => getEntityMeta(node)?.entityType === 'resource')!
+    const result = addApiEndpoint(canvas, {
+      resourceId: resource.id,
+      method: 'get',
+      path: '/tasks/{task_id}/history',
+      summary: 'Task history',
+    }, estimateApiSizes(canvas))
+    expect(result.errors).toEqual([])
+    const endpoint = result.nodes.find((node) => node.id === result.endpointId)!
+    expect(getEntityMeta(endpoint)?.fields).toMatchObject({
+      method: 'GET',
+      path: '/tasks/{task_id}/history',
+    })
+    expect(JSON.parse(String(getEntityMeta(endpoint)?.fields.operation))).toEqual({
+      summary: 'Task history',
+      tags: ['tasks'],
+    })
+    const lane = result.nodes.find((node) => node.id === resource.id)!
+    expect(endpoint.x).toBeGreaterThanOrEqual(lane.x)
+    expect(endpoint.x + endpoint.width).toBeLessThanOrEqual(lane.x + lane.width)
+    expect(endpoint.y).toBeGreaterThanOrEqual(lane.y)
+    expect(endpoint.y + endpoint.height).toBeLessThanOrEqual(lane.y + lane.height)
+    expect(lane.app?.groupMembers).toContain(endpoint.id)
+    expect(deriveManagedRelations({ nodes: result.nodes, edges: [] })).toContainEqual(
+      expect.objectContaining({
+        fromNode: resource.id,
+        toNode: endpoint.id,
+        app: expect.objectContaining({ relationType: 'contains', managed: true }),
+      }),
+    )
+    const exported = exportOpenApiCanvas({ nodes: result.nodes, edges: [] })
+    expect(exported.paths).toMatchObject({
+      '/tasks/{task_id}/history': {
+        get: { summary: 'Task history', tags: ['tasks'] },
+      },
+    })
   })
 
   it('adds standard errors only to response classes that are missing', () => {

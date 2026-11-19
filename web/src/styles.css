@@ -6021,6 +6021,13 @@ select {
   flex: 1;
 }
 
+.command-menu-description {
+  color: var(--ui-faint);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .command-menu-item kbd,
 .command-sheet-item kbd {
   color: var(--ui-faint);

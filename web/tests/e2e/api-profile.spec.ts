@@ -1,6 +1,9 @@
 import { readFileSync } from 'node:fs'
 
 import { expect, test } from '@playwright/test'
+import { parse as parseYaml } from 'yaml'
+
+import { createCanvas } from './helpers'
 
 const engineFixture = readFileSync(
   new URL('../../../packages/canvas-contract/src/openapi/fixtures/skyward-engine-v1.json', import.meta.url),
@@ -293,4 +296,135 @@ test('adds a resource, standard errors, and exports them as YAML', async ({ page
   expect(yaml).toContain('5XX:')
   expect(yaml).toContain('Problem')
   expect(yaml).toMatch(/^    Problem:$/m)
+})
+
+test('names endpoint cards with the method', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Canvas type').selectOption('api')
+  await createCanvas(page, 'Method names')
+  await expect(page.locator('.canvas-flow')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Resource', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Add resource' })
+  await dialog.getByLabel('Singular').fill('task')
+  await dialog.getByRole('button', { name: 'Add resource', exact: true }).click()
+
+  await expect(page.locator('.api-endpoint-preview')).toHaveCount(5)
+  await expect(page.getByRole('group', { name: 'Endpoint POST /tasks', exact: true })).toHaveCount(1)
+  await expect(page.getByRole('group', { name: 'Endpoint DELETE /tasks/{task_id}', exact: true })).toHaveCount(1)
+})
+
+test('adds an endpoint only to an existing resource and exports it', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Import OpenAPI' }).click()
+  const importDialog = page.getByRole('dialog', { name: 'Import OpenAPI' })
+  await importDialog.getByLabel('OpenAPI 3.1 document').fill(JSON.stringify({
+    openapi: '3.1.0',
+    info: { title: 'Hand built endpoints', version: '1.0.0' },
+    paths: {},
+  }))
+  await importDialog.getByRole('button', { name: 'Read document' }).click()
+  await importDialog.getByRole('button', { name: 'Create API canvas' }).click()
+  await expect(page.locator('.canvas-flow')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  const endpointItem = page.getByRole('menuitem', { name: 'Endpoint', exact: true })
+  await expect(endpointItem).toBeDisabled()
+  await expect(endpointItem).toContainText('Add a resource first')
+  await page.keyboard.press('Escape')
+
+  await expect(page.locator('.api-definition-preview')).toHaveCount(1)
+  await page.locator('.react-flow__node').filter({ has: page.locator('.api-definition-preview') }).dblclick()
+  const apiEditor = page.getByRole('dialog', { name: 'Edit API' })
+  await expect(apiEditor).toContainText('Add a Security card first')
+  await apiEditor.getByRole('button', { name: 'Done' }).click()
+
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Resource', exact: true }).click()
+  const resourceDialog = page.getByRole('dialog', { name: 'Add resource' })
+  await resourceDialog.getByLabel('Singular').fill('task')
+  await resourceDialog.getByRole('button', { name: 'Add resource', exact: true }).click()
+  await expect(page.locator('.api-endpoint-preview')).toHaveCount(5)
+
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Endpoint', exact: true }).click()
+  const endpointDialog = page.getByRole('dialog', { name: 'Add endpoint' })
+  const resourceSelect = endpointDialog.getByLabel('Resource', { exact: true })
+  await expect(resourceSelect.locator('option')).toHaveText(['tasks'])
+  const tasksId = await resourceSelect.locator('option').first().getAttribute('value')
+  expect(tasksId).toBeTruthy()
+  await expect(resourceSelect).toHaveValue(tasksId ?? '')
+  await expect(endpointDialog.getByLabel('Path', { exact: true })).toHaveValue('/tasks')
+  await endpointDialog.getByLabel('Method', { exact: true }).selectOption('GET')
+  await endpointDialog.getByLabel('Path', { exact: true }).fill('/tasks/{task_id}/history')
+  await endpointDialog.getByLabel('Summary', { exact: true }).fill('Task history')
+  await endpointDialog.getByRole('button', { name: 'Add endpoint', exact: true }).click()
+
+  const card = page.getByRole('group', { name: 'Endpoint GET /tasks/{task_id}/history', exact: true })
+  await expect(card).toHaveCount(1)
+  await expect(card).toContainText('Task history')
+  await expect(card).not.toContainText('Endpoint data unavailable')
+
+  await page.getByRole('button', { name: 'More' }).click()
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('menuitem', { name: 'Export OpenAPI YAML' }).click()
+  const download = await downloadPromise
+  const path = await download.path()
+  if (!path) throw new Error('Missing downloaded OpenAPI file')
+  const document = parseYaml(readFileSync(path, 'utf8')) as {
+    paths?: Record<string, { get?: { tags?: string[]; summary?: string } }>
+  }
+  expect(document.paths?.['/tasks/{task_id}/history']?.get?.tags).toEqual(['tasks'])
+  expect(document.paths?.['/tasks/{task_id}/history']?.get?.summary).toBe('Task history')
+})
+
+test('sets API-wide default security from the API form', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Import OpenAPI' }).click()
+  const importDialog = page.getByRole('dialog', { name: 'Import OpenAPI' })
+  await importDialog.getByLabel('OpenAPI 3.1 document').fill(`openapi: 3.1.0
+info:
+  title: Secure API
+  version: 1.0.0
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+paths: {}
+`)
+  await importDialog.getByRole('button', { name: 'Read document' }).click()
+  await importDialog.getByRole('button', { name: 'Create API canvas' }).click()
+  await expect(page.locator('.canvas-flow')).toBeVisible()
+
+  await page.locator('.react-flow__node').filter({ has: page.locator('.api-definition-preview') }).dblclick()
+  const editor = page.getByRole('dialog', { name: 'Edit API' })
+  const checkbox = editor.getByLabel('Default security BearerAuth', { exact: true })
+  await expect(checkbox).not.toBeChecked()
+  await checkbox.check()
+  await editor.getByRole('button', { name: 'Done' }).click()
+
+  await page.getByRole('button', { name: 'More' }).click()
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('menuitem', { name: 'Export OpenAPI YAML' }).click()
+  const download = await downloadPromise
+  const path = await download.path()
+  if (!path) throw new Error('Missing downloaded OpenAPI file')
+  const document = parseYaml(readFileSync(path, 'utf8')) as { security?: unknown }
+  expect(document.security).toEqual([{ BearerAuth: [] }])
+
+  await page.locator('.react-flow__node').filter({ has: page.locator('.api-definition-preview') }).dblclick()
+  const reopened = page.getByRole('dialog', { name: 'Edit API' })
+  await reopened.getByLabel('Default security BearerAuth', { exact: true }).uncheck()
+  await reopened.getByRole('button', { name: 'Done' }).click()
+
+  await page.getByRole('button', { name: 'More' }).click()
+  const secondDownloadPromise = page.waitForEvent('download')
+  await page.getByRole('menuitem', { name: 'Export OpenAPI YAML' }).click()
+  const secondDownload = await secondDownloadPromise
+  const secondPath = await secondDownload.path()
+  if (!secondPath) throw new Error('Missing downloaded OpenAPI file')
+  const secondDocument = parseYaml(readFileSync(secondPath, 'utf8')) as { security?: unknown }
+  expect(secondDocument.security).toBeUndefined()
 })

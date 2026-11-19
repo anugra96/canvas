@@ -2,6 +2,7 @@ import { ReactFlowProvider, useReactFlow } from '@xyflow/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
+  addApiEndpoint,
   addApiResource,
   addDatabaseTable,
   addReferenceToCanvas,
@@ -18,6 +19,7 @@ import {
   renameApiResource,
   renderEntityMarkdown,
   stringifyOpenApiYaml,
+  type AddApiEndpointInput,
   type AddApiResourceInput,
   type AddDatabaseTableInput,
   type CanvasNode,
@@ -84,6 +86,7 @@ import {
   extractArtifactSchema,
   inlineArtifactSchema,
 } from '../schema/embeddedSchema'
+import { AddEndpointDialog } from '../apiDesign/AddEndpointDialog'
 import { AddResourceDialog } from '../apiDesign/AddResourceDialog'
 import { OpenApiCompareDialog } from '../apiDesign/OpenApiCompareDialog'
 import { PublishBlockedDialog } from './PublishBlockedDialog'
@@ -171,6 +174,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const [viewsLevel, setViewsLevel] = useState<LevelNumber | undefined>()
   const [blockedExport, setBlockedExport] = useState<{ label: string; run: () => void } | null>(null)
   const [addResourceOpen, setAddResourceOpen] = useState(false)
+  const [addEndpointOpen, setAddEndpointOpen] = useState(false)
   const [addTableOpen, setAddTableOpen] = useState(false)
   const [compareHead, setCompareHead] = useState<JsonObject | null>(null)
   const [suppressions, setSuppressions] = useState<ValidationSuppression[]>(() => (
@@ -603,6 +607,47 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     return []
   }, [baseCanvas, edges, fitView, markDirty, nodes, setEdges, setNodes, setNotice])
 
+  const addEndpoint = useCallback((input: AddApiEndpointInput): string[] => {
+    const canvas = fromFlowCanvas(nodes, edges, baseCanvas)
+    const sizes = Object.fromEntries(nodes.map((node) => [node.id, nodeDimensions(node)]))
+    const result = addApiEndpoint(canvas, input, sizes)
+    if (result.errors.length > 0) return result.errors
+    const byId = new Map(result.nodes.map((node) => [node.id, node]))
+    setNodes((current) => {
+      const currentIds = new Set(current.map((node) => node.id))
+      return [
+        ...current.map((node) => {
+          const raw = byId.get(node.id)
+          if (!raw) return node
+          return { ...toFlowNode(raw), selected: false }
+        }),
+        ...result.nodes
+          .filter((node) => !currentIds.has(node.id))
+          .map((node) => ({ ...toFlowNode(node), selected: node.id === result.endpointId })),
+      ]
+    })
+    const managed = deriveManagedRelations({ nodes: result.nodes, edges: [] })
+    setEdges((current) => [
+      ...current.filter((edge) => (
+        edge.data?.raw?.app?.managed !== true
+        && edge.data?.relationType !== 'accepts'
+        && edge.data?.relationType !== 'returns'
+      )),
+      ...managed.map((edge) => toFlowEdge(edge)),
+    ])
+    markDirty()
+    setNotice(`Added ${input.method.trim().toUpperCase()} ${input.path.trim()}.`)
+    window.setTimeout(() => {
+      void fitView({
+        nodes: [{ id: result.endpointId }],
+        padding: 0.2,
+        maxZoom: 1.2,
+        duration: 300,
+      })
+    }, 0)
+    return []
+  }, [baseCanvas, edges, fitView, markDirty, nodes, setEdges, setNodes, setNotice])
+
   const standardErrors = useCallback(() => {
     const canvas = fromFlowCanvas(nodes, edges, baseCanvas)
     const endpointIds = graph.selectedNodes
@@ -760,6 +805,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     errorCount: validation.validationIssues.filter((issue) => issue.severity === 'error').length,
     canUndo: graph.canUndo,
     canRedo: graph.canRedo,
+    resourceCount: apiReference?.resources.length ?? 0,
     availableEntityTypes,
     onBack: () => void back(),
     onRename: () => setRenameOpen(true),
@@ -768,6 +814,10 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     onAddEntity: (entityTypeId) => {
       if (isDatabase && entityTypeId === 'table') {
         setAddTableOpen(true)
+        return
+      }
+      if (isApi && entityTypeId === 'endpoint') {
+        setAddEndpointOpen(true)
         return
       }
       graph.addEntityAtCenter(entityTypeId)
@@ -904,6 +954,16 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
               initialPrefix={prefixFromPaths(nodes)}
               onSubmit={addResource}
               onClose={() => setAddResourceOpen(false)}
+            />
+          )}
+          {addEndpointOpen && (
+            <AddEndpointDialog
+              resources={apiReference?.resources ?? []}
+              initialResourceId={graph.selectedNodes.find((node) => (
+                node.data.entity?.entityType === 'resource'
+              ))?.id}
+              onSubmit={addEndpoint}
+              onClose={() => setAddEndpointOpen(false)}
             />
           )}
           {addTableOpen && (

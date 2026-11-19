@@ -36,8 +36,16 @@ export function NodeShell({ node, selected, className, children, onEdit }: NodeS
   const qualifiedName = entity && (entity.entityType === 'table' || entity.entityType === 'db_enum')
     ? `${String(entity.fields.schema ?? '').trim() || 'public'}.${entityName}`
     : entityName
+  const endpointName = entity?.entityType === 'endpoint'
+    ? [
+      String(entity.fields.method ?? '').trim().toUpperCase(),
+      String(entity.fields.path ?? '').trim(),
+    ].filter(Boolean).join(' ')
+    : ''
   const accessibleName = entityType
-    ? `${entityType.label} ${qualifiedName}`.trim()
+    ? entity?.entityType === 'endpoint'
+      ? `${entityType.label} ${endpointName}`.trim()
+      : `${entityType.label} ${qualifiedName}`.trim()
     : undefined
   const hasError = issues.some((issue) => issue.severity === 'error')
   const accent = colorFor(node.data.raw.color)

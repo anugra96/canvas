@@ -39,6 +39,7 @@ export interface CanvasCommand {
   bindings?: ShortcutBinding[]
   available: boolean
   disabled?: boolean
+  description?: string
   tone?: 'warning' | 'error' | 'valid'
   section?: 'layout' | 'export' | 'help'
   run: (event?: { key?: string; shiftKey?: boolean }) => void
@@ -52,6 +53,7 @@ interface CanvasCommandInput {
   errorCount: number
   canUndo: boolean
   canRedo: boolean
+  resourceCount: number
   availableEntityTypes: Array<{ id: string; label: string }>
   onBack: () => void
   onRename: () => void
@@ -147,14 +149,21 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
     ...input.availableEntityTypes
       .filter((entityType) => !(input.isSystems && entityType.id === 'note'))
       .filter((entityType) => !(input.profileId === 'api' && entityType.id === 'resource'))
-      .map((entityType) => ({
-        id: `add.entity.${entityType.id}`,
-        label: entityType.label,
-        icon: Box,
-        surface: 'add' as const,
-        available: true,
-        run: () => input.onAddEntity(entityType.id),
-      })),
+      .map((entityType) => {
+        const needsResource = input.profileId === 'api'
+          && entityType.id === 'endpoint'
+          && input.resourceCount === 0
+        return {
+          id: `add.entity.${entityType.id}`,
+          label: entityType.label,
+          icon: Box,
+          surface: 'add' as const,
+          available: true,
+          disabled: needsResource,
+          description: needsResource ? 'Add a resource first' : undefined,
+          run: () => input.onAddEntity(entityType.id),
+        }
+      }),
     {
       id: 'add.api-resource',
       label: 'Resource',

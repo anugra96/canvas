@@ -152,4 +152,30 @@ describe('OpenAPI import/export round trip', () => {
     const exported = exportOpenApiCanvas(imported.canvas)
     expect(sortKeys(exported)).toEqual(sortKeys(original))
   })
+
+  it('keeps top-level security from YAML', () => {
+    const source = `openapi: 3.1.0
+info:
+  title: Secure API
+  version: 1.0.0
+security:
+  - BearerAuth: []
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+paths:
+  /tasks:
+    get:
+      summary: List tasks
+      responses:
+        '200':
+          description: OK
+`
+    const original = parseOpenApiSource(source).document
+    const imported = importOpenApi(source)
+    const exported = exportOpenApiCanvas(imported.canvas)
+    expect(sortKeys(exported)).toEqual(sortKeys(original))
+  })
 })
