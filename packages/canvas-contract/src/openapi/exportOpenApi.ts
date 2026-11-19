@@ -198,7 +198,16 @@ export function exportOpenApiDocument(canvas: JsonCanvas): JsonObject {
     ...(Object.keys(components).length > 0 ? { components } : {}),
     ...(tags.length > 0 ? { tags } : {}),
   }
-  return document
+  return withConventionalKeyOrder(document)
+}
+
+const TOP_LEVEL_ORDER = ['openapi', 'info', 'jsonSchemaDialect', 'servers', 'security', 'tags', 'paths', 'webhooks', 'components', 'externalDocs']
+
+// Raw extra keys (e.g. top-level security) are merged first; emit them in the usual OpenAPI order instead.
+function withConventionalKeyOrder(document: JsonObject): JsonObject {
+  const known = TOP_LEVEL_ORDER.filter((key) => key in document).map((key) => [key, document[key]] as const)
+  const rest = Object.entries(document).filter(([key]) => !TOP_LEVEL_ORDER.includes(key))
+  return Object.fromEntries([...known, ...rest])
 }
 
 export function exportOpenApiCanvas(canvas: JsonCanvas): JsonObject {

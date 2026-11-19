@@ -177,5 +177,6 @@ paths:
     const imported = importOpenApi(source)
     const exported = exportOpenApiCanvas(imported.canvas)
     expect(sortKeys(exported)).toEqual(sortKeys(original))
+    expect(Object.keys(exported).slice(0, 4)).toEqual(['openapi', 'info', 'security', 'paths'])
   })
 })
