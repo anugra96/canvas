@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import type { CanvasDocument, CanvasNode } from './jsonCanvas'
+import type { CanvasDocument, CanvasEdge, CanvasNode } from './jsonCanvas'
 import {
   CURRENT_CANVAS_DOCUMENT_SCHEMA_VERSION,
   migrateCanvasDocument,
@@ -62,7 +62,8 @@ describe('migrateCanvasDocument', () => {
         fields: { name: 'Legacy Service', responsibility: 'Owns requests', owner: 'Forge', status: 'active' },
         expectedType: 'system',
         expectedKind: 'service',
-        contains: ['## System: Legacy Service', 'Owns requests', 'Status: active'],
+        contains: ['## System: Legacy Service', 'Owns requests'],
+        absent: ['Status: active'],
       },
       {
         id: 'legacy-vendor',
@@ -311,7 +312,7 @@ describe('migrateCanvasDocument', () => {
       },
     ]
 
-    const edges = lineCases.map(([relation, , fromNode, toNode], index) => ({
+    const edges: CanvasEdge[] = lineCases.map(([relation, , fromNode, toNode], index) => ({
       id: `line-${index}-${relation}`,
       fromNode,
       toNode,
@@ -321,6 +322,8 @@ describe('migrateCanvasDocument', () => {
       id: 'line-describes',
       fromNode: 'legacy-event',
       toNode: 'legacy-api',
+      fromSide: 'right',
+      toSide: 'left',
       app: { relationType: 'describes' },
     })
     edges.push({
@@ -373,6 +376,8 @@ describe('migrateCanvasDocument', () => {
     expect(migratedEdges.get('line-describes')).toMatchObject({
       fromNode: 'legacy-api',
       toNode: 'legacy-event',
+      fromSide: 'left',
+      toSide: 'right',
       app: { relationType: 'defines' },
     })
 

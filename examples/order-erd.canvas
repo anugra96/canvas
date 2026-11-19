@@ -115,9 +115,9 @@
     {
       "id": "e-customer-db",
       "fromNode": "db-commerce",
-      "fromSide": "right",
+      "fromSide": "left",
       "toNode": "schema-customer",
-      "toSide": "left",
+      "toSide": "right",
       "label": "defines",
       "toEnd": "arrow",
       "app": {
@@ -128,9 +128,9 @@
     {
       "id": "e-order-db",
       "fromNode": "db-commerce",
-      "fromSide": "right",
+      "fromSide": "left",
       "toNode": "schema-order",
-      "toSide": "left",
+      "toSide": "right",
       "label": "defines",
       "toEnd": "arrow",
       "app": {
@@ -141,9 +141,9 @@
     {
       "id": "e-item-db",
       "fromNode": "db-commerce",
-      "fromSide": "right",
+      "fromSide": "left",
       "toNode": "schema-order-item",
-      "toSide": "left",
+      "toSide": "right",
       "label": "defines",
       "toEnd": "arrow",
       "app": {
@@ -154,9 +154,9 @@
     {
       "id": "e-order-api",
       "fromNode": "api-orders",
-      "fromSide": "right",
+      "fromSide": "left",
       "toNode": "schema-order",
-      "toSide": "left",
+      "toSide": "right",
       "label": "defines",
       "toEnd": "arrow",
       "app": {

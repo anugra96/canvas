@@ -232,7 +232,8 @@ function migrateCard(node: CanvasNode): CanvasNode {
     if (!removed) continue
     const value = oldFields[field.key]
     const text = stringValue(value)
-    if (text !== '' && text !== stringValue(field.defaultValue)) {
+    const isDefault = text === stringValue(field.defaultValue) || (field.key === 'status' && text === 'active')
+    if (text !== '' && !isDefault) {
       lines.push(`${field.label}: ${text}`)
     }
     if (!targetKeys.has(field.key)) delete fields[field.key]
@@ -305,7 +306,14 @@ function migrateEdge(edge: CanvasEdge, systems: boolean): CanvasEdge {
   const definition = findRelationType(DEFAULT_ONTOLOGY, mapped)
   return {
     ...edge,
-    ...(swap ? { fromNode: edge.toNode, toNode: edge.fromNode } : {}),
+    ...(swap
+      ? {
+        fromNode: edge.toNode,
+        toNode: edge.fromNode,
+        fromSide: edge.toSide,
+        toSide: edge.fromSide,
+      }
+      : {}),
     label: definition?.label ?? mapped,
     color: definition?.color ?? edge.color,
     app: { ...(edge.app ?? {}), relationType: mapped },

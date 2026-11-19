@@ -25,12 +25,12 @@
       "y": 332,
       "width": 380,
       "height": 260,
-      "text": "## System: Registry Service\n- **Kind:** service\n- **Purpose:** Validates and serves model manifests.\nStatus: active\n- **Owner:** Forge\n- **URL:** https://registry.example.internal",
+      "text": "## System: Registry Service\n- **Kind:** service\n- **Purpose:** Validates and serves model manifests.\n- **Owner:** Forge\n- **URL:** https://registry.example.internal",
       "app": {
         "entityType": "system",
         "fields": {
           "name": "Registry Service",
-          "purpose": "Validates and serves model manifests.\nStatus: active",
+          "purpose": "Validates and serves model manifests.",
           "kind": "service",
           "owner": "Forge",
           "url": "https://registry.example.internal"
@@ -44,12 +44,12 @@
       "y": 664,
       "width": 380,
       "height": 260,
-      "text": "## System: Candidate Builder\n- **Kind:** worker\n- **Purpose:** Builds candidate models and registers manifests.\nStatus: active\n- **Owner:** Forge\n- **URL:** https://builder.example.internal",
+      "text": "## System: Candidate Builder\n- **Kind:** worker\n- **Purpose:** Builds candidate models and registers manifests.\n- **Owner:** Forge\n- **URL:** https://builder.example.internal",
       "app": {
         "entityType": "system",
         "fields": {
           "name": "Candidate Builder",
-          "purpose": "Builds candidate models and registers manifests.\nStatus: active",
+          "purpose": "Builds candidate models and registers manifests.",
           "kind": "worker",
           "owner": "Forge",
           "url": "https://builder.example.internal"
@@ -63,12 +63,12 @@
       "y": 996,
       "width": 380,
       "height": 260,
-      "text": "## System: Model Publisher\n- **Kind:** service\n- **Purpose:** Promotes approved models into runtime environments.\nStatus: active\n- **Owner:** Tower\n- **URL:** https://publisher.example.internal",
+      "text": "## System: Model Publisher\n- **Kind:** service\n- **Purpose:** Promotes approved models into runtime environments.\n- **Owner:** Tower\n- **URL:** https://publisher.example.internal",
       "app": {
         "entityType": "system",
         "fields": {
           "name": "Model Publisher",
-          "purpose": "Promotes approved models into runtime environments.\nStatus: active",
+          "purpose": "Promotes approved models into runtime environments.",
           "kind": "service",
           "owner": "Tower",
           "url": "https://publisher.example.internal"
@@ -266,8 +266,8 @@
     {
       "id": "e-manifest-api",
       "fromNode": "api-registry",
-      "fromSide": "left",
-      "toSide": "right",
+      "fromSide": "right",
+      "toSide": "left",
       "toNode": "schema-model-manifest",
       "label": "defines",
       "toEnd": "arrow",
@@ -279,8 +279,8 @@
     {
       "id": "e-deployment-store",
       "fromNode": "db-model-store",
-      "fromSide": "left",
-      "toSide": "right",
+      "fromSide": "right",
+      "toSide": "left",
       "toNode": "schema-deployment-record",
       "label": "defines",
       "toEnd": "arrow",
