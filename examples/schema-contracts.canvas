@@ -7,16 +7,14 @@
       "y": 0,
       "width": 360,
       "height": 220,
-      "text": "## Repository: model-delivery\n- **Provider:** github\n- **URL:** https://github.com/example/model-delivery\n- **Default branch:** main\n- **Owner:** Forge\n- **Status:** active",
+      "text": "## Repository: model-delivery\n- **URL:** https://github.com/example/model-delivery\n- **Owner:** Forge\n- **Purpose:** Default branch: main",
       "app": {
         "entityType": "repository",
         "fields": {
           "name": "model-delivery",
-          "provider": "github",
           "url": "https://github.com/example/model-delivery",
-          "defaultBranch": "main",
           "owner": "Forge",
-          "status": "active"
+          "purpose": "Default branch: main"
         }
       }
     },
@@ -27,16 +25,15 @@
       "y": 300,
       "width": 380,
       "height": 260,
-      "text": "## System: Registry Service\n- **Purpose:** Validates and serves model manifests.\n- **Kind:** service\n- **Owner:** Forge\n- **Deployment URL:** https://registry.example.internal\n- **Status:** active",
+      "text": "## System: Registry Service\n- **Kind:** service\n- **Purpose:** Validates and serves model manifests.\nStatus: active\n- **Owner:** Forge\n- **URL:** https://registry.example.internal",
       "app": {
         "entityType": "system",
         "fields": {
           "name": "Registry Service",
-          "purpose": "Validates and serves model manifests.",
+          "purpose": "Validates and serves model manifests.\nStatus: active",
           "kind": "service",
           "owner": "Forge",
-          "deploymentUrl": "https://registry.example.internal",
-          "status": "active"
+          "url": "https://registry.example.internal"
         }
       }
     },
@@ -47,16 +44,15 @@
       "y": 640,
       "width": 380,
       "height": 260,
-      "text": "## System: Candidate Builder\n- **Purpose:** Builds candidate models and registers manifests.\n- **Kind:** worker\n- **Owner:** Forge\n- **Deployment URL:** https://builder.example.internal\n- **Status:** active",
+      "text": "## System: Candidate Builder\n- **Kind:** worker\n- **Purpose:** Builds candidate models and registers manifests.\nStatus: active\n- **Owner:** Forge\n- **URL:** https://builder.example.internal",
       "app": {
         "entityType": "system",
         "fields": {
           "name": "Candidate Builder",
-          "purpose": "Builds candidate models and registers manifests.",
+          "purpose": "Builds candidate models and registers manifests.\nStatus: active",
           "kind": "worker",
           "owner": "Forge",
-          "deploymentUrl": "https://builder.example.internal",
-          "status": "active"
+          "url": "https://builder.example.internal"
         }
       }
     },
@@ -67,16 +63,15 @@
       "y": 980,
       "width": 380,
       "height": 260,
-      "text": "## System: Model Publisher\n- **Purpose:** Promotes approved models into runtime environments.\n- **Kind:** service\n- **Owner:** Tower\n- **Deployment URL:** https://publisher.example.internal\n- **Status:** active",
+      "text": "## System: Model Publisher\n- **Kind:** service\n- **Purpose:** Promotes approved models into runtime environments.\nStatus: active\n- **Owner:** Tower\n- **URL:** https://publisher.example.internal",
       "app": {
         "entityType": "system",
         "fields": {
           "name": "Model Publisher",
-          "purpose": "Promotes approved models into runtime environments.",
+          "purpose": "Promotes approved models into runtime environments.\nStatus: active",
           "kind": "service",
           "owner": "Tower",
-          "deploymentUrl": "https://publisher.example.internal",
-          "status": "active"
+          "url": "https://publisher.example.internal"
         }
       }
     },
@@ -87,16 +82,15 @@
       "y": 300,
       "width": 360,
       "height": 240,
-      "text": "## API: Registry API\n- **Purpose:** Create and query model manifest records.\n- **Protocol:** http\n- **Owner:** Forge\n- **Docs URL:** https://registry.example.internal/docs\n- **Status:** active",
+      "text": "## System: Registry API\n- **Kind:** api\n- **Purpose:** Create and query model manifest records.\n- **Owner:** Forge\n- **URL:** https://registry.example.internal/docs",
       "app": {
-        "entityType": "api",
+        "entityType": "system",
         "fields": {
           "name": "Registry API",
           "purpose": "Create and query model manifest records.",
-          "protocol": "http",
           "owner": "Forge",
-          "docsUrl": "https://registry.example.internal/docs",
-          "status": "active"
+          "url": "https://registry.example.internal/docs",
+          "kind": "api"
         }
       }
     },
@@ -107,16 +101,15 @@
       "y": 980,
       "width": 360,
       "height": 260,
-      "text": "## Database: Model Store\n- **Purpose:** Durable model and deployment records.\n- **Kind:** relational\n- **Owner:** Tower\n- **Console URL:** https://console.example.internal/model-store\n- **Status:** active",
+      "text": "## System: Model Store\n- **Kind:** database\n- **Purpose:** Durable model and deployment records.\n- **Owner:** Tower\n- **URL:** https://console.example.internal/model-store",
       "app": {
-        "entityType": "database",
+        "entityType": "system",
         "fields": {
           "name": "Model Store",
           "purpose": "Durable model and deployment records.",
-          "kind": "relational",
+          "kind": "database",
           "owner": "Tower",
-          "consoleUrl": "https://console.example.internal/model-store",
-          "status": "active"
+          "url": "https://console.example.internal/model-store"
         }
       }
     },
@@ -200,11 +193,12 @@
       "fromSide": "right",
       "toSide": "left",
       "toNode": "api-registry",
-      "label": "exposes",
+      "label": "uses",
       "toEnd": "arrow",
       "app": {
-        "relationType": "exposes"
-      }
+        "relationType": "uses"
+      },
+      "color": "2"
     },
     {
       "id": "e-registry-manifest",
@@ -224,11 +218,12 @@
       "fromSide": "right",
       "toSide": "left",
       "toNode": "api-registry",
-      "label": "calls",
+      "label": "uses",
       "toEnd": "arrow",
       "app": {
-        "relationType": "calls"
-      }
+        "relationType": "uses"
+      },
+      "color": "2"
     },
     {
       "id": "e-candidate-manifest",
@@ -248,11 +243,12 @@
       "fromSide": "right",
       "toSide": "left",
       "toNode": "api-registry",
-      "label": "calls",
+      "label": "uses",
       "toEnd": "arrow",
       "app": {
-        "relationType": "calls"
-      }
+        "relationType": "uses"
+      },
+      "color": "2"
     },
     {
       "id": "e-publisher-store",
@@ -260,40 +256,43 @@
       "fromSide": "right",
       "toSide": "left",
       "toNode": "db-model-store",
-      "label": "stores in",
+      "label": "uses",
       "toEnd": "arrow",
       "app": {
-        "relationType": "stores_in"
-      }
+        "relationType": "uses"
+      },
+      "color": "2"
     },
     {
       "id": "e-manifest-api",
-      "fromNode": "schema-model-manifest",
+      "fromNode": "api-registry",
       "fromSide": "right",
       "toSide": "left",
-      "toNode": "api-registry",
-      "label": "describes",
+      "toNode": "schema-model-manifest",
+      "label": "defines",
       "toEnd": "arrow",
       "app": {
-        "relationType": "describes"
-      }
+        "relationType": "defines"
+      },
+      "color": "4"
     },
     {
       "id": "e-deployment-store",
-      "fromNode": "schema-deployment-record",
+      "fromNode": "db-model-store",
       "fromSide": "right",
       "toSide": "left",
-      "toNode": "db-model-store",
-      "label": "describes",
+      "toNode": "schema-deployment-record",
+      "label": "defines",
       "toEnd": "arrow",
       "app": {
-        "relationType": "describes"
-      }
+        "relationType": "defines"
+      },
+      "color": "4"
     }
   ],
   "app": {
     "profile": "systems",
-    "profileVersion": 3,
+    "profileVersion": 5,
     "scope": "container"
   }
 }

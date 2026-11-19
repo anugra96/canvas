@@ -10,16 +10,11 @@ export interface PrioritizedValidationIssue {
 
 const TYPE_WEIGHT: Record<string, number> = {
   system: 6,
-  api: 6,
-  database: 6,
   schema: 6,
   repository: 4,
-  process: 4,
   artifact: 4,
   actor: 2,
   note: 1,
-  decision: 1,
-  risk: 1,
 }
 
 const CODE_WEIGHT: Record<CanvasProfileIssue['code'], number> = {
@@ -47,7 +42,6 @@ const CODE_WEIGHT: Record<CanvasProfileIssue['code'], number> = {
   group_endpoint: 40,
   schema_unlinked: 35,
   artifact_without_producer: 39,
-  process_without_runner: 38,
   unknown_entity_type: 30,
   missing_endpoint: 25,
   untyped_text: 20,

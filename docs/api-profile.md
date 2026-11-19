@@ -35,11 +35,10 @@ API canvas       [API: Skyward Engine API 0.1.0]
 | Schema | `schema` (reused) | One `components.schemas` entry | A named model. Same card, workbench, and Ajv validation as Systems |
 | Security | `security_scheme` | One `components.securitySchemes` entry | How callers authenticate |
 
-Annotations: Note, Decision, Risk (shared with Systems).
+Annotation: Note (shared with Systems); its kind sets a short label and tone.
 
-The ids `api` and `service` already exist as legacy entity types, so the new
-cards use new ids. Labels shown to users are API, Resource, Endpoint, Schema,
-and Security.
+The old ids `api` and `service` are migration sources, so the new cards use new
+ids. Labels shown to users are API, Resource, Endpoint, Schema, and Security.
 
 ### Fields
 
@@ -172,7 +171,7 @@ rows point at it.)
 
 | Rule | Detail |
 | --- | --- |
-| Header row | API card, then Security cards, then annotation cards (Note, Decision, Risk) to its right. Annotations never sit in the model columns or lanes |
+| Header row | API card, then Security cards, then annotation cards (Note) to its right. Annotations never sit in the model columns or lanes |
 | Columns | Request models; endpoint lanes; response models. Nested models get one extra column per `uses` depth, moving away from the lanes: a model referenced by a response model goes one column further right; a model referenced by a request model goes one column further left (the lanes and response columns shift right to make room). A model reachable from both sides goes in the Shared models row |
 | A model used both as a request and a response | Response column |
 | Shared models row | Below the lanes, in name order: models referenced only by `4XX`/`5XX` responses; models reachable through `uses` from both request and response models (shared vocabularies such as enums); and the models those reference. Edges into this row are not drawn |

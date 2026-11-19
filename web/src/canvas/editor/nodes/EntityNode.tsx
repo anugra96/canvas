@@ -5,30 +5,24 @@ import {
   ChevronDown,
   ChevronRight,
   Cable,
-  Cloud,
   Code2,
   Database,
-  FileCheck,
   FolderGit2,
   Layers,
-  List,
   Package,
-  Scale,
-  Server,
   ShieldCheck,
   StickyNote,
   Table2,
-  TriangleAlert,
   UserRound,
-  Workflow,
-  Zap,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import {
+  NOTE_KIND_LABELS,
   entityTitle,
   findEntityType,
   type EntityTypeDefinition,
+  type NoteKind,
   type OntologyField,
 } from '@canvas/contract'
 
@@ -57,24 +51,16 @@ import { FieldInput } from './FieldInput'
 const ICONS = {
   boxes: Boxes,
   cable: Cable,
-  cloud: Cloud,
   'folder-git': FolderGit2,
-  scale: Scale,
-  'triangle-alert': TriangleAlert,
   'user-round': UserRound,
   code: Code2,
   braces: Braces,
   database: Database,
   layers: Layers,
   'table-2': Table2,
-  'file-check': FileCheck,
-  list: List,
   package: Package,
-  server: Server,
   shield: ShieldCheck,
   'sticky-note': StickyNote,
-  workflow: Workflow,
-  zap: Zap,
 } as const
 
 function TypeIcon({ name }: { name: string }) {
@@ -166,7 +152,13 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
         ? new Set(['definition'])
         : entityType.id === 'artifact'
           ? new Set(['schemaMode', 'schema', 'schemaRef'])
-          : new Set<string>()
+          : entityType.id === 'note'
+            ? new Set(['kind'])
+            : new Set<string>()
+  const noteKind = entityType.id === 'note' ? String(meta.fields.kind ?? 'note') : ''
+  const noteKindLabel = entityType.id === 'note'
+    ? NOTE_KIND_LABELS[noteKind as NoteKind] ?? NOTE_KIND_LABELS.note
+    : ''
   const rows = entityFields(entityType, meta.fields, contentField?.key)
     .filter(({ field }) => !hiddenSummaryKeys.has(field.key))
   const contentValue = contentField
@@ -286,6 +278,9 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
               <span className="entity-type">{entityType.label}</span>
               <strong>{title || `Untitled ${entityType.label.toLowerCase()}`}</strong>
             </div>
+            {entityType.id === 'note' && (
+              <span className={`note-kind note-kind-${noteKind}`}>{noteKindLabel}</span>
+            )}
           </header>
 
           <div className="entity-body">

@@ -17,12 +17,10 @@ const addLabels: Record<string, string> = {
   repository: 'Repository',
   actor: 'Actor',
   system: 'System',
-  process: 'Process',
   artifact: 'Artifact',
   schema: 'Schema',
   code: 'Code',
   note: 'Note',
-  'process-canvas': 'Process with canvas',
 }
 
 export async function addCanvasItem(page: Page, item: string) {

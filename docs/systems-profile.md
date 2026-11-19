@@ -1,15 +1,15 @@
 # Systems Profile Contract
 
-Status: Implemented v4
+Status: Implemented v5
 Profile ID: `systems`
-Version: `4`
+Version: `5`
 Scope: `container`
 
 ## Decision
 
 Systems is the minimal systems-design and architecture-review profile. It keeps
-runtime, contract, state, people, coordination, and supply-chain objects as
-separate responsibilities without exposing every implementation subtype.
+runtime, contract, state, people, and supply-chain objects as separate
+responsibilities without exposing every implementation subtype.
 
 Raw remains the freeform escape hatch. Pipeline execution remains a separate
 future profile.
@@ -18,59 +18,44 @@ future profile.
 
 | Card | Responsibility | Examples |
 | --- | --- | --- |
-| System | Runtime, API, database, CLI, or worker | Service, API, database, CLI, worker |
+| System | Runtime, job, API, database, queue, CLI, worker, or external dependency | Service, job, API, database, queue, worker, CLI, external |
 | Repository | Source code location | GitHub, GitLab, local, other |
 | Actor | Human responsibility | Person, role, team |
-| Process | Coordination | Manual, automated, hybrid |
 | Artifact | Versioned deliverable | Manifest, container, model, config, dataset, document |
 | Schema | Versioned contract | JSON Schema for API payloads, databases, events, config, datasets |
 
-Annotations: Note, Decision, Risk.
+Annotation: Note. A Note has a `kind` (`note`, `decision`, `risk`, `question`)
+that sets a short label and tone on the card.
 
 ## Default Fields
 
 | Card | Fields |
 | --- | --- |
-| System | Name, Purpose, Kind, Owner, Deployment URL, Status |
-| Repository | Name, Provider, URL, Default branch, Owner, Status |
-| Actor | Name, Kind, Responsibility |
-| Process | Name, Purpose, Mode, Owner, Runbook URL, Status |
-| Artifact | Name, Kind, Version, URI, Digest, Owner, Status |
+| System | Name, Kind, Purpose, Owner, URL |
+| Repository | Name, URL, Owner, Purpose |
+| Actor | Name, Kind, Purpose |
+| Artifact | Name, Kind, Version, URI, Owner, Purpose, Schema mode, Schema, Shared schema |
 | Schema | Name, Contract kind, Version, Owner, Status, Review status, Reviewed version, Last reviewed, Review interval, JSON Schema |
-| Decision | Title, Status, Rationale, Owner |
-| Risk | Title, Severity, Owner, Mitigation, Status |
-| Note | Name, Body |
+| Note | Name, Kind, Body |
 
 Field choices:
 
-- System Kind: service, API, database, CLI, worker
-- Repository Provider: GitHub, GitLab, local, other
+- System Kind: service, api, database, queue, worker, job, cli, external
 - Actor Kind: person, role, team
-- Process Mode: manual, automated, hybrid
 - Artifact Kind: manifest, container, model, config, schema, dataset, document
-- Status: planned, active, deprecated unless the card defines its own statuses
+- Note Kind: note, decision, risk, question
 
 ## Relations
 
 | Relation | Allowed source -> target |
 | --- | --- |
-| `runs` | Actor, System, Repository, or Process -> Process |
-| `uses` | Actor, System, or Process -> System, Repository, Artifact, or Schema; Schema -> Schema |
-| `produces` | System, Repository, or Process -> Artifact |
+| `uses` | Actor, System, or Repository -> System, Repository, Artifact, or Schema; Schema -> Schema |
+| `produces` | System or Repository -> Artifact |
 | `defines` | Repository or System -> Schema |
-| `describes` | Schema -> System with kind API or database |
-| `relates_to` | Annotations ↔ anything; architecture -> annotations |
+| `relates_to` | Note -> anything; architecture card -> Note |
 
-Default relation selection:
-
-- Actor or Repository -> Process: `runs`
-- System or Process -> System: `uses`
-- System -> Artifact: `produces`
-- Repository -> Artifact: `produces`
-- Process -> Artifact: `produces`
-- System or Repository -> Schema: `defines`
-- System/Process -> Schema: `uses`
-- Schema -> System: `describes`
+Default relation selection follows the rule order above: `uses`, then
+`produces`, then `defines`, then `relates_to`.
 
 ## Open Linking
 
@@ -81,7 +66,7 @@ Any two content cards can be connected. A relation type is optional.
 - Choosing a relation that is invalid for the source and target is allowed.
 - The UI flags an unspecified or invalid relation through the Review panel.
 - Invalid connections are never blocked.
-- Checking groups remain invalid because groups are not graph endpoints.
+- Groups remain invalid because groups are not graph endpoints.
 
 ## Validation
 
@@ -96,19 +81,14 @@ opens Issues at that warning.
   to every selected edge as a single undoable edit.
 - Ignored warnings require a reason. They are stored in the canvas metadata and
   can be restored from the Ignored filter.
-- The MVP semantic checks are limited to two rules. An Artifact needs a producer
-  from a System, Process, Repository, or API. A Process needs a runner from an
-  Actor or System.
-- Fixes only suggests the two MVP semantic repairs: add a producer
-  card for an Artifact or add a runner card for a Process. Every other warning
-  remains manual.
+- The MVP semantic check: an Artifact needs a producer from a System or
+  Repository. Fixes offers to add the missing producer card.
 - Untyped text cards are warnings.
 - Unknown entity or relation types are warnings.
 - Missing required fields are warnings.
 - Invalid source/target relation pairs are warnings.
 - Group endpoints are warnings.
 - Every content card has a title or name.
-- Artifact identity is recommended through URI and digest.
 - JSON Schema contracts are parsed and meta-validated.
 - Active API and database Systems should have a linked schema contract.
 
@@ -130,19 +110,18 @@ relations back to the source.
 | View | Cards | Relations |
 | --- | --- | --- |
 | Architecture | All architecture cards; annotations and groups excluded | All explicit relations between included cards |
-| Runtime | Actor, System, Process, Artifact | `runs`, `uses`, `produces` |
-| Data flow | System, Process, Artifact, Schema | `uses`, `produces`, `defines`, `describes` |
-| Contracts | Schema plus the System, Repository, or Process endpoints of contract relations | `defines`, `describes`, `uses` where a Schema is an endpoint |
-| Pipeline | Actor, Repository, System, Process, Artifact | `runs`, `uses`, `produces` |
-| Sequence | Selected Process plus participants within two relation hops | Explicit non-annotation relations between participants |
+| Runtime | Actor, System, Artifact | `uses`, `produces` |
+| Data flow | System, Artifact, Schema | `uses`, `produces`, `defines` |
+| Contracts | Schema plus the System or Repository endpoints of contract relations | `defines`, `uses` where a Schema is an endpoint |
+| Pipeline | Actor, Repository, System, Artifact | `uses`, `produces` |
+| Sequence | Selected System with kind `job` plus participants within two relation hops | Explicit non-annotation relations between participants |
 
 Sequence diagrams require an opinionated order because architecture relations do
 not carry timestamps. The order is deterministic:
 
-1. Inbound `runs` relations to the selected Process.
-2. Outbound relations from the Process, ordered `uses`, then `produces`.
-3. Remaining participant relations, ordered `runs`, `uses`, `produces`,
-   `defines`, then `describes`.
+1. Inbound `uses` relations to the selected job.
+2. Outbound relations from the job, ordered `uses`, then `produces`.
+3. Remaining participant relations, ordered `uses`, `produces`, then `defines`.
 4. Stable participant and relation IDs break ties.
 
 The sequence is an inferred aid, not a runtime trace. Relation direction defines
@@ -157,29 +136,36 @@ versioned deliverable; Schema is the normative structure shared across component
   meta-validation are supported where the bundled Ajv validator supports them.
 - The Schema card source is authoritative so the outline, validation, and review
   feedback remain synchronized.
-- `defines` connects repositories or systems to schemas they own.
-- `describes` connects a schema to the API or database System it governs.
-- `uses` declares that a system, process, or schema consumes a schema contract.
+- `defines` connects repositories or systems to schemas they own, including the
+  API or database System the schema governs.
+- `uses` declares that a system, repository, or schema consumes a schema contract.
 - Schema-to-schema `uses` records ERD/foreign-key relationships.
 - Validation reports parse/meta-schema errors, missing contract links, draft
   schemas on active surfaces, and review obligations.
 
-## Legacy
+## Migration
 
-The previous detailed types remain readable in Raw canvases:
+Canvas documents move from schema version 2 to 3 and Systems canvases to profile
+version 5 on read. Imported `.canvas` files run through the same migration.
 
-`service`, `queue`, `event`, `external_system`, `requirement`, `comment`, and
-`code`.
+Cards:
 
-Systems canvases migrate them as follows:
+- service, external system, queue, API, database -> System with kind service,
+  external, queue, api, or database
+- process -> System with kind job
+- event -> Schema with kind event; the old version is kept, or `1` when absent
+- requirement, decision, risk -> Note with kind question, decision, or risk
+- old title -> name; responsibility -> purpose; deployment URL, docs URL, and
+  console URL -> url
 
-- service, queue, external system, repository -> System with a mapped kind
-- event -> System with kind API
-- requirement, comment, code -> Note
-- reads_from and writes_to -> uses
-- calls, exposes, depends_on, orchestration, storage, and references -> uses
-- unsupported group and annotation edges are dropped during migration
+Lines:
 
-Migration updates the canvas profile metadata to version 4 and preserves labels,
-positions, groups, and unknown extension fields. API and database cards become
-System cards with kind `api` or `database`.
+- describes (Schema -> System) -> defines with endpoints swapped
+- publishes, emits -> produces
+- every other removed line type -> uses
+- Raw canvases keep their line types unchanged
+
+Every removed field with a non-empty value is appended to the card's purpose or
+note body as a `Label: value` line instead of being lost. Missing defaults are
+dropped. No edge is dropped; an edge that breaks a v5 rule stays on the canvas
+and appears as a Review issue.

@@ -47,18 +47,18 @@ function relation(
 const systemsNodes: CanvasNode[] = [
   card('system', 'system'),
   card('repository', 'repository'),
-  card('process', 'process'),
+  card('job', 'system', { kind: 'job' }),
   card('schema', 'schema'),
   card('note', 'note'),
 ]
 
 const systemsEdges: CanvasEdge[] = [
-  relation('runs', 'system', 'process', 'runs'),
-  relation('uses', 'system', 'repository', 'uses'),
-  relation('defines', 'repository', 'schema', 'defines'),
-  relation('describes', 'schema', 'system', 'describes'),
+  relation('uses-job', 'system', 'job', 'uses'),
+  relation('uses-repo', 'system', 'repository', 'uses'),
+  relation('defines-repo', 'repository', 'schema', 'defines'),
+  relation('defines-system', 'system', 'schema', 'defines'),
   relation('relates', 'note', 'system', 'relates_to'),
-  relation('untyped', 'system', 'process'),
+  relation('untyped', 'system', 'job'),
 ]
 
 function drawnIds(
@@ -81,23 +81,23 @@ function drawnIds(
 describe('display drawing', () => {
   it.each([
     {
-      name: 'Systems Standard draws flow, contract, and unspecified edges',
+      name: 'Systems Standard draws flow and unspecified edges',
       state: defaultDisplayState('systems'),
-      drawn: ['describes', 'runs', 'untyped', 'uses'],
+      drawn: ['untyped', 'uses-job', 'uses-repo'],
       hiddenCards: 0,
-      hiddenEdges: 2,
+      hiddenEdges: 3,
     },
     {
       name: 'Systems Minimal draws flow and unspecified edges',
       state: selectDisplayPreset(defaultDisplayState('systems'), 'minimal'),
-      drawn: ['runs', 'untyped', 'uses'],
+      drawn: ['untyped', 'uses-job', 'uses-repo'],
       hiddenCards: 0,
       hiddenEdges: 3,
     },
     {
       name: 'Systems All draws every edge',
       state: selectDisplayPreset(defaultDisplayState('systems'), 'all'),
-      drawn: ['defines', 'describes', 'relates', 'runs', 'untyped', 'uses'],
+      drawn: ['defines-repo', 'defines-system', 'relates', 'untyped', 'uses-job', 'uses-repo'],
       hiddenCards: 0,
       hiddenEdges: 0,
     },
@@ -107,22 +107,22 @@ describe('display drawing', () => {
         toggleDisplayClass(defaultDisplayState('systems'), 'contract'),
         'structure',
       ),
-      drawn: ['defines', 'runs', 'untyped', 'uses'],
+      drawn: ['defines-repo', 'defines-system', 'untyped', 'uses-job', 'uses-repo'],
       hiddenCards: 0,
-      hiddenEdges: 2,
+      hiddenEdges: 1,
     },
     {
       name: 'selection reveals every edge of the selected card',
       state: selectDisplayPreset(defaultDisplayState('systems'), 'minimal'),
       selected: ['system'],
-      drawn: ['describes', 'relates', 'runs', 'untyped', 'uses'],
+      drawn: ['defines-system', 'relates', 'untyped', 'uses-job', 'uses-repo'],
       hiddenCards: 0,
       hiddenEdges: 1,
     },
     {
       name: 'hidden card types hide their cards and edges',
       state: toggleDisplayCardType(defaultDisplayState('systems'), 'schema'),
-      drawn: ['runs', 'untyped', 'uses'],
+      drawn: ['untyped', 'uses-job', 'uses-repo'],
       hiddenCards: 1,
       hiddenEdges: 3,
     },
@@ -130,9 +130,9 @@ describe('display drawing', () => {
       name: 'a Review reveal shows a hidden card without changing the stored choice',
       state: toggleDisplayCardType(defaultDisplayState('systems'), 'schema'),
       revealed: ['schema'],
-      drawn: ['describes', 'runs', 'untyped', 'uses'],
+      drawn: ['untyped', 'uses-job', 'uses-repo'],
       hiddenCards: 0,
-      hiddenEdges: 2,
+      hiddenEdges: 3,
     },
     {
       name: 'API Standard still applies API edge rules',

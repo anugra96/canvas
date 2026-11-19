@@ -28,7 +28,6 @@ export const ISSUE_TIERS: Record<ProfileIssueCode, IssueTier> = {
   schema_ref_missing: 'integrity',
   schema_contract: 'design',
   artifact_without_producer: 'design',
-  process_without_runner: 'design',
   example_invalid: 'integrity',
   operation_invalid: 'integrity',
   ref_unresolved: 'integrity',

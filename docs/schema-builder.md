@@ -126,7 +126,7 @@ Review:
 
 | Item | Why later |
 | --- | --- |
-| Schemas on Process (inputs and outputs) | Artifacts already carry what processes produce; add on demand |
+| Schemas on job Systems (inputs and outputs) | Artifacts already carry what jobs produce; add on demand |
 | Suggest schema from pasted rows | Useful for datasets; needs type inference rules |
 | Sub-tables for arrays | The JSON popover covers editing; sub-tables are a UX upgrade |
 | Database table column grid | Database Phase 1 reuses the Rows table |

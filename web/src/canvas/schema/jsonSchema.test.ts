@@ -142,7 +142,7 @@ describe('validateSchemaContracts', () => {
   it('flags an active API System described by a draft schema', () => {
     const schema = entityNode('schema', 'schema', schemaFields({ status: 'draft' }))
     const api = entityNode('api', 'system', { name: 'Orders API', kind: 'api', status: 'active' })
-    const issues = validateSchemaContracts([schema, api], [edge('describes', 'schema', 'api', 'describes')], now)
+    const issues = validateSchemaContracts([schema, api], [edge('defines', 'api', 'schema', 'defines')], now)
     expect(issues.some((issue) => issue.message.includes('draft schema'))).toBe(true)
   })
 })

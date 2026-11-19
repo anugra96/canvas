@@ -25,9 +25,9 @@ relations that already exist.
 | Level | Name | Cards shown (Step 1, Systems profile) | Step 2 adds |
 | --- | --- | --- | --- |
 | 1 | Context | Actor, System | — |
-| 2 | Containers | Repository, Process, Artifact; a System of kind `database` that exactly one other System uses | — |
+| 2 | Containers | Repository, System of kind `job`, Artifact; a System of kind `database` or `queue` that exactly one other System uses | — |
 | 3 | Components | — | API Resources and Database Tables from linked canvases |
-| 4 | Contracts | Schema | Endpoints, API Schemas, columns |
+| 4 | Contracts | Schema (including `event` kind) | Endpoints, API Schemas, columns |
 
 - Level numbers are fixed. A level with no cards on this canvas is shown
   disabled with the text "No cards at this level".
@@ -37,20 +37,20 @@ relations that already exist.
   flow, Contracts, Pipeline). The view chooses the aspect; the level chooses the
   depth. The Contracts view starts at level 4.
 
-### Legacy and other card types
+### Migrated and other card types
 
-Nothing disappears silently. Legacy types that Systems canvases can still hold
-get a level:
+Nothing disappears silently. Removed types migrate before levels are computed:
 
-| Type | Level |
+| Old type | New card |
 | --- | --- |
-| `service`, `api`, `external_system` | 1, like System |
-| `database`, `queue` | 2 and folded into the only System that `uses`, `stores_in`, or `reads_from`/`writes_to` it; else 1 |
-| `event` | 4, parent: the only card that `publishes` or `emits` it |
+| `service`, `external_system`, `queue`, `api`, `database` | System with the matching kind |
+| `process` | System with kind `job` |
+| `event` | Schema with kind `event` |
+| `requirement`, `decision`, `risk` | Note with kind `question`, `decision`, or `risk` |
 
-Any other card without a level (untyped text, `requirement`, `code`, groups
-excluded) is listed in a **Not in levels (N)** note under the diagram, with
-**Show in canvas**. Annotations keep their badge rule.
+Any other card without a level (untyped text or `code`, groups excluded) is
+listed in a **Not in levels (N)** note under the diagram, with **Show in
+canvas**. Notes keep their badge rule.
 
 ## Parents
 
@@ -60,15 +60,15 @@ detail lists "also: <others>".
 
 | Card | Parent, in priority order |
 | --- | --- |
-| Process | The System that `runs` it; else the Repository that `runs` it; else the Actor that `runs` it |
-| Artifact | The Process that `produces` it; else the System; else the Repository |
+| System kind `job` | The System that `uses` it; else the Repository that `uses` it; else the Actor that `uses` it |
+| Artifact | The System that `produces` it; else the Repository |
 | Repository | The System that `uses` it |
-| Schema | The System or Repository that `defines` it; else the System it `describes`; else the only System or Process that `uses` it; else the only Artifact whose `schemaRef` names it (see `docs/schema-builder.md`); else the Schema that `uses` it (it follows that Schema's parent) |
-| Database System (folded) | The only System that `uses` it |
-| Note, Decision, Risk | Not levelled. Shown as a count badge on the visible card they relate to (`2 risks`). A Risk with severity `high` gives a red badge |
+| Schema | The System or Repository that `defines` it; else the only System that `uses` it; else the only Artifact whose `schemaRef` names it (see `docs/schema-builder.md`); else the Schema that `uses` it (it follows that Schema's parent). A Schema with kind `event` may also follow the card that `produces` it |
+| Database or queue System (folded) | The only System that `uses` it |
+| Note | Not levelled. Shown as a count badge on the visible card it relates to (`2 notes`); its kind sets the tone |
 
-Folding follows the chain: an Artifact produced by a Process that a System runs
-folds into the System at level 1. A cycle stops at the first repeated card.
+Folding follows the chain: an Artifact produced by a job System that another System
+uses folds into the owning System at level 1. A cycle stops at the first repeated card.
 
 A hidden card with no parent chain to a visible card goes into one
 **Unassigned (N)** card at the end of the view. Opening it lists the cards with
@@ -88,7 +88,7 @@ a **Show in canvas** action.
 
 - **Level control:** a four-step segmented control in the Derived views dialog,
   next to the view tabs. Keyboard: `1` to `4`.
-- **Folded card:** shows chips for what it contains (`3 processes · 2 artifacts ·
+- **Folded card:** shows chips for what it contains (`3 jobs · 2 artifacts ·
   5 schemas`) and an **Expand** button.
 - **Expand one card:** shows that card's children one level deeper. Every other
   card stays at the current level. **Collapse all** resets. Expansion state is
@@ -118,7 +118,7 @@ icon and order.
 | Tier | Meaning | Initial codes |
 | --- | --- | --- |
 | `integrity` | The canvas or its export is broken | `schema_invalid`, `example_invalid`, `operation_invalid`, `ref_unresolved`, `operation_duplicate`, `path_parameter_mismatch`, `unknown_entity_type`, `missing_endpoint`, `group_endpoint`, and every Database Phase 2 error |
-| `design` | The design is incomplete or a view cannot be built | `missing_relation_type`, `unknown_relation_type`, `relation_not_allowed`, `untyped_text`, `artifact_without_producer`, `process_without_runner`, `schema_unlinked`, `schema_contract`, `level_unassigned`, `response_success_missing`, `mutation_errors_missing`, `security_missing`, `get_with_body`, `endpoint_without_resource`, and Database Phase 2 warnings |
+| `design` | The design is incomplete or a view cannot be built | `missing_relation_type`, `unknown_relation_type`, `relation_not_allowed`, `untyped_text`, `artifact_without_producer`, `schema_unlinked`, `schema_contract`, `level_unassigned`, `response_success_missing`, `mutation_errors_missing`, `security_missing`, `get_with_body`, `endpoint_without_resource`, and Database Phase 2 warnings |
 | `publish` | Polish expected before others rely on it | `missing_required_field`, `schema_review`, `list_pagination_missing`, `naming_inconsistent`, `schema_unused` |
 
 A new issue code without a tier fails the contract test, so no rule is silently
@@ -145,8 +145,8 @@ Views
   equal the Unassigned card in the view at the same level (same function).
 - One `level_unassigned` issue per card (tier `design`, severity warning), for
   the lowest available level where it is unassigned, with the message
-  "<card> has no owner at Level <n> <name>: add `defines`, `describes`, `runs`,
-  `produces`, or `uses` from a System". The Views section still shows each
+  "<card> has no owner at Level <n> <name>: add `defines`, `produces`, or
+  `uses` from a System". The Views section still shows each
   level's count.
 - Clicking a level opens the Derived views dialog at that level.
 - No automatic fix: choosing an owner is a design decision.

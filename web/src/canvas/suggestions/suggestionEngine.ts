@@ -31,12 +31,10 @@ export interface CanvasSuggestion {
 
 const TITLES: Partial<Record<CanvasProfileIssue['code'], string>> = {
   artifact_without_producer: 'Add missing artifact producers',
-  process_without_runner: 'Add missing process runners',
 }
 
 const SOURCE_TYPES: Partial<Record<CanvasProfileIssue['code'], string[]>> = {
-  artifact_without_producer: ['system', 'repository', 'process', 'api'],
-  process_without_runner: ['actor', 'system'],
+  artifact_without_producer: ['system', 'repository'],
 }
 
 const API_FIXES: Partial<Record<CanvasProfileIssue['code'], {

@@ -31,7 +31,6 @@ const TIER_CODES: Record<IssueTier, ProfileIssueCode[]> = {
     'relation_not_allowed',
     'untyped_text',
     'artifact_without_producer',
-    'process_without_runner',
     'schema_unlinked',
     'schema_contract',
     'level_unassigned',

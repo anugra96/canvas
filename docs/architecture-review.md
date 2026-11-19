@@ -42,7 +42,7 @@ Ranked by consequence. Each has a proof seam for the fix.
 
 5. **One god component.** Confirmed. `CanvasEditor` owns persistence, history, selection and groups,
    snapping, layout, screenshot capture, linked canvases, validation, suggestions, edge editing, and
-   eight dialogs. Domain logic (group drag, snapping, the template for a process documentation canvas)
+   eight dialogs. Domain logic (group drag, snapping, canvas-link management)
    sits inline in event handlers.
 6. **Repeated mutation patterns.** Confirmed. "Deselect all, append node, mark dirty" appears 9 times.
    `nodeDimensions → box` mapping is repeated. There are 8 `as CanvasNode`-style casts.

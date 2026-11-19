@@ -44,4 +44,33 @@ describe('normalizeImportedCanvas', () => {
     expect(normalizeImportedCanvas(input)).toEqual(input)
     expect(normalizeImportedCanvas('not a canvas')).toBe('not a canvas')
   })
+
+  it('runs imported Systems canvases through the ontology migration', () => {
+    const normalized = normalizeImportedCanvas({
+      app: { profile: 'systems', profileVersion: 3, scope: 'container' },
+      nodes: [{
+        id: 'service',
+        type: 'text',
+        x: 0,
+        y: 0,
+        width: 320,
+        height: 200,
+        text: '',
+        app: { entityType: 'service', fields: { name: 'Legacy service' } },
+      }],
+      edges: [{
+        id: 'edge',
+        fromNode: 'service',
+        toNode: 'service',
+        app: { relationType: 'depends_on' },
+      }],
+    }) as { app: Record<string, unknown>; nodes: Array<Record<string, unknown>>; edges: Array<Record<string, unknown>> }
+
+    expect(normalized.app).toMatchObject({ profileVersion: 5 })
+    expect(normalized.nodes[0]?.app).toMatchObject({
+      entityType: 'system',
+      fields: { name: 'Legacy service', kind: 'service' },
+    })
+    expect(normalized.edges[0]?.app).toMatchObject({ relationType: 'uses' })
+  })
 })

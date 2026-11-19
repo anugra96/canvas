@@ -45,7 +45,6 @@ help all read from the registry.
 | `add.note` | Note | Add menu | — | Systems | `addNoteAtCenter` |
 | `add.card` | Text card | Add menu | — | Raw | `addAtCenter` |
 | `add.entity.<type>` | One per card type | Add menu | — | per profile | `addEntityAtCenter` |
-| `add.process-canvas` | Process with canvas | Add menu | — | Systems | `addProcessWithCanvas` |
 | `views` | Views | bar | — | Systems | `setViewsOpen` |
 | `review` | Review (count) | bar | — | Systems | merged panel, below |
 | `undo` / `redo` | Undo / Redo | bar icons | ⌘Z / ⇧⌘Z | always | `undo` / `redo` |

@@ -17,15 +17,15 @@ describe('edge relation helpers', () => {
       target: 'db-a',
       sourceHandle: 'right',
       targetHandle: 'left',
-    }, 'depends_on')
+    }, 'uses')
 
     expect(edge).toMatchObject({
       fromNode: 'repo-a',
       fromSide: 'right',
       toNode: 'db-a',
       toSide: 'left',
-      label: 'depends on',
-      app: { relationType: 'depends_on' },
+      label: 'uses',
+      app: { relationType: 'uses' },
     })
   })
 
@@ -34,15 +34,15 @@ describe('edge relation helpers', () => {
       id: 'edge-a',
       fromNode: 'repo-a',
       toNode: 'db-a',
-      label: 'writes to',
-      app: { relationType: 'writes_to' },
+      label: 'produces',
+      app: { relationType: 'produces' },
     })
 
     const labeled = applyLabelToFlowEdge(edge, 'nightly snapshot')
     expect(labeled.label).toBe('nightly snapshot')
     expect(labeled.data?.raw).toMatchObject({
       label: 'nightly snapshot',
-      app: { relationType: 'writes_to' },
+      app: { relationType: 'produces' },
     })
 
     const cleared = applyLabelToFlowEdge(labeled, '')
@@ -55,7 +55,7 @@ describe('edge relation helpers', () => {
       id: 'edge-a',
       fromNode: 'repo-a',
       toNode: 'db-a',
-      label: 'writes to',
+      label: 'produces',
     })
 
     const colored = applyColorToFlowEdge(edge, '2')
@@ -73,12 +73,12 @@ describe('edge relation helpers', () => {
       app: { relationType: 'relates_to' },
     })
 
-    const next = applyRelationToFlowEdge(edge, 'deploys_to')
-    expect(next.label).toBe('deploys to')
+    const next = applyRelationToFlowEdge(edge, 'defines')
+    expect(next.label).toBe('defines')
     expect(next.data).toMatchObject({
-      label: 'deploys to',
-      relationType: 'deploys_to',
-      raw: { app: { relationType: 'deploys_to' } },
+      label: 'defines',
+      relationType: 'defines',
+      raw: { app: { relationType: 'defines' } },
     })
   })
 })
@@ -93,8 +93,8 @@ describe('reverseFlowEdge', () => {
       toNode: 'db-a',
       toSide: 'left',
       toEnd: 'arrow',
-      label: 'writes to',
-      app: { relationType: 'writes_to' },
+      label: 'produces',
+      app: { relationType: 'produces' },
     })
 
     const reversed = reverseFlowEdge(edge)
@@ -108,7 +108,7 @@ describe('reverseFlowEdge', () => {
       fromSide: 'left',
       toSide: 'right',
       fromEnd: 'arrow',
-      app: { relationType: 'writes_to' },
+      app: { relationType: 'produces' },
     })
     expect(reversed.markerStart).toBeTruthy()
     expect(reversed.markerEnd).toBeUndefined()
@@ -124,8 +124,8 @@ describe('reconnectFlowEdge', () => {
       fromSide: 'right',
       toNode: 'db-a',
       toSide: 'left',
-      label: 'writes to',
-      app: { relationType: 'writes_to' },
+      label: 'produces',
+      app: { relationType: 'produces' },
     })
 
     const reconnected = reconnectFlowEdge(edge, {
@@ -143,8 +143,8 @@ describe('reconnectFlowEdge', () => {
       toNode: 'db-b',
       fromSide: 'bottom',
       toSide: 'top',
-      label: 'writes to',
-      app: { relationType: 'writes_to' },
+      label: 'produces',
+      app: { relationType: 'produces' },
     })
   })
 })

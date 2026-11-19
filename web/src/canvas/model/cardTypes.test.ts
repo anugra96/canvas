@@ -17,13 +17,13 @@ describe('convertNodeType', () => {
       text: 'Important notes',
     })
 
-    const converted = convertNodeType(text, 'database', DEFAULT_ONTOLOGY)
+    const converted = convertNodeType(text, 'system', DEFAULT_ONTOLOGY)
     expect(converted.type).toBe('entity')
     expect(converted.data.entity).toMatchObject({
-      entityType: 'database',
+      entityType: 'system',
       fields: { purpose: 'Important notes' },
     })
-    expect(converted.data.text).toContain('Database')
+    expect(converted.data.text).toContain('System')
   })
 
   it('preserves matching fields when switching entity types', () => {
@@ -41,9 +41,9 @@ describe('convertNodeType', () => {
       },
     })
 
-    const database = convertNodeType(repository, 'database', DEFAULT_ONTOLOGY)
-    expect(database.data.entity).toMatchObject({
-      entityType: 'database',
+    const system = convertNodeType(repository, 'system', DEFAULT_ONTOLOGY)
+    expect(system.data.entity).toMatchObject({
+      entityType: 'system',
       fields: { name: 'Shared', owner: 'Forge' },
     })
   })

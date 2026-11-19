@@ -100,22 +100,21 @@ New canvases can be created as **Raw** or **Systems** canvases. Raw canvases
 allow freeform text cards and imports. Systems canvases store profile metadata in
 the canvas `app` extension and use a minimal vocabulary:
 
-- System: service, API, database, CLI, or worker
-- Repository: source-code repository and provider
+- System: service, API, database, queue, worker, job, CLI, or external
+- Repository: source-code repository, URL, and owner
 - Actor: person, role, or team
-- Process: manual, automated, or hybrid coordination
 - Artifact: versioned manifest, image, model, config, or dataset
 - Schema: versioned JSON Schema contract shared across systems
 
-Decision, Risk, and Note are annotations. The profile has six relations:
-`runs`, `uses`, `produces`, `defines`, `describes`, and `relates_to`.
+Note is the only annotation; its kind (`note`, `decision`, `risk`, `question`)
+sets a short label and tone. The profile has four relations: `uses`, `produces`,
+`defines`, and `relates_to`.
 
-Schema cards act as real contracts. System/Repository `defines` Schema, Schema
-`describes` a System with kind API or database, and System/Process `uses`
-Schema. Schema-to-schema `uses` records ERD relationships. The editor
-meta-validates JSON Schema, shows structure and review status, and warns when
-an active API or database System lacks a contract. Importable examples live in
-`examples/`.
+Schema cards act as real contracts. System/Repository `defines` Schema, and
+System/Repository `uses` Schema. Schema-to-schema `uses` records ERD
+relationships. The editor meta-validates JSON Schema, shows structure and review
+status, and warns when an active API or database System lacks a contract.
+Importable examples live in `examples/`.
 
 **Tidy layout** arranges cards with Dagre in a left-to-right hierarchy.
 **Fit cards to content** is beside it in the **More** menu.
@@ -144,16 +143,16 @@ projections never change source cards, positions, or relations; they derive from
 the current unsaved editor state.
 
 - **Architecture** shows every architecture card and explicit relation.
-- **Runtime** shows actors, systems, processes, and artifacts.
-- **Data flow** shows systems, processes, artifacts, and schema contracts.
+- **Runtime** shows actors, systems, and artifacts.
+- **Data flow** shows systems, artifacts, and schema contracts.
 - **Contracts** shows schemas, their owners, and the surfaces they describe.
 - **Pipeline** shows the execution and delivery chain.
-- **Sequence** shows a selected Process and its nearby participants.
+- **Sequence** shows a selected System with kind `job` and its nearby participants.
 
-Sequence order is inferred, not authoritative. Inbound `runs` relations appear
-first, followed by process `uses` and `produces` relations, then nearby
-relations. Relation direction controls sender and receiver. Add or reverse
-source relations to change the inferred order.
+Sequence order is inferred, not authoritative. Inbound `uses` relations appear
+first, followed by job `uses` and `produces` relations, then nearby relations.
+Relation direction controls sender and receiver. Add or reverse source relations
+to change the inferred order.
 
 The Schema workbench includes a derived field table and a tree view. The table
 shows field path, type, required state, constraints, and descriptions from the
@@ -161,13 +160,13 @@ JSON Schema source.
 
 Systems mode allows arbitrary connections. Unspecified or incompatible relations
 are reported in the validation tray and never block editing. Deterministic
-semantic checks report only two MVP rules: an Artifact needs a producer, and a
-Process needs a runner. Each rule offers a suggested card and relation. The
+semantic check reports one MVP rule: an Artifact needs a producer from a System
+or Repository. The rule offers a suggested producer card and `produces` relation. The
 standard `.canvas` format is preserved. See
 [`docs/systems-profile.md`](docs/systems-profile.md) for the full contract.
 
 ## Schema migrations
-Persisted canvas documents carry a `schemaVersion`. The current version is `2`.
+Persisted canvas documents carry a `schemaVersion`. The current version is `3`.
 `migrateCanvasDocument` runs registered migrations whenever a document is read,
 so legacy documents remain editable and are stamped on their next save. Future
 document-shape changes add an entry to `canvasDocumentMigrations` in
@@ -216,8 +215,7 @@ as canvas saves.
 Every card can link to one or more full canvases. The link badge opens a manager
 that can link an existing canvas or create a new one with the same profile. Links
 are stored as card metadata; canvas content is never inlined. Opening a link uses
-a canvas trail with back navigation and cycle protection. **Process with canvas**
-creates a Process card and a linked documentation canvas with starter notes.
+a canvas trail with back navigation and cycle protection.
 
 At 720px and below, the editor uses one compact row: back, title, **Add**, and
 **More**. The More sheet contains the remaining commands plus Appearance and
@@ -240,9 +238,8 @@ entity card stores structured fields in the node's `app` extension and a
 Markdown summary in `text`. The summary keeps the card readable in Obsidian if
 another tool ignores the extension.
 
-Systems templates: system, repository, actor, process, artifact, schema, note,
-decision, and risk. Raw templates also include service, code, queue, event,
-external system, API, database, and requirement. Text cards render Markdown,
+Systems templates: system, repository, actor, artifact, schema, and note. Raw
+templates also include code and the API and Database profile cards. Text cards render Markdown,
 including fenced code blocks. Code cards
 use a standard VS Code dark syntax theme and store their language, code, and notes
 as structured fields. The code editor supports Tab/Shift+Tab indentation, smart

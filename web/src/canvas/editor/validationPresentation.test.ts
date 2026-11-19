@@ -57,8 +57,8 @@ describe('validation presentation', () => {
     const groups = buildValidationGroups([entry(issue('edge'))], nodes, edges, SYSTEMS_PROFILE, DEFAULT_ONTOLOGY)
 
     expect(groups[0]?.issues[0]?.relationRepair?.choices.map((choice) => choice.id)).toEqual([
-      'produces',
       'uses',
+      'produces',
     ])
     expect(groups[0]?.safeFixes).toEqual([])
   })
@@ -81,8 +81,8 @@ describe('validation presentation', () => {
 
     expect(groups[0]?.issues[0]?.relationRepair?.choices).toEqual([])
     expect(groups[0]?.issues[0]?.relationRepair?.reverseChoices.map((choice) => choice.id)).toEqual([
-      'produces',
       'uses',
+      'produces',
     ])
   })
 

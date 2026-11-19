@@ -45,23 +45,6 @@ describe('suggestion engine', () => {
     ])
   })
 
-  it('suggests an actor for a process without a runner', () => {
-    const suggestions = buildSuggestions(
-      [issue('process_without_runner', 'process')],
-      [node('process', 'process')],
-      [],
-    )
-
-    const action = suggestions[0]?.items[0]?.action
-    if (action?.kind !== 'add-cards') throw new Error('Expected an add-cards action')
-    expect(action.fixes[0]).toEqual({
-      targetId: 'process',
-      entityType: 'actor',
-      relationType: 'runs',
-      nameSuffix: 'runner',
-    })
-  })
-
   it('does not add a producer when an unrelated incoming edge can be repaired', () => {
     const incoming = toFlowEdge({ id: 'edge', fromNode: 'system', toNode: 'artifact' })
     const suggestions = buildSuggestions(

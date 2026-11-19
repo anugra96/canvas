@@ -7,16 +7,15 @@
       "y": 320,
       "width": 380,
       "height": 260,
-      "text": "## Database: Commerce DB\n- **Purpose:** Orders, customers, and line items.\n- **Kind:** relational\n- **Owner:** Tower\n- **Console URL:** https://console.example.internal/commerce\n- **Status:** active",
+      "text": "## System: Commerce DB\n- **Kind:** database\n- **Purpose:** Orders, customers, and line items.\n- **Owner:** Tower\n- **URL:** https://console.example.internal/commerce",
       "app": {
-        "entityType": "database",
+        "entityType": "system",
         "fields": {
           "name": "Commerce DB",
           "purpose": "Orders, customers, and line items.",
-          "kind": "relational",
+          "kind": "database",
           "owner": "Tower",
-          "consoleUrl": "https://console.example.internal/commerce",
-          "status": "active"
+          "url": "https://console.example.internal/commerce"
         }
       }
     },
@@ -27,16 +26,15 @@
       "y": 700,
       "width": 380,
       "height": 260,
-      "text": "## API: Orders API\n- **Purpose:** Read and create orders.\n- **Protocol:** http\n- **Owner:** Tower\n- **Docs URL:** https://orders.example.internal/docs\n- **Status:** active",
+      "text": "## System: Orders API\n- **Kind:** api\n- **Purpose:** Read and create orders.\n- **Owner:** Tower\n- **URL:** https://orders.example.internal/docs",
       "app": {
-        "entityType": "api",
+        "entityType": "system",
         "fields": {
           "name": "Orders API",
           "purpose": "Read and create orders.",
-          "protocol": "http",
           "owner": "Tower",
-          "docsUrl": "https://orders.example.internal/docs",
-          "status": "active"
+          "url": "https://orders.example.internal/docs",
+          "kind": "api"
         }
       }
     },
@@ -116,51 +114,55 @@
   "edges": [
     {
       "id": "e-customer-db",
-      "fromNode": "schema-customer",
+      "fromNode": "db-commerce",
       "fromSide": "right",
-      "toNode": "db-commerce",
+      "toNode": "schema-customer",
       "toSide": "left",
-      "label": "describes",
+      "label": "defines",
       "toEnd": "arrow",
       "app": {
-        "relationType": "describes"
-      }
+        "relationType": "defines"
+      },
+      "color": "4"
     },
     {
       "id": "e-order-db",
-      "fromNode": "schema-order",
+      "fromNode": "db-commerce",
       "fromSide": "right",
-      "toNode": "db-commerce",
+      "toNode": "schema-order",
       "toSide": "left",
-      "label": "describes",
+      "label": "defines",
       "toEnd": "arrow",
       "app": {
-        "relationType": "describes"
-      }
+        "relationType": "defines"
+      },
+      "color": "4"
     },
     {
       "id": "e-item-db",
-      "fromNode": "schema-order-item",
+      "fromNode": "db-commerce",
       "fromSide": "right",
-      "toNode": "db-commerce",
+      "toNode": "schema-order-item",
       "toSide": "left",
-      "label": "describes",
+      "label": "defines",
       "toEnd": "arrow",
       "app": {
-        "relationType": "describes"
-      }
+        "relationType": "defines"
+      },
+      "color": "4"
     },
     {
       "id": "e-order-api",
-      "fromNode": "schema-order",
+      "fromNode": "api-orders",
       "fromSide": "right",
-      "toNode": "api-orders",
+      "toNode": "schema-order",
       "toSide": "left",
-      "label": "describes",
+      "label": "defines",
       "toEnd": "arrow",
       "app": {
-        "relationType": "describes"
-      }
+        "relationType": "defines"
+      },
+      "color": "4"
     },
     {
       "id": "e-order-customer",
@@ -189,7 +191,7 @@
   ],
   "app": {
     "profile": "systems",
-    "profileVersion": 3,
+    "profileVersion": 5,
     "scope": "container"
   }
 }

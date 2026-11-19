@@ -37,12 +37,12 @@ export const DERIVED_VIEWS: DerivedViewDefinition[] = [
   {
     id: 'runtime',
     label: 'Runtime',
-    description: 'Actors, systems, processes, and artifacts in the runtime path.',
+    description: 'Actors, systems, and artifacts in the runtime path.',
   },
   {
     id: 'data-flow',
     label: 'Data flow',
-    description: 'Systems, processes, artifacts, and schemas with their data relations.',
+    description: 'Systems, artifacts, and schemas with their data relations.',
   },
   {
     id: 'contracts',
@@ -63,10 +63,9 @@ export interface DerivedContentChip {
 }
 
 export interface DerivedAnnotationBadge {
-  typeId: 'note' | 'decision' | 'risk'
+  typeId: 'note'
   label: string
   count: number
-  highSeverity: boolean
 }
 
 export interface DerivedUnassignedItem {
@@ -128,29 +127,25 @@ interface DerivedSequenceMessage extends DerivedRelation {
 }
 
 export interface DerivedSequence {
-  processId: string
+  jobId: string
   participants: DerivedCard[]
   messages: DerivedSequenceMessage[]
 }
 
-const ANNOTATION_TYPES = new Set(['note', 'decision', 'risk'])
-const SEQUENCE_TYPES = new Set(['actor', 'system', 'repository', 'process', 'artifact', 'schema'])
+const SEQUENCE_TYPES = new Set(['actor', 'system', 'repository', 'artifact', 'schema'])
 
 const RELATION_RANK: Record<string, number> = {
-  runs: 0,
-  uses: 1,
-  produces: 2,
-  defines: 3,
-  describes: 4,
+  uses: 0,
+  produces: 1,
+  defines: 2,
 }
 
 const PARTICIPANT_RANK: Record<string, number> = {
   actor: 0,
-  process: 1,
-  system: 2,
-  repository: 3,
-  artifact: 4,
-  schema: 5,
+  system: 1,
+  repository: 2,
+  artifact: 3,
+  schema: 4,
 }
 
 const DISPLAY_VALUES: Record<string, string> = {
@@ -196,9 +191,8 @@ function cardDetail(entityType: string, fields: EntityFields): string | undefine
     const version = displayValue(fields.version)
     return [kind, version ? `v${version.replace(/^v/i, '')}` : ''].filter(Boolean).join(' · ') || undefined
   }
-  if (entityType === 'repository') return displayValue(fields.provider) || undefined
+  if (entityType === 'repository') return displayValue(fields.url) || undefined
   if (entityType === 'system') return displayValue(fields.kind) || undefined
-  if (entityType === 'process') return displayValue(fields.mode) || undefined
   if (entityType === 'actor') return displayValue(fields.kind) || undefined
   return undefined
 }
@@ -252,16 +246,15 @@ function plural(label: string, count: number): string {
 
 interface AnnotationTally {
   count: number
-  highSeverity: boolean
 }
 
 function annotationTallies(
   rawNodes: CanvasNode[],
   rawEdges: CanvasEdge[],
   mapCard: (id: string) => string | undefined,
-): Map<string, Map<'note' | 'decision' | 'risk', AnnotationTally>> {
+): Map<string, AnnotationTally> {
   const rawById = new Map(rawNodes.map((node) => [node.id, node]))
-  const tallies = new Map<string, Map<'note' | 'decision' | 'risk', AnnotationTally>>()
+  const tallies = new Map<string, AnnotationTally>()
   const counted = new Set<string>()
 
   for (const edge of rawEdges) {
@@ -283,35 +276,23 @@ function annotationTallies(
     const tallyKey = `${target}:${annotation.id}`
     if (counted.has(tallyKey)) continue
     counted.add(tallyKey)
-    const typeId = annotation.app?.entityType as 'note' | 'decision' | 'risk'
-    const annotationFields = annotation.app?.fields ?? {}
-    const current = tallies.get(target) ?? new Map()
-    const entry = current.get(typeId) ?? { count: 0, highSeverity: false }
+    const entry = tallies.get(target) ?? { count: 0 }
     entry.count += 1
-    if (typeId === 'risk' && String(annotationFields.severity ?? '') === 'high') {
-      entry.highSeverity = true
-    }
-    current.set(typeId, entry)
-    tallies.set(target, current)
+    tallies.set(target, entry)
   }
 
   return tallies
 }
 
 function annotationBadges(
-  tallies: Map<'note' | 'decision' | 'risk', AnnotationTally> | undefined,
+  tally: AnnotationTally | undefined,
 ): DerivedAnnotationBadge[] | undefined {
-  if (!tallies) return undefined
-  return (['note', 'decision', 'risk'] as const).flatMap((typeId) => {
-    const tally = tallies.get(typeId)
-    if (!tally) return []
-    return [{
-      typeId,
-      label: plural(typeId, tally.count),
-      count: tally.count,
-      highSeverity: tally.highSeverity,
-    }]
-  })
+  if (!tally) return undefined
+  return [{
+    typeId: 'note',
+    label: plural('note', tally.count),
+    count: tally.count,
+  }]
 }
 
 function getEdgeRelation(edge: CanvasEdge): string | undefined {
@@ -349,18 +330,18 @@ export function deriveView(
   if (viewId === 'architecture') {
     for (const node of nodes) {
       const typeId = entityTypeId(node)
-      if (node.type === 'group' || ANNOTATION_TYPES.has(typeId)) continue
+      if (node.type === 'group' || ANNOTATION_ENTITY_TYPES.has(typeId)) continue
       included.add(node.id)
     }
   } else if (viewId === 'runtime') {
     for (const node of nodes) {
-      if (['actor', 'system', 'process', 'artifact'].includes(entityTypeId(node))) {
+      if (['actor', 'system', 'artifact'].includes(entityTypeId(node))) {
         included.add(node.id)
       }
     }
   } else if (viewId === 'data-flow') {
     for (const node of nodes) {
-      if (['system', 'process', 'artifact', 'schema'].includes(entityTypeId(node))) {
+      if (['system', 'artifact', 'schema'].includes(entityTypeId(node))) {
         included.add(node.id)
       }
     }
@@ -370,31 +351,31 @@ export function deriveView(
     }
     for (const edge of allEdges) {
       const relation = edge.data?.relationType
-      if (!relation || !['defines', 'describes', 'uses'].includes(relation)) continue
+      if (!relation || !['defines', 'uses'].includes(relation)) continue
       const source = nodeById.get(edge.source)
       const target = nodeById.get(edge.target)
       if (!source || !target) continue
       if (entityTypeId(source) !== 'schema' && entityTypeId(target) !== 'schema') continue
-      if (['system', 'repository', 'process', 'artifact', 'schema'].includes(entityTypeId(source))) {
+      if (['system', 'repository', 'artifact', 'schema'].includes(entityTypeId(source))) {
         included.add(source.id)
       }
-      if (['system', 'repository', 'process', 'artifact', 'schema'].includes(entityTypeId(target))) {
+      if (['system', 'repository', 'artifact', 'schema'].includes(entityTypeId(target))) {
         included.add(target.id)
       }
     }
   } else {
     for (const node of nodes) {
-      if (['actor', 'repository', 'system', 'process', 'artifact'].includes(entityTypeId(node))) {
+      if (['actor', 'repository', 'system', 'artifact'].includes(entityTypeId(node))) {
         included.add(node.id)
       }
     }
   }
 
   const allowedByView: Record<Exclude<DerivedViewId, 'architecture'>, Set<string>> = {
-    runtime: new Set(['runs', 'uses', 'produces']),
-    'data-flow': new Set(['uses', 'produces', 'defines', 'describes']),
-    contracts: new Set(['defines', 'describes', 'uses']),
-    pipeline: new Set(['runs', 'uses', 'produces']),
+    runtime: new Set(['uses', 'produces']),
+    'data-flow': new Set(['uses', 'produces', 'defines']),
+    contracts: new Set(['defines', 'uses']),
+    pipeline: new Set(['uses', 'produces']),
   }
 
   const viewEdges = relatedEdges(
@@ -562,22 +543,23 @@ function contentsFor(
   ))
 }
 
-export function sequenceProcessOptions(
+export function sequenceJobOptions(
   nodes: CanvasFlowNode[],
   ontology: Ontology,
 ): DerivedCard[] {
   return nodes
-    .filter((node) => entityTypeId(node) === 'process')
+    .filter((node) => entityTypeId(node) === 'system'
+      && String(node.data.entity?.fields.kind ?? '') === 'job')
     .map((node) => cardFor(node, ontology))
     .sort((left, right) => left.label.localeCompare(right.label) || left.id.localeCompare(right.id))
 }
 
-export function recommendedSequenceProcessId(
+export function recommendedSequenceJobId(
   nodes: CanvasFlowNode[],
   edges: CanvasFlowEdge[],
   ontology: Ontology,
 ): string | undefined {
-  const options = sequenceProcessOptions(nodes, ontology)
+  const options = sequenceJobOptions(nodes, ontology)
   if (options.length === 0) return undefined
   const nodeById = new Map(nodes.map((node) => [node.id, node]))
   const counts = new Map<string, number>()
@@ -586,7 +568,8 @@ export function recommendedSequenceProcessId(
     if (!relation || relation === 'relates_to') continue
     for (const nodeId of [edge.source, edge.target]) {
       const node = nodeById.get(nodeId)
-      if (node && entityTypeId(node) === 'process') {
+      if (node && entityTypeId(node) === 'system'
+        && String(node.data.entity?.fields.kind ?? '') === 'job') {
         counts.set(nodeId, (counts.get(nodeId) ?? 0) + 1)
       }
     }
@@ -601,16 +584,16 @@ export function recommendedSequenceProcessId(
 export function deriveSequence(
   nodes: CanvasFlowNode[],
   edges: CanvasFlowEdge[],
-  processId: string | undefined,
+  jobId: string | undefined,
   ontology: Ontology,
 ): DerivedSequence {
-  const processOptions = sequenceProcessOptions(nodes, ontology)
-  const recommendedId = recommendedSequenceProcessId(nodes, edges, ontology)
-  const process = processOptions.find((option) => option.id === processId)
-    ?? processOptions.find((option) => option.id === recommendedId)
-    ?? processOptions[0]
-  if (!process) {
-    return { processId: '', participants: [], messages: [] }
+  const jobOptions = sequenceJobOptions(nodes, ontology)
+  const recommendedId = recommendedSequenceJobId(nodes, edges, ontology)
+  const job = jobOptions.find((option) => option.id === jobId)
+    ?? jobOptions.find((option) => option.id === recommendedId)
+    ?? jobOptions[0]
+  if (!job) {
+    return { jobId: '', participants: [], messages: [] }
   }
 
   const nodeById = new Map(nodes.map((node) => [node.id, node]))
@@ -634,8 +617,8 @@ export function deriveSequence(
     incident.set(edge.target, [...(incident.get(edge.target) ?? []), edge])
   }
 
-  const included = new Set([process.id])
-  let frontier = [process.id]
+  const included = new Set([job.id])
+  let frontier = [job.id]
   for (let depth = 0; depth < 2; depth += 1) {
     const next: string[] = []
     for (const nodeId of frontier) {
@@ -657,9 +640,9 @@ export function deriveSequence(
     .map((edge) => relationFor(edge, ontology))
     .sort((left, right) => {
       const phase = (message: DerivedRelation) => {
-        if (message.to === process.id && message.relationType === 'runs') return 0
-        if (message.from === process.id) return 1
-        if (message.to === process.id) return 2
+        if (message.to === job.id && message.relationType === 'uses') return 0
+        if (message.from === job.id) return 1
+        if (message.to === job.id) return 2
         return 3
       }
       return phase(left) - phase(right)
@@ -671,7 +654,7 @@ export function deriveSequence(
     .map((message, index) => ({ ...message, order: index + 1 }))
 
   return {
-    processId: process.id,
+    jobId: job.id,
     participants,
     messages,
   }

@@ -26,9 +26,9 @@ Draft model (to be specified):
 | | `managed` | Derived from a field (API `accepts`/`returns`, DB `references`, `schemaRef`); edited through the card, `app.managed: true` today |
 | | `inferred` | Exists only in a derived view (Levels lifted edges, `uses ×3`); never stored |
 | Class | `structure` | Ownership and containment: `contains`, `defines`, group membership. Usually shown as nesting or levels, not lines |
-| | `flow` | Runtime dependency and data movement: `runs`, `uses`, `produces`, `calls` |
-| | `contract` | Payload and schema links: `accepts`, `returns`, `describes`, `references`, `schemaRef` |
-| | `annotation` | `relates_to` from Notes, Decisions, Risks |
+| | `flow` | Runtime dependency and data movement: `uses`, `produces` |
+| | `contract` | Payload and schema links: `accepts`, `returns`, `references`, `schemaRef`; `uses` where a Schema is an endpoint |
+| | `annotation` | `relates_to` from Notes; the Note kind sets the tone |
 
 - Every relation type declares its class in the ontology; a contract test fails
   when one has none.
@@ -51,4 +51,4 @@ Draft model (to be specified):
 | Database profile: parser spike, then Phase 1 | `database-profile.md` | |
 | Auth: Postgres sessions, workspaces | `auth.md` | Parked until its security review (Aegis) |
 | Codex as a user: Track A evaluation | — | Deferred |
-| Schema builder follow-ups: Process schemas, suggest schema from rows, array sub-tables | `schema-builder.md` | |
+| Schema builder follow-ups: job System schemas, suggest schema from rows, array sub-tables | `schema-builder.md` | |

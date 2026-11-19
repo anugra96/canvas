@@ -22,27 +22,23 @@ function edge(id: string, fromNode: string, toNode: string, relationType: string
 }
 
 describe('semantic rules', () => {
-  it('reports only artifacts without producers and processes without runners', () => {
+  it('reports only artifacts without producers', () => {
     const issues = validateSemanticRules([
       node('artifact', 'artifact'),
-      node('process', 'process'),
-      node('api', 'api'),
-      node('database', 'database'),
+      node('job', 'system'),
+      node('schema', 'schema'),
     ], [])
 
     expect(issues.map((issue) => issue.code)).toEqual([
       'artifact_without_producer',
-      'process_without_runner',
     ])
   })
 
-  it('accepts a produced artifact and a run process', () => {
+  it('accepts a produced artifact', () => {
     const issues = validateSemanticRules([
       node('system', 'system'),
-      node('process', 'process'),
       node('artifact', 'artifact'),
     ], [
-      edge('runs', 'system', 'process', 'runs'),
       edge('produces', 'system', 'artifact', 'produces'),
     ])
 

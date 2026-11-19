@@ -22,8 +22,8 @@ import {
   DERIVED_VIEWS,
   deriveSequence,
   deriveView,
-  recommendedSequenceProcessId,
-  sequenceProcessOptions,
+  recommendedSequenceJobId,
+  sequenceJobOptions,
   type DerivedSequence,
   type DerivedUnassignedItem,
   type DerivedViewId,
@@ -58,7 +58,7 @@ export function DerivedViewsDialog({
 }: DerivedViewsDialogProps) {
   const isApi = profileId === 'api'
   const [activeView, setActiveView] = useState<ActiveView>(isApi ? 'reference' : 'architecture')
-  const [processId, setProcessId] = useState('')
+  const [jobId, setJobId] = useState('')
   const [level, setLevel] = useState<LevelNumber>(initialLevel ?? (isApi ? 4 : 1))
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const [exportError, setExportError] = useState('')
@@ -74,14 +74,14 @@ export function DerivedViewsDialog({
     width: window.visualViewport?.width ?? window.innerWidth,
     height: window.visualViewport?.height ?? window.innerHeight,
   }))
-  const processOptions = useMemo(
-    () => sequenceProcessOptions(nodes, ontology),
+  const jobOptions = useMemo(
+    () => sequenceJobOptions(nodes, ontology),
     [nodes, ontology],
   )
-  const recommendedProcessId = recommendedSequenceProcessId(nodes, edges, ontology)
-  const activeProcessId = processOptions.some((option) => option.id === processId)
-    ? processId
-    : recommendedProcessId ?? processOptions[0]?.id
+  const recommendedJobId = recommendedSequenceJobId(nodes, edges, ontology)
+  const activeJobId = jobOptions.some((option) => option.id === jobId)
+    ? jobId
+    : recommendedJobId ?? jobOptions[0]?.id
   const view = useMemo(
     () => (activeView === 'sequence' || activeView === 'reference'
       ? { nodes: [], edges: [], notInLevels: [] }
@@ -91,9 +91,9 @@ export function DerivedViewsDialog({
   const diagram = useMemo(() => layoutDerivedView(view), [view])
   const sequence = useMemo(
     () => (activeView === 'sequence'
-      ? deriveSequence(nodes, edges, activeProcessId, ontology)
-      : { processId: '', participants: [], messages: [] }),
-    [activeProcessId, activeView, edges, nodes, ontology],
+      ? deriveSequence(nodes, edges, activeJobId, ontology)
+      : { jobId: '', participants: [], messages: [] }),
+    [activeJobId, activeView, edges, nodes, ontology],
   )
 
   useEffect(() => {
@@ -290,21 +290,21 @@ export function DerivedViewsDialog({
             </>
           ) : (
             <>
-              <span>Process interaction order inferred from explicit relations.</span>
+              <span>Job interaction order inferred from explicit relations.</span>
               <span>{sequence.participants.length} participants</span>
               <span>{sequence.messages.length} messages</span>
               <span className="derived-inferred">Inferred order</span>
             </>
           )}
-          {activeView === 'sequence' && processOptions.length > 0 && (
+          {activeView === 'sequence' && jobOptions.length > 0 && (
             <label className="derived-process">
-              <span>Process</span>
+              <span>Job</span>
               <select
-                aria-label="Sequence process"
-                value={activeProcessId ?? ''}
-                onChange={(event) => setProcessId(event.target.value)}
+                aria-label="Sequence job"
+                value={activeJobId ?? ''}
+                onChange={(event) => setJobId(event.target.value)}
               >
-                {processOptions.map((option) => (
+                {jobOptions.map((option) => (
                   <option key={option.id} value={option.id}>{option.label}</option>
                 ))}
               </select>
@@ -432,10 +432,7 @@ function GraphDiagram({
                 {node.annotations && node.annotations.length > 0 && (
                   <span className="derived-card-badges">
                     {node.annotations.map((badge) => (
-                      <span
-                        key={badge.typeId}
-                        className={`derived-badge${badge.typeId === 'risk' && badge.highSeverity ? ' high-risk' : ''}`}
-                      >
+                      <span key={badge.typeId} className="derived-badge">
                         {badge.count} {badge.label}
                       </span>
                     ))}
@@ -507,8 +504,8 @@ function SequenceDiagram({ sequence }: { sequence: DerivedSequence }) {
   if (sequence.participants.length === 0) {
     return (
       <div className="derived-empty">
-        <strong>No process to sequence.</strong>
-        <span>Add a Process card to derive an interaction order.</span>
+        <strong>No job to sequence.</strong>
+        <span>Add a System with kind job to derive an interaction order.</span>
       </div>
     )
   }
@@ -532,7 +529,7 @@ function SequenceDiagram({ sequence }: { sequence: DerivedSequence }) {
         className="derived-sequence"
         style={{ width, height }}
         role="img"
-        aria-label={`Sequence for ${sequence.participants.find((participant) => participant.id === sequence.processId)?.label ?? 'process'}`}
+        aria-label={`Sequence for ${sequence.participants.find((participant) => participant.id === sequence.jobId)?.label ?? 'job'}`}
       >
         <svg
           className="derived-sequence-canvas"

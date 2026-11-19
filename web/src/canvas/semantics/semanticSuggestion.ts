@@ -14,12 +14,6 @@ const SUGGESTIONS: Partial<Record<CanvasProfileIssue['code'], SemanticSuggestion
     nameSuffix: 'producer',
     description: 'Add a System that produces this artifact.',
   },
-  process_without_runner: {
-    entityType: 'actor',
-    relationType: 'runs',
-    nameSuffix: 'runner',
-    description: 'Add an Actor that runs this process.',
-  },
 }
 
 export function semanticSuggestionForIssue(

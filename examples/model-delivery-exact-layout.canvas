@@ -26,17 +26,16 @@
       "height": 163,
       "color": "3",
       "app": {
-        "entityType": "api",
+        "entityType": "system",
         "fields": {
           "name": "Staging Deployment API",
-          "purpose": "Create staging deployment",
-          "protocol": "http",
+          "purpose": "Create staging deployment\nStatus: planned",
           "owner": "Tower",
-          "status": "planned"
+          "kind": "api"
         }
       },
       "type": "text",
-      "text": "## API: Staging Deployment API\n- **Purpose:** Create staging deployment\n- **Protocol:** http\n- **Owner:** Tower\n- **Status:** planned"
+      "text": "## System: Staging Deployment API\n- **Kind:** api\n- **Purpose:** Create staging deployment\nStatus: planned\n- **Owner:** Tower"
     },
     {
       "id": "e613bddc3bec90da",
@@ -45,17 +44,16 @@
       "width": 720,
       "height": 163,
       "app": {
-        "entityType": "api",
+        "entityType": "system",
         "fields": {
           "name": "Registry API",
-          "purpose": "Model delivery API surface.",
-          "protocol": "http",
+          "purpose": "Model delivery API surface.\nStatus: planned",
           "owner": "Forge",
-          "status": "planned"
+          "kind": "api"
         }
       },
       "type": "text",
-      "text": "## API: Registry API\n- **Purpose:** Model delivery API surface.\n- **Protocol:** http\n- **Owner:** Forge\n- **Status:** planned",
+      "text": "## System: Registry API\n- **Kind:** api\n- **Purpose:** Model delivery API surface.\nStatus: planned\n- **Owner:** Forge",
       "styleAttributes": {
         "textAlign": "center"
       }
@@ -74,11 +72,11 @@
           "version": "latest",
           "uri": "ecr://example/model-delivery",
           "owner": "Forge",
-          "status": "planned"
+          "purpose": "Status: planned"
         }
       },
       "type": "text",
-      "text": "## Artifact: ECR Repository\n- **Kind:** container\n- **Version:** latest\n- **URI:** ecr://example/model-delivery\n- **Owner:** Forge\n- **Status:** planned",
+      "text": "## Artifact: ECR Repository\n- **Kind:** container\n- **Version:** latest\n- **URI:** ecr://example/model-delivery\n- **Owner:** Forge\n- **Purpose:** Status: planned",
       "styleAttributes": {}
     },
     {
@@ -88,17 +86,16 @@
       "width": 720,
       "height": 163,
       "app": {
-        "entityType": "api",
+        "entityType": "system",
         "fields": {
           "name": "Registry API",
-          "purpose": "Model delivery API surface.",
-          "protocol": "http",
+          "purpose": "Model delivery API surface.\nStatus: planned",
           "owner": "Forge",
-          "status": "planned"
+          "kind": "api"
         }
       },
       "type": "text",
-      "text": "## API: Registry API\n- **Purpose:** Model delivery API surface.\n- **Protocol:** http\n- **Owner:** Forge\n- **Status:** planned",
+      "text": "## System: Registry API\n- **Kind:** api\n- **Purpose:** Model delivery API surface.\nStatus: planned\n- **Owner:** Forge",
       "styleAttributes": {
         "textAlign": "center"
       }
@@ -169,15 +166,13 @@
         "entityType": "repository",
         "fields": {
           "name": "midcast_pipeline",
-          "provider": "github",
           "url": "https://github.com/example/midcast_pipeline",
-          "defaultBranch": "main",
           "owner": "Forge",
-          "status": "planned"
+          "purpose": "Default branch: main\nStatus: planned"
         }
       },
       "type": "text",
-      "text": "## Repository: midcast_pipeline\n- **Provider:** github\n- **URL:** https://github.com/example/midcast_pipeline\n- **Default branch:** main\n- **Owner:** Forge\n- **Status:** planned",
+      "text": "## Repository: midcast_pipeline\n- **URL:** https://github.com/example/midcast_pipeline\n- **Owner:** Forge\n- **Purpose:** Default branch: main\nStatus: planned",
       "styleAttributes": {
         "textAlign": "center"
       }
@@ -196,11 +191,11 @@
           "version": "1.0.0",
           "uri": "midcast_pipeline/jobs.yaml",
           "owner": "Forge",
-          "status": "planned"
+          "purpose": "Status: planned"
         }
       },
       "type": "text",
-      "text": "## Artifact: jobs.yaml\n- **Kind:** config\n- **Version:** 1.0.0\n- **URI:** midcast_pipeline/jobs.yaml\n- **Owner:** Forge\n- **Status:** planned",
+      "text": "## Artifact: jobs.yaml\n- **Kind:** config\n- **Version:** 1.0.0\n- **URI:** midcast_pipeline/jobs.yaml\n- **Owner:** Forge\n- **Purpose:** Status: planned",
       "styleAttributes": {
         "textAlign": "center"
       }
@@ -240,17 +235,16 @@
       "width": 720,
       "height": 163,
       "app": {
-        "entityType": "api",
+        "entityType": "system",
         "fields": {
           "name": "Registry API",
-          "purpose": "Model delivery API surface.",
-          "protocol": "http",
+          "purpose": "Model delivery API surface.\nStatus: planned",
           "owner": "Forge",
-          "status": "planned"
+          "kind": "api"
         }
       },
       "type": "text",
-      "text": "## API: Registry API\n- **Purpose:** Model delivery API surface.\n- **Protocol:** http\n- **Owner:** Forge\n- **Status:** planned",
+      "text": "## System: Registry API\n- **Kind:** api\n- **Purpose:** Model delivery API surface.\nStatus: planned\n- **Owner:** Forge",
       "styleAttributes": {}
     },
     {
@@ -289,17 +283,16 @@
       "width": 560,
       "height": 163,
       "app": {
-        "entityType": "api",
+        "entityType": "system",
         "fields": {
           "name": "GitHub Contents API",
-          "purpose": "Read and update pipeline job files.",
-          "protocol": "http",
+          "purpose": "Read and update pipeline job files.\nStatus: planned",
           "owner": "Forge",
-          "status": "planned"
+          "kind": "api"
         }
       },
       "type": "text",
-      "text": "## API: GitHub Contents API\n- **Purpose:** Read and update pipeline job files.\n- **Protocol:** http\n- **Owner:** Forge\n- **Status:** planned",
+      "text": "## System: GitHub Contents API\n- **Kind:** api\n- **Purpose:** Read and update pipeline job files.\nStatus: planned\n- **Owner:** Forge",
       "styleAttributes": {
         "textAlign": "center"
       }
@@ -311,17 +304,16 @@
       "width": 720,
       "height": 163,
       "app": {
-        "entityType": "api",
+        "entityType": "system",
         "fields": {
           "name": "Registry API",
-          "purpose": "Model delivery API surface.",
-          "protocol": "http",
+          "purpose": "Model delivery API surface.\nStatus: planned",
           "owner": "Forge",
-          "status": "planned"
+          "kind": "api"
         }
       },
       "type": "text",
-      "text": "## API: Registry API\n- **Purpose:** Model delivery API surface.\n- **Protocol:** http\n- **Owner:** Forge\n- **Status:** planned",
+      "text": "## System: Registry API\n- **Kind:** api\n- **Purpose:** Model delivery API surface.\nStatus: planned\n- **Owner:** Forge",
       "styleAttributes": {}
     },
     {
@@ -364,12 +356,11 @@
           "name": "register model candidate",
           "purpose": "",
           "kind": "worker",
-          "owner": "Forge",
-          "status": "planned"
+          "owner": "Forge"
         }
       },
       "type": "text",
-      "text": "## System: register model candidate\n- **Kind:** worker\n- **Owner:** Forge\n- **Status:** planned",
+      "text": "## System: register model candidate\n- **Kind:** worker\n- **Owner:** Forge",
       "styleAttributes": {
         "textAlign": "center",
         "shape": null
@@ -387,12 +378,11 @@
           "name": "build container image",
           "purpose": "",
           "kind": "worker",
-          "owner": "Forge",
-          "status": "planned"
+          "owner": "Forge"
         }
       },
       "type": "text",
-      "text": "## System: build container image\n- **Kind:** worker\n- **Owner:** Forge\n- **Status:** planned",
+      "text": "## System: build container image\n- **Kind:** worker\n- **Owner:** Forge",
       "styleAttributes": {
         "textAlign": "center"
       }
@@ -409,12 +399,11 @@
           "name": "Save run setup",
           "purpose": "ECR image URI",
           "kind": "worker",
-          "owner": "Forge",
-          "status": "planned"
+          "owner": "Forge"
         }
       },
       "type": "text",
-      "text": "## System: Save run setup\n- **Purpose:** ECR image URI\n- **Kind:** worker\n- **Owner:** Forge\n- **Status:** planned",
+      "text": "## System: Save run setup\n- **Kind:** worker\n- **Purpose:** ECR image URI\n- **Owner:** Forge",
       "styleAttributes": {
         "textAlign": "center"
       }
@@ -431,12 +420,11 @@
           "name": "Validate artifact",
           "purpose": "Exists + SHA-256",
           "kind": "worker",
-          "owner": "Forge",
-          "status": "planned"
+          "owner": "Forge"
         }
       },
       "type": "text",
-      "text": "## System: Validate artifact\n- **Purpose:** Exists + SHA-256\n- **Kind:** worker\n- **Owner:** Forge\n- **Status:** planned",
+      "text": "## System: Validate artifact\n- **Kind:** worker\n- **Purpose:** Exists + SHA-256\n- **Owner:** Forge",
       "styleAttributes": {
         "textAlign": "center"
       }
@@ -453,12 +441,11 @@
           "name": "Create new image",
           "purpose": "Record image URI",
           "kind": "worker",
-          "owner": "Forge",
-          "status": "planned"
+          "owner": "Forge"
         }
       },
       "type": "text",
-      "text": "## System: Create new image\n- **Purpose:** Record image URI\n- **Kind:** worker\n- **Owner:** Forge\n- **Status:** planned",
+      "text": "## System: Create new image\n- **Kind:** worker\n- **Purpose:** Record image URI\n- **Owner:** Forge",
       "styleAttributes": {
         "textAlign": "center"
       }
@@ -473,11 +460,12 @@
         "entityType": "note",
         "fields": {
           "name": "2. Save image → Model Product",
-          "body": "**Update existing row.** Values are shortened.\n\n| id | name | status | container_id |\n| --- | --- | --- | --- |\n| `1111…1111` | `model-x` | **`staged`** | `ECR image digest URI` |\n\n**API change needed:** the current runtime route also requires `task_definition_arn`. The target Registry reference is the image URI. ECS still uses a task definition."
+          "body": "**Update existing row.** Values are shortened.\n\n| id | name | status | container_id |\n| --- | --- | --- | --- |\n| `1111…1111` | `model-x` | **`staged`** | `ECR image digest URI` |\n\n**API change needed:** the current runtime route also requires `task_definition_arn`. The target Registry reference is the image URI. ECS still uses a task definition.",
+          "kind": "note"
         }
       },
       "type": "text",
-      "text": "## Note: 2. Save image → Model Product\n- **Note:** **Update existing row.** Values are shortened.\n\n| id | name | status | container_id |\n| --- | --- | --- | --- |\n| `1111…1111` | `model-x` | **`staged`** | `ECR image digest URI` |\n\n**API change needed:** the current runtime route also requires `task_definition_arn`. The target Registry reference is the image URI. ECS still uses a task definition."
+      "text": "## Note: 2. Save image → Model Product\n- **Kind:** note\n- **Note:** **Update existing row.** Values are shortened.\n\n| id | name | status | container_id |\n| --- | --- | --- | --- |\n| `1111…1111` | `model-x` | **`staged`** | `ECR image digest URI` |\n\n**API change needed:** the current runtime route also requires `task_definition_arn`. The target Registry reference is the image URI. ECS still uses a task definition."
     },
     {
       "id": "9b29cef36c67f7a8",
@@ -518,11 +506,12 @@
         "entityType": "note",
         "fields": {
           "name": "3. New staging Deployment",
-          "body": "**New row.** This table shows deployed field names.\n\n| id | model_id | previous_model_id | model_family | product | region_name | deployed_date |\n| --- | --- | --- | --- | --- | --- | --- |\n| `7777…7777` | `1111…1111` | `null` | `thor` | `midthor` | `na` | `2026-11-04` |\n\n**API change needed:** record and select by environment; support multiple staged models. The image URI is currently on Model Product. Its final placement needs a decision."
+          "body": "**New row.** This table shows deployed field names.\n\n| id | model_id | previous_model_id | model_family | product | region_name | deployed_date |\n| --- | --- | --- | --- | --- | --- | --- |\n| `7777…7777` | `1111…1111` | `null` | `thor` | `midthor` | `na` | `2026-11-04` |\n\n**API change needed:** record and select by environment; support multiple staged models. The image URI is currently on Model Product. Its final placement needs a decision.",
+          "kind": "note"
         }
       },
       "type": "text",
-      "text": "## Note: 3. New staging Deployment\n- **Note:** **New row.** This table shows deployed field names.\n\n| id | model_id | previous_model_id | model_family | product | region_name | deployed_date |\n| --- | --- | --- | --- | --- | --- | --- |\n| `7777…7777` | `1111…1111` | `null` | `thor` | `midthor` | `na` | `2026-11-04` |\n\n**API change needed:** record and select by environment; support multiple staged models. The image URI is currently on Model Product. Its final placement needs a decision."
+      "text": "## Note: 3. New staging Deployment\n- **Kind:** note\n- **Note:** **New row.** This table shows deployed field names.\n\n| id | model_id | previous_model_id | model_family | product | region_name | deployed_date |\n| --- | --- | --- | --- | --- | --- | --- |\n| `7777…7777` | `1111…1111` | `null` | `thor` | `midthor` | `na` | `2026-11-04` |\n\n**API change needed:** record and select by environment; support multiple staged models. The image URI is currently on Model Product. Its final placement needs a decision."
     },
     {
       "id": "example-register-model-x",
@@ -534,11 +523,12 @@
         "entityType": "note",
         "fields": {
           "name": "1. Register candidate → Model Product",
-          "body": "**New row.** Illustrative values; other fields omitted.\n\n| id | name | family | product | region_name | status | container_id |\n| --- | --- | --- | --- | --- | --- | --- |\n| `1111…1111` | `model-x` | `thor` | `midthor` | `na` | **`candidate`** | `null` |\n\n**CI/CD History: new row**\n\n| id | model_id | staging_start_date | production_start_date |\n| --- | --- | --- | --- |\n| `3333…3333` | `1111…1111` | `null` | `null` |\n\nTwo separate API requests today; model registration does not create History."
+          "body": "**New row.** Illustrative values; other fields omitted.\n\n| id | name | family | product | region_name | status | container_id |\n| --- | --- | --- | --- | --- | --- | --- |\n| `1111…1111` | `model-x` | `thor` | `midthor` | `na` | **`candidate`** | `null` |\n\n**CI/CD History: new row**\n\n| id | model_id | staging_start_date | production_start_date |\n| --- | --- | --- | --- |\n| `3333…3333` | `1111…1111` | `null` | `null` |\n\nTwo separate API requests today; model registration does not create History.",
+          "kind": "note"
         }
       },
       "type": "text",
-      "text": "## Note: 1. Register candidate → Model Product\n- **Note:** **New row.** Illustrative values; other fields omitted.\n\n| id | name | family | product | region_name | status | container_id |\n| --- | --- | --- | --- | --- | --- | --- |\n| `1111…1111` | `model-x` | `thor` | `midthor` | `na` | **`candidate`** | `null` |\n\n**CI/CD History: new row**\n\n| id | model_id | staging_start_date | production_start_date |\n| --- | --- | --- | --- |\n| `3333…3333` | `1111…1111` | `null` | `null` |\n\nTwo separate API requests today; model registration does not create History."
+      "text": "## Note: 1. Register candidate → Model Product\n- **Kind:** note\n- **Note:** **New row.** Illustrative values; other fields omitted.\n\n| id | name | family | product | region_name | status | container_id |\n| --- | --- | --- | --- | --- | --- | --- |\n| `1111…1111` | `model-x` | `thor` | `midthor` | `na` | **`candidate`** | `null` |\n\n**CI/CD History: new row**\n\n| id | model_id | staging_start_date | production_start_date |\n| --- | --- | --- | --- |\n| `3333…3333` | `1111…1111` | `null` | `null` |\n\nTwo separate API requests today; model registration does not create History."
     },
     {
       "id": "1ce21b780432d8f7",
@@ -552,12 +542,11 @@
           "name": "Promote model",
           "purpose": "After approval",
           "kind": "worker",
-          "owner": "Forge",
-          "status": "planned"
+          "owner": "Forge"
         }
       },
       "type": "text",
-      "text": "## System: Promote model\n- **Purpose:** After approval\n- **Kind:** worker\n- **Owner:** Forge\n- **Status:** planned",
+      "text": "## System: Promote model\n- **Kind:** worker\n- **Purpose:** After approval\n- **Owner:** Forge",
       "styleAttributes": {}
     },
     {
@@ -571,11 +560,12 @@
         "entityType": "note",
         "fields": {
           "name": "5. Deployment after promotion",
-          "body": "**Update existing row.** Example assumes Model Y was previously selected.\n\n| id | model_id | previous_model_id | model_family | product | region_name | deployed_date |\n| --- | --- | --- | --- | --- | --- | --- |\n| `7777…7777` | `1111…1111` | `2222…2222` | `thor` | `midthor` | `na` | **`2026-11-11`** |\n\n**Model Product: update status**\n\n| id | name | status |\n| --- | --- | --- |\n| `1111…1111` | `model-x` | **`production`** |\n\n**API change needed:** record the environment and end staging. Current promotion updates a separate production slot."
+          "body": "**Update existing row.** Example assumes Model Y was previously selected.\n\n| id | model_id | previous_model_id | model_family | product | region_name | deployed_date |\n| --- | --- | --- | --- | --- | --- | --- |\n| `7777…7777` | `1111…1111` | `2222…2222` | `thor` | `midthor` | `na` | **`2026-11-11`** |\n\n**Model Product: update status**\n\n| id | name | status |\n| --- | --- | --- |\n| `1111…1111` | `model-x` | **`production`** |\n\n**API change needed:** record the environment and end staging. Current promotion updates a separate production slot.",
+          "kind": "note"
         }
       },
       "type": "text",
-      "text": "## Note: 5. Deployment after promotion\n- **Note:** **Update existing row.** Example assumes Model Y was previously selected.\n\n| id | model_id | previous_model_id | model_family | product | region_name | deployed_date |\n| --- | --- | --- | --- | --- | --- | --- |\n| `7777…7777` | `1111…1111` | `2222…2222` | `thor` | `midthor` | `na` | **`2026-11-11`** |\n\n**Model Product: update status**\n\n| id | name | status |\n| --- | --- | --- |\n| `1111…1111` | `model-x` | **`production`** |\n\n**API change needed:** record the environment and end staging. Current promotion updates a separate production slot."
+      "text": "## Note: 5. Deployment after promotion\n- **Kind:** note\n- **Note:** **Update existing row.** Example assumes Model Y was previously selected.\n\n| id | model_id | previous_model_id | model_family | product | region_name | deployed_date |\n| --- | --- | --- | --- | --- | --- | --- |\n| `7777…7777` | `1111…1111` | `2222…2222` | `thor` | `midthor` | `na` | **`2026-11-11`** |\n\n**Model Product: update status**\n\n| id | name | status |\n| --- | --- | --- |\n| `1111…1111` | `model-x` | **`production`** |\n\n**API change needed:** record the environment and end staging. Current promotion updates a separate production slot."
     },
     {
       "id": "example-history-second-x",
@@ -587,11 +577,12 @@
         "entityType": "note",
         "fields": {
           "name": "4. Promotion → CI/CD History",
-          "body": "**Update existing row.**\n\n| id | model_id | staging_start_date | staging_end_date | production_start_date |\n| --- | --- | --- | --- | --- |\n| `3333…3333` | `1111…1111` | `2026-11-04` | **`2026-11-11`** | **`2026-11-11`** |\n\n**Needs change:** current promotion creates a new History row; it does not update this row."
+          "body": "**Update existing row.**\n\n| id | model_id | staging_start_date | staging_end_date | production_start_date |\n| --- | --- | --- | --- | --- |\n| `3333…3333` | `1111…1111` | `2026-11-04` | **`2026-11-11`** | **`2026-11-11`** |\n\n**Needs change:** current promotion creates a new History row; it does not update this row.",
+          "kind": "note"
         }
       },
       "type": "text",
-      "text": "## Note: 4. Promotion → CI/CD History\n- **Note:** **Update existing row.**\n\n| id | model_id | staging_start_date | staging_end_date | production_start_date |\n| --- | --- | --- | --- | --- |\n| `3333…3333` | `1111…1111` | `2026-11-04` | **`2026-11-11`** | **`2026-11-11`** |\n\n**Needs change:** current promotion creates a new History row; it does not update this row."
+      "text": "## Note: 4. Promotion → CI/CD History\n- **Kind:** note\n- **Note:** **Update existing row.**\n\n| id | model_id | staging_start_date | staging_end_date | production_start_date |\n| --- | --- | --- | --- | --- |\n| `3333…3333` | `1111…1111` | `2026-11-04` | **`2026-11-11`** | **`2026-11-11`** |\n\n**Needs change:** current promotion creates a new History row; it does not update this row."
     },
     {
       "id": "meeting-deployment-role",
@@ -653,11 +644,12 @@
         "entityType": "note",
         "fields": {
           "name": "3a. Staging → CI/CD History",
-          "body": "**Update existing row.**\n\n| id | model_id | staging_start_date | staging_end_date | production_start_date |\n| --- | --- | --- | --- | --- |\n| `3333…3333` | `1111…1111` | **`2026-11-04`** | `null` | `null` |\n\n**Needs change:** the deployed History API has no update route."
+          "body": "**Update existing row.**\n\n| id | model_id | staging_start_date | staging_end_date | production_start_date |\n| --- | --- | --- | --- | --- |\n| `3333…3333` | `1111…1111` | **`2026-11-04`** | `null` | `null` |\n\n**Needs change:** the deployed History API has no update route.",
+          "kind": "note"
         }
       },
       "type": "text",
-      "text": "## Note: 3a. Staging → CI/CD History\n- **Note:** **Update existing row.**\n\n| id | model_id | staging_start_date | staging_end_date | production_start_date |\n| --- | --- | --- | --- | --- |\n| `3333…3333` | `1111…1111` | **`2026-11-04`** | `null` | `null` |\n\n**Needs change:** the deployed History API has no update route."
+      "text": "## Note: 3a. Staging → CI/CD History\n- **Kind:** note\n- **Note:** **Update existing row.**\n\n| id | model_id | staging_start_date | staging_end_date | production_start_date |\n| --- | --- | --- | --- | --- |\n| `3333…3333` | `1111…1111` | **`2026-11-04`** | `null` | `null` |\n\n**Needs change:** the deployed History API has no update route."
     },
     {
       "id": "example-evaluation-history-x",
@@ -669,11 +661,12 @@
         "entityType": "note",
         "fields": {
           "name": "3b. Daily evaluation → CI/CD History",
-          "body": "**Separate daily row.** The current evaluation route creates this record.\n\n| id | model_id | run_date | passed | prefect_run_id |\n| --- | --- | --- | --- | --- |\n| `4444…4444` | `1111…1111` | `2026-11-04` | **`true`** | `run-01` |\n\nApproval currently checks consecutive passing days. Keep these daily results."
+          "body": "**Separate daily row.** The current evaluation route creates this record.\n\n| id | model_id | run_date | passed | prefect_run_id |\n| --- | --- | --- | --- | --- |\n| `4444…4444` | `1111…1111` | `2026-11-04` | **`true`** | `run-01` |\n\nApproval currently checks consecutive passing days. Keep these daily results.",
+          "kind": "note"
         }
       },
       "type": "text",
-      "text": "## Note: 3b. Daily evaluation → CI/CD History\n- **Note:** **Separate daily row.** The current evaluation route creates this record.\n\n| id | model_id | run_date | passed | prefect_run_id |\n| --- | --- | --- | --- | --- |\n| `4444…4444` | `1111…1111` | `2026-11-04` | **`true`** | `run-01` |\n\nApproval currently checks consecutive passing days. Keep these daily results."
+      "text": "## Note: 3b. Daily evaluation → CI/CD History\n- **Kind:** note\n- **Note:** **Separate daily row.** The current evaluation route creates this record.\n\n| id | model_id | run_date | passed | prefect_run_id |\n| --- | --- | --- | --- | --- |\n| `4444…4444` | `1111…1111` | `2026-11-04` | **`true`** | `run-01` |\n\nApproval currently checks consecutive passing days. Keep these daily results."
     },
     {
       "id": "promotion-review-gate",
@@ -683,17 +676,16 @@
       "height": 208,
       "color": "3",
       "app": {
-        "entityType": "process",
+        "entityType": "system",
         "fields": {
           "name": "Review gate",
-          "purpose": "Model team tests staging results.\n\nApprove and merge PR to `main` to start the production run.",
-          "mode": "hybrid",
+          "purpose": "Model team tests staging results.\n\nApprove and merge PR to `main` to start the production run.\nMode: hybrid",
           "owner": "Model team",
-          "status": "planned"
+          "kind": "job"
         }
       },
       "type": "text",
-      "text": "## Process: Review gate\n- **Purpose:** Model team tests staging results.\n\nApprove and merge PR to `main` to start the production run.\n- **Mode:** hybrid\n- **Owner:** Model team\n- **Status:** planned"
+      "text": "## System: Review gate\n- **Kind:** job\n- **Purpose:** Model team tests staging results.\n\nApprove and merge PR to `main` to start the production run.\nMode: hybrid\n- **Owner:** Model team"
     },
     {
       "id": "544a81ccd7bf421e",
@@ -708,11 +700,11 @@
           "kind": "model",
           "version": "candidate",
           "owner": "Forge",
-          "status": "planned"
+          "purpose": "Status: planned"
         }
       },
       "type": "text",
-      "text": "## Artifact: Model X\n- **Kind:** model\n- **Version:** candidate\n- **Owner:** Forge\n- **Status:** planned",
+      "text": "## Artifact: Model X\n- **Kind:** model\n- **Version:** candidate\n- **Owner:** Forge\n- **Purpose:** Status: planned",
       "styleAttributes": {
         "textAlign": "center"
       }
@@ -729,12 +721,11 @@
           "name": "update CI history",
           "purpose": "Staging + job run",
           "kind": "worker",
-          "owner": "Forge",
-          "status": "planned"
+          "owner": "Forge"
         }
       },
       "type": "text",
-      "text": "## System: update CI history\n- **Purpose:** Staging + job run\n- **Kind:** worker\n- **Owner:** Forge\n- **Status:** planned",
+      "text": "## System: update CI history\n- **Kind:** worker\n- **Purpose:** Staging + job run\n- **Owner:** Forge",
       "styleAttributes": {}
     },
     {
@@ -748,11 +739,12 @@
         "entityType": "note",
         "fields": {
           "name": "Model delivery workflow",
-          "body": "**Target design — not yet deployed.** Each protected-branch PR merge starts a separate run. `staging` delivers for evaluation; `main` delivers to production. Steps depend on the branch.\n\nTable headers use deployed fields. **Needs change** marks required changes."
+          "body": "**Target design — not yet deployed.** Each protected-branch PR merge starts a separate run. `staging` delivers for evaluation; `main` delivers to production. Steps depend on the branch.\n\nTable headers use deployed fields. **Needs change** marks required changes.",
+          "kind": "note"
         }
       },
       "type": "text",
-      "text": "## Note: Model delivery workflow\n- **Note:** **Target design — not yet deployed.** Each protected-branch PR merge starts a separate run. `staging` delivers for evaluation; `main` delivers to production. Steps depend on the branch.\n\nTable headers use deployed fields. **Needs change** marks required changes."
+      "text": "## Note: Model delivery workflow\n- **Kind:** note\n- **Note:** **Target design — not yet deployed.** Each protected-branch PR merge starts a separate run. `staging` delivers for evaluation; `main` delivers to production. Steps depend on the branch.\n\nTable headers use deployed fields. **Needs change** marks required changes."
     },
     {
       "id": "88a887a16ab2391f",
@@ -764,15 +756,13 @@
         "entityType": "repository",
         "fields": {
           "name": "midthor_inference",
-          "provider": "github",
           "url": "https://github.com/example/midthor_inference",
-          "defaultBranch": "staging",
           "owner": "Forge",
-          "status": "planned"
+          "purpose": "Default branch: staging\nStatus: planned"
         }
       },
       "type": "text",
-      "text": "## Repository: midthor_inference\n- **Provider:** github\n- **URL:** https://github.com/example/midthor_inference\n- **Default branch:** staging\n- **Owner:** Forge\n- **Status:** planned",
+      "text": "## Repository: midthor_inference\n- **URL:** https://github.com/example/midthor_inference\n- **Owner:** Forge\n- **Purpose:** Default branch: staging\nStatus: planned",
       "styleAttributes": {
         "textAlign": "center"
       }
@@ -790,11 +780,11 @@
           "kind": "model",
           "version": "candidate",
           "owner": "Forge",
-          "status": "planned"
+          "purpose": "Status: planned"
         }
       },
       "type": "text",
-      "text": "## Artifact: Model X\n- **Kind:** model\n- **Version:** candidate\n- **Owner:** Forge\n- **Status:** planned",
+      "text": "## Artifact: Model X\n- **Kind:** model\n- **Version:** candidate\n- **Owner:** Forge\n- **Purpose:** Status: planned",
       "styleAttributes": {
         "textAlign": "center"
       }
@@ -806,17 +796,16 @@
       "width": 480,
       "height": 137,
       "app": {
-        "entityType": "database",
+        "entityType": "system",
         "fields": {
           "name": "Model Artifacts Bucket",
-          "purpose": "",
-          "kind": "object",
-          "owner": "Forge",
-          "status": "planned"
+          "purpose": "Kind: object\nStatus: planned",
+          "kind": "database",
+          "owner": "Forge"
         }
       },
       "type": "text",
-      "text": "## Database: Model Artifacts Bucket\n- **Kind:** object\n- **Owner:** Forge\n- **Status:** planned",
+      "text": "## System: Model Artifacts Bucket\n- **Kind:** database\n- **Purpose:** Kind: object\nStatus: planned\n- **Owner:** Forge",
       "styleAttributes": {
         "textAlign": "center"
       }
@@ -834,12 +823,11 @@
           "name": "Protected branch merge triggers delivery",
           "purpose": "PR merged → `staging`: run staging delivery for evaluation.\n\nPR merged → `main`: run a separate production delivery.",
           "kind": "worker",
-          "owner": "Forge",
-          "status": "planned"
+          "owner": "Forge"
         }
       },
       "type": "text",
-      "text": "## System: Protected branch merge triggers delivery\n- **Purpose:** PR merged → `staging`: run staging delivery for evaluation.\n\nPR merged → `main`: run a separate production delivery.\n- **Kind:** worker\n- **Owner:** Forge\n- **Status:** planned"
+      "text": "## System: Protected branch merge triggers delivery\n- **Kind:** worker\n- **Purpose:** PR merged → `staging`: run staging delivery for evaluation.\n\nPR merged → `main`: run a separate production delivery.\n- **Owner:** Forge"
     }
   ],
   "edges": [
@@ -849,10 +837,11 @@
       "fromSide": "bottom",
       "toNode": "1ce21b780432d8f7",
       "toSide": "top",
-      "label": "production run",
+      "label": "uses",
       "app": {
-        "relationType": "orchestrates"
-      }
+        "relationType": "uses"
+      },
+      "color": "2"
     },
     {
       "id": "branch-trigger-to-delivery",
@@ -868,10 +857,11 @@
       "fromSide": "top",
       "toNode": "62cd986eb40cb746",
       "toSide": "top",
-      "label": "prepare run setup",
+      "label": "uses",
       "app": {
-        "relationType": "depends_on"
-      }
+        "relationType": "uses"
+      },
+      "color": "2"
     },
     {
       "id": "b062b2041049c832",
@@ -897,11 +887,12 @@
       "fromSide": "bottom",
       "toNode": "98a5d86ef9a8b5b1",
       "toSide": "top",
-      "label": "depends on",
+      "label": "uses",
       "app": {
-        "relationType": "depends_on"
+        "relationType": "uses"
       },
-      "styleAttributes": {}
+      "styleAttributes": {},
+      "color": "2"
     },
     {
       "id": "ff999de39ec1d057",
@@ -909,11 +900,12 @@
       "fromSide": "right",
       "toNode": "e613bddc3bec90da",
       "toSide": "left",
-      "label": "POST /v0/models",
+      "label": "uses",
       "app": {
-        "relationType": "calls"
+        "relationType": "uses"
       },
-      "styleAttributes": {}
+      "styleAttributes": {},
+      "color": "2"
     },
     {
       "id": "007e91d9c9656db9",
@@ -940,11 +932,12 @@
       "fromSide": "bottom",
       "toNode": "5246238608dfaed7",
       "toSide": "top",
-      "label": "continue or resume",
+      "label": "uses",
       "app": {
-        "relationType": "depends_on"
+        "relationType": "uses"
       },
-      "styleAttributes": {}
+      "styleAttributes": {},
+      "color": "2"
     },
     {
       "id": "b1490a745f42b022",
@@ -973,11 +966,12 @@
       "fromSide": "bottom",
       "toNode": "21413554f3dad598",
       "toSide": "top",
-      "label": "\n",
+      "label": "uses",
       "app": {
-        "relationType": "depends_on"
+        "relationType": "uses"
       },
-      "styleAttributes": {}
+      "styleAttributes": {},
+      "color": "2"
     },
     {
       "id": "a9f12621285971c3",
@@ -994,11 +988,12 @@
       "fromSide": "right",
       "toNode": "d66d03600d08f25a",
       "toSide": "left",
-      "label": "runtime PUT (change)",
+      "label": "uses",
       "app": {
-        "relationType": "calls"
+        "relationType": "uses"
       },
-      "styleAttributes": {}
+      "styleAttributes": {},
+      "color": "2"
     },
     {
       "id": "2868cafb9ff6ab13",
@@ -1044,11 +1039,12 @@
       "fromSide": "right",
       "toNode": "e8fb4c4958c4cd58",
       "toSide": "left",
-      "label": "update history",
+      "label": "uses",
       "app": {
-        "relationType": "calls"
+        "relationType": "uses"
       },
-      "styleAttributes": {}
+      "styleAttributes": {},
+      "color": "2"
     },
     {
       "id": "4eb20d9be4a6ace0",
@@ -1091,11 +1087,12 @@
       "fromSide": "bottom",
       "toNode": "promotion-review-gate",
       "toSide": "top",
-      "label": "evaluate",
+      "label": "uses",
       "app": {
-        "relationType": "runs"
+        "relationType": "uses"
       },
-      "styleAttributes": {}
+      "styleAttributes": {},
+      "color": "2"
     },
     {
       "id": "33436295f3a0fdd0",
@@ -1112,11 +1109,12 @@
       "fromSide": "right",
       "toNode": "8a1e321861a638dd",
       "toSide": "left",
-      "label": "promotion POST",
+      "label": "uses",
       "app": {
-        "relationType": "calls"
+        "relationType": "uses"
       },
-      "styleAttributes": {}
+      "styleAttributes": {},
+      "color": "2"
     },
     {
       "id": "c540b0d2db0eb0c7",
@@ -1218,11 +1216,12 @@
       "fromSide": "right",
       "toNode": "staging-deployment-api",
       "toSide": "left",
-      "label": "calls",
+      "label": "uses",
       "app": {
-        "relationType": "calls"
+        "relationType": "uses"
       },
-      "styleAttributes": {}
+      "styleAttributes": {},
+      "color": "2"
     },
     {
       "id": "2f7b8b2adaee5e91",
@@ -1250,16 +1249,17 @@
       "fromSide": "top",
       "toNode": "5246238608dfaed7",
       "toSide": "top",
-      "label": "new image URI",
+      "label": "uses",
       "app": {
-        "relationType": "depends_on"
+        "relationType": "uses"
       },
-      "styleAttributes": {}
+      "styleAttributes": {},
+      "color": "2"
     }
   ],
   "app": {
     "profile": "systems",
-    "profileVersion": 3,
+    "profileVersion": 5,
     "scope": "container"
   },
   "metadata": {

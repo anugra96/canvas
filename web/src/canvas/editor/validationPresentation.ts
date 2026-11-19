@@ -68,7 +68,7 @@ export interface ValidationGroup {
 const ISSUE_COPY: Record<CanvasProfileIssue['code'], { label: string; why: string }> = {
   untyped_text: {
     label: 'Untyped text',
-    why: 'Change the text card to a note, decision, or risk.',
+    why: 'Change the text card to a note.',
   },
   unknown_entity_type: {
     label: 'Unknown card type',
@@ -120,11 +120,7 @@ const ISSUE_COPY: Record<CanvasProfileIssue['code'], { label: string; why: strin
   },
   artifact_without_producer: {
     label: 'Artifact has no producer',
-    why: 'Add a System, Process, Repository, or API with a produces link.',
-  },
-  process_without_runner: {
-    label: 'Process has no runner',
-    why: 'Add an Actor or System with a runs link.',
+    why: 'Add a System or Repository with a produces link.',
   },
   example_invalid: {
     label: 'Invalid example',

@@ -22,7 +22,6 @@ import {
   StickyNote,
   Type,
   Undo2,
-  Workflow,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -59,7 +58,6 @@ interface CanvasCommandInput {
   onAddNote: () => void
   onAddCard: () => void
   onAddEntity: (entityTypeId: string) => void
-  onAddProcessCanvas: () => void
   onViews: () => void
   onReview: () => void
   onUndo: () => void
@@ -164,14 +162,6 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       surface: 'add',
       available: input.profileId === 'api',
       run: input.onAddResource,
-    },
-    {
-      id: 'add.process-canvas',
-      label: 'Process with canvas',
-      icon: Workflow,
-      surface: 'add',
-      available: input.profileId === 'systems',
-      run: input.onAddProcessCanvas,
     },
     {
       id: 'views',

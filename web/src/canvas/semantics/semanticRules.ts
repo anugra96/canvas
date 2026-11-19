@@ -52,14 +52,6 @@ export function validateSemanticRules(
       })
     }
 
-    if (type === 'process' && !relations.has('runs')) {
-      issues.push({
-        code: 'process_without_runner',
-        severity: 'warning',
-        message: `Process "${name}" is not run by an Actor or System.`,
-        nodeId: node.id,
-      })
-    }
 
   }
 

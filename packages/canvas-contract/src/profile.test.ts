@@ -69,6 +69,10 @@ describe('canvas profiles', () => {
     expect(canvasProfileSchema.safeParse(SYSTEMS_PROFILE).success).toBe(true)
     expect(canvasProfileSchema.safeParse(API_PROFILE).success).toBe(true)
     expect(canvasProfileSchema.safeParse(DATABASE_PROFILE).success).toBe(true)
+    expect(SYSTEMS_PROFILE.version).toBe(5)
+    expect(SYSTEMS_PROFILE.entityTypes).toEqual(['system', 'repository', 'actor', 'artifact', 'schema'])
+    expect(SYSTEMS_PROFILE.annotationTypes).toEqual(['note'])
+    expect(SYSTEMS_PROFILE.relationTypes).toEqual(['uses', 'produces', 'defines', 'relates_to'])
     expect(profileEntityTypeIds(SYSTEMS_PROFILE)).toContain('note')
     expect(profileEntityTypeIds(SYSTEMS_PROFILE)).toContain('schema')
     for (const rule of SYSTEMS_PROFILE.relationRules) {
@@ -129,37 +133,30 @@ describe('future profiles', () => {
 describe('Systems relation rules', () => {
   it('offers only relations allowed for the source and target types', () => {
     expect(allowedRelationTypes(SYSTEMS_PROFILE, 'system', 'system')).toEqual(['uses'])
-    expect(allowedRelationTypes(SYSTEMS_PROFILE, 'actor', 'process')).toEqual(['runs'])
     expect(allowedRelationTypes(SYSTEMS_PROFILE, 'actor', 'system')).toEqual(['uses'])
     expect(allowedRelationTypes(SYSTEMS_PROFILE, 'actor', 'repository')).toEqual(['uses'])
-    expect(allowedRelationTypes(SYSTEMS_PROFILE, 'system', 'process')).toEqual(['runs'])
-    expect(allowedRelationTypes(SYSTEMS_PROFILE, 'repository', 'process')).toEqual(['runs'])
-    expect(allowedRelationTypes(SYSTEMS_PROFILE, 'process', 'system')).toEqual(['uses'])
-    expect(allowedRelationTypes(SYSTEMS_PROFILE, 'process', 'process')).toEqual(['runs'])
-    expect(allowedRelationTypes(SYSTEMS_PROFILE, 'system', 'artifact')).toEqual(['produces', 'uses'])
+    expect(allowedRelationTypes(SYSTEMS_PROFILE, 'repository', 'system')).toEqual(['uses'])
+    expect(allowedRelationTypes(SYSTEMS_PROFILE, 'system', 'artifact')).toEqual(['uses', 'produces'])
     expect(allowedRelationTypes(SYSTEMS_PROFILE, 'system', 'repository')).toEqual(['uses'])
-    expect(allowedRelationTypes(SYSTEMS_PROFILE, 'repository', 'artifact')).toEqual(['produces'])
-    expect(allowedRelationTypes(SYSTEMS_PROFILE, 'process', 'artifact')).toEqual(['produces', 'uses'])
-    expect(allowedRelationTypes(SYSTEMS_PROFILE, 'repository', 'schema')).toEqual(['defines'])
+    expect(allowedRelationTypes(SYSTEMS_PROFILE, 'repository', 'artifact')).toEqual(['uses', 'produces'])
+    expect(allowedRelationTypes(SYSTEMS_PROFILE, 'repository', 'schema')).toEqual(['uses', 'defines'])
     expect(allowedRelationTypes(SYSTEMS_PROFILE, 'system', 'schema')).toEqual(['uses', 'defines'])
-    expect(allowedRelationTypes(SYSTEMS_PROFILE, 'schema', 'system')).toEqual(['describes'])
     expect(allowedRelationTypes(SYSTEMS_PROFILE, 'schema', 'schema')).toEqual(['uses'])
+    expect(allowedRelationTypes(SYSTEMS_PROFILE, 'schema', 'system')).toEqual([])
+    expect(allowedRelationTypes(SYSTEMS_PROFILE, 'artifact', 'artifact')).toEqual([])
     expect(allowedRelationTypes(SYSTEMS_PROFILE, 'service', 'api')).toEqual([])
   })
 
   it('selects a deterministic default relation', () => {
-    expect(defaultRelationType(SYSTEMS_PROFILE, 'system', 'artifact')).toBe('produces')
+    expect(defaultRelationType(SYSTEMS_PROFILE, 'system', 'artifact')).toBe('uses')
     expect(defaultRelationType(SYSTEMS_PROFILE, 'system', 'repository')).toBe('uses')
-    expect(defaultRelationType(SYSTEMS_PROFILE, 'repository', 'artifact')).toBe('produces')
-    expect(defaultRelationType(SYSTEMS_PROFILE, 'process', 'artifact')).toBe('produces')
-    expect(defaultRelationType(SYSTEMS_PROFILE, 'repository', 'process')).toBe('runs')
-    expect(defaultRelationType(SYSTEMS_PROFILE, 'repository', 'schema')).toBe('defines')
-    expect(defaultRelationType(SYSTEMS_PROFILE, 'schema', 'system')).toBe('describes')
+    expect(defaultRelationType(SYSTEMS_PROFILE, 'repository', 'artifact')).toBe('uses')
+    expect(defaultRelationType(SYSTEMS_PROFILE, 'repository', 'schema')).toBe('uses')
     expect(defaultRelationType(SYSTEMS_PROFILE, 'service', 'api')).toBeUndefined()
   })
 
   it('rejects invalid pairs and unknown relation types', () => {
-    expect(validateProfileRelation(SYSTEMS_PROFILE, 'runs', 'system', 'artifact')).toEqual({
+    expect(validateProfileRelation(SYSTEMS_PROFILE, 'produces', 'system', 'system')).toEqual({
       ok: false,
       reason: 'relation_not_allowed',
     })
@@ -173,9 +170,8 @@ describe('Systems relation rules', () => {
   it('allows annotation links in both directions', () => {
     expect(allowedRelationTypes(SYSTEMS_PROFILE, 'note', 'system')).toEqual(['relates_to'])
     expect(allowedRelationTypes(SYSTEMS_PROFILE, 'note', 'note')).toEqual(['relates_to'])
-    expect(allowedRelationTypes(SYSTEMS_PROFILE, 'decision', 'risk')).toEqual(['relates_to'])
     expect(allowedRelationTypes(SYSTEMS_PROFILE, 'system', 'note')).toEqual(['relates_to'])
-    expect(allowedRelationTypes(SYSTEMS_PROFILE, 'process', 'decision')).toEqual(['relates_to'])
+    expect(allowedRelationTypes(SYSTEMS_PROFILE, 'schema', 'note')).toEqual(['relates_to'])
     expect(allowedRelationTypes(SYSTEMS_PROFILE, 'system', 'system')).not.toContain('relates_to')
   })
 })
@@ -213,7 +209,7 @@ describe('profile canvas validation', () => {
         groupNode('group'),
       ],
       edges: [
-        edge('invalid', 'system', 'other', 'runs'),
+        edge('invalid', 'system', 'other', 'produces'),
         edge('missing-relation', 'system', 'other'),
         edge('unknown-relation', 'system', 'other', 'frobnicates'),
         edge('group-edge', 'system', 'group', 'uses'),
@@ -241,8 +237,6 @@ describe('API profile', () => {
       'security_scheme',
       'schema',
       'note',
-      'decision',
-      'risk',
     ])
     expect(allowedRelationTypes(API_PROFILE, 'endpoint', 'schema')).toEqual(['accepts', 'returns'])
     expect(allowedRelationTypes(API_PROFILE, 'resource', 'endpoint')).toEqual(['contains'])

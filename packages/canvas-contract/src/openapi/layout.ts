@@ -110,7 +110,7 @@ export function layoutApiCanvas(canvas: JsonCanvas, sizes: ApiSizeMap = {}): Jso
   const api = nodes.find((node) => getEntityMeta(node)?.entityType === 'api_definition')
   const security = nodes.filter((node) => getEntityMeta(node)?.entityType === 'security_scheme')
   const annotations = nodes
-    .filter((node) => ['note', 'decision', 'risk'].includes(getEntityMeta(node)?.entityType ?? ''))
+    .filter((node) => getEntityMeta(node)?.entityType === 'note')
     .sort((left, right) => left.x - right.x || left.y - right.y || left.id.localeCompare(right.id))
   const resources = nodes
     .filter((node) => getEntityMeta(node)?.entityType === 'resource')

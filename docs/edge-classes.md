@@ -12,7 +12,7 @@ OpenAPI export are unchanged.
 
 ```text
 Display: [Minimal] [Standard] [All]   ▸ Classes ☑ flow ☑ contract ☐ structure ☐ annotation ☑ access
-                                      ▸ Cards   ☑ System ☑ Process ☐ Schema ☐ Note ...
+                                      ▸ Cards   ☑ System ☑ Repository ☐ Schema ☐ Note ...
                                       "4 cards, 17 edges hidden"
 ```
 
@@ -27,11 +27,11 @@ stored data changes).
 
 | Class | Meaning | Relation types |
 | --- | --- | --- |
-| `flow` | Runtime dependency and data movement | `runs`, `calls`, `orchestrates`, `uses`, `produces`, `reads_from`, `writes_to`, `stores_in`, `publishes`, `consumes`, `emits`, `handles`, `carries`, `depends_on` |
-| `contract` | Payload and schema links | `accepts`, `returns`, `describes`, `references` |
-| `structure` | Ownership and containment | `contains`, `defines`, `owns`, `implements`, `exposes`, `deploys_to` |
+| `flow` | Runtime dependency and data movement | `uses`, `produces` |
+| `contract` | Payload and schema links | `accepts`, `returns`, `references` |
+| `structure` | Ownership and containment | `contains`, `defines` |
 | `access` | Authentication | `authenticates_via` |
-| `annotation` | Notes, Decisions, Risks | `relates_to` |
+| `annotation` | Notes; the Note kind sets the tone | `relates_to` |
 | `unspecified` | No relation type yet ("Define relation") | — |
 
 One exception, in one function `edgeClass(edge, source, target)` in the
@@ -69,7 +69,7 @@ edge tooltip.
 
 - One checkbox per card type present on the canvas (with its count). A hidden
   card type hides its cards and every edge to or from them.
-- Annotation cards (Note, Decision, Risk) are one group.
+- Note cards are one group; their kind sets the tone.
 - A hidden card that is the target of a Review "Show" action is revealed for
   that action and the Display summary says so.
 

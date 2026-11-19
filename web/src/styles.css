@@ -9703,3 +9703,35 @@ select {
   font-size: 11px;
   font-weight: 700;
 }
+
+.note-kind {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  padding: 2px 6px;
+  border: 1px solid var(--ui-line-strong);
+  border-radius: calc(var(--radius) - 2px);
+  color: var(--ui-muted);
+  background: var(--ui-highlight);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.note-kind-decision {
+  border-color: color-mix(in srgb, var(--ui-accent) 50%, transparent);
+  color: var(--ui-accent-bright);
+  background: color-mix(in srgb, var(--ui-accent) 14%, transparent);
+}
+
+.note-kind-risk {
+  border-color: color-mix(in srgb, var(--ui-danger-text) 55%, transparent);
+  color: var(--ui-danger-text);
+  background: color-mix(in srgb, var(--ui-danger-text) 12%, transparent);
+}
+
+.note-kind-question {
+  border-color: var(--ui-warning-border);
+  color: var(--ui-warning-text);
+  background: var(--ui-warning-bg);
+}

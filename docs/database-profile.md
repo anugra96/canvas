@@ -42,11 +42,10 @@ Database canvas  [Database: canvas_auth (Postgres 16)]
 | Table | `table` | `CREATE TABLE` plus its constraints, indexes, and comments | One table |
 | Enum | `db_enum` | `CREATE TYPE ... AS ENUM` | One enum type |
 
-Annotations: Note, Decision, Risk (shared).
+Annotation: Note (shared); its kind sets a short label and tone.
 
 The user-facing label of `db_schema` is **Schema**. It is not the JSON Schema
-card; the Database profile does not offer that card. The existing `database`
-entity type stays the Systems card for a durable state boundary.
+card; the Database profile does not offer that card. A durable state boundary in Systems is a System with kind `database`.
 
 ### Fields
 

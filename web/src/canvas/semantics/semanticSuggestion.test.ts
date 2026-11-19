@@ -16,7 +16,6 @@ describe('semantic suggestions', () => {
       nameSuffix: 'producer',
       description: 'Add a System that produces this artifact.',
     })
-    expect(semanticSuggestionForIssue(issue('process_without_runner', 'process'))?.entityType).toBe('actor')
   })
 
   it('does not suggest card creation for other warnings', () => {

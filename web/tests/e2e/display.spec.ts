@@ -9,15 +9,15 @@ test('filters edges with Display, reveals a selected card, and resets', async ({
         nodes: [
           {
             id: 'system', type: 'text', x: 0, y: 0, width: 320, height: 220, text: '',
-            app: { entityType: 'system', fields: { name: 'Order Service', kind: 'service', status: 'active' } },
+            app: { entityType: 'system', fields: { name: 'Order Service', kind: 'service' } },
           },
           {
-            id: 'process', type: 'text', x: 460, y: 0, width: 300, height: 200, text: '',
-            app: { entityType: 'process', fields: { name: 'Checkout', mode: 'automated' } },
+            id: 'job', type: 'text', x: 460, y: 0, width: 300, height: 200, text: '',
+            app: { entityType: 'system', fields: { name: 'Checkout', kind: 'job' } },
           },
           {
             id: 'repository', type: 'text', x: 0, y: 320, width: 320, height: 200, text: '',
-            app: { entityType: 'repository', fields: { name: 'Orders', provider: 'github' } },
+            app: { entityType: 'repository', fields: { name: 'Orders' } },
           },
           {
             id: 'schema', type: 'text', x: 460, y: 320, width: 320, height: 220, text: '',
@@ -29,9 +29,9 @@ test('filters edges with Display, reveals a selected card, and resets', async ({
           },
         ],
         edges: [
-          { id: 'runs', fromNode: 'system', toNode: 'process', app: { relationType: 'runs' } },
-          { id: 'defines', fromNode: 'repository', toNode: 'schema', app: { relationType: 'defines' } },
-          { id: 'describes', fromNode: 'schema', toNode: 'system', app: { relationType: 'describes' } },
+          { id: 'uses', fromNode: 'system', toNode: 'job', app: { relationType: 'uses' } },
+          { id: 'defines-repo', fromNode: 'repository', toNode: 'schema', app: { relationType: 'defines' } },
+          { id: 'defines-system', fromNode: 'system', toNode: 'schema', app: { relationType: 'defines' } },
           { id: 'relates', fromNode: 'note', toNode: 'system', app: { relationType: 'relates_to' } },
           { id: 'untyped', fromNode: 'system', toNode: 'note' },
         ],
@@ -44,8 +44,8 @@ test('filters edges with Display, reveals a selected card, and resets', async ({
   await page.goto(`/canvas/${canvas.id}`)
   await expect(page.locator('.canvas-flow')).toBeVisible()
 
-  await expect(page.locator('.react-flow__edge')).toHaveCount(3)
-  await expect(page.getByRole('button', { name: /2 edges hidden/ })).toContainText('0 cards, 2 edges hidden')
+  await expect(page.locator('.react-flow__edge')).toHaveCount(2)
+  await expect(page.getByRole('button', { name: /3 edges hidden/ })).toContainText('0 cards, 3 edges hidden')
 
   await page.getByRole('button', { name: 'Display', exact: true }).click()
   const display = page.getByRole('dialog', { name: 'Display' })
@@ -65,6 +65,6 @@ test('filters edges with Display, reveals a selected card, and resets', async ({
   await display.getByRole('button', { name: 'Reset' }).click()
   await page.keyboard.press('Escape')
 
-  await expect(page.locator('.react-flow__edge')).toHaveCount(3)
-  await expect(page.getByRole('button', { name: /2 edges hidden/ })).toContainText('0 cards, 2 edges hidden')
+  await expect(page.locator('.react-flow__edge')).toHaveCount(2)
+  await expect(page.getByRole('button', { name: /3 edges hidden/ })).toContainText('0 cards, 3 edges hidden')
 })

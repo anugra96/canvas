@@ -26,24 +26,9 @@ function edge(relationType?: string): CanvasEdge {
 }
 
 const EXPECTED_CATEGORIES = {
-  flow: [
-    'runs',
-    'calls',
-    'orchestrates',
-    'uses',
-    'produces',
-    'reads_from',
-    'writes_to',
-    'stores_in',
-    'publishes',
-    'consumes',
-    'emits',
-    'handles',
-    'carries',
-    'depends_on',
-  ],
-  contract: ['accepts', 'returns', 'describes', 'references'],
-  structure: ['contains', 'defines', 'owns', 'implements', 'exposes', 'deploys_to'],
+  flow: ['uses', 'produces'],
+  contract: ['accepts', 'returns', 'references'],
+  structure: ['contains', 'defines'],
   access: ['authenticates_via'],
   annotation: ['relates_to'],
 } as const
@@ -62,13 +47,13 @@ describe('edge classes', () => {
   })
 
   it.each([
-    { name: 'runtime dependency', relationType: 'runs', source: 'system', target: 'process', expected: 'flow' },
+    { name: 'runtime dependency', relationType: 'uses', source: 'system', target: 'system', expected: 'flow' },
     { name: 'payload link', relationType: 'accepts', source: 'endpoint', target: 'schema', expected: 'contract' },
     { name: 'containment', relationType: 'contains', source: 'resource', target: 'endpoint', expected: 'structure' },
     { name: 'authentication', relationType: 'authenticates_via', source: 'endpoint', target: 'security_scheme', expected: 'access' },
     { name: 'annotation', relationType: 'relates_to', source: 'note', target: 'system', expected: 'annotation' },
-    { name: 'no relation type', relationType: undefined, source: 'system', target: 'process', expected: 'unspecified' },
-    { name: 'unknown relation type', relationType: 'not_a_relation', source: 'system', target: 'process', expected: 'unspecified' },
+    { name: 'no relation type', relationType: undefined, source: 'system', target: 'system', expected: 'unspecified' },
+    { name: 'unknown relation type', relationType: 'not_a_relation', source: 'system', target: 'system', expected: 'unspecified' },
     { name: 'uses between cards', relationType: 'uses', source: 'system', target: 'system', expected: 'flow' },
     { name: 'uses a schema target', relationType: 'uses', source: 'system', target: 'schema', expected: 'contract' },
     { name: 'uses a schema source', relationType: 'uses', source: 'schema', target: 'system', expected: 'contract' },

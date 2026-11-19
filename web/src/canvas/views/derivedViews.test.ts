@@ -17,8 +17,8 @@ import { toFlowCanvas } from '../model/adapter'
 import {
   deriveSequence,
   deriveView,
-  recommendedSequenceProcessId,
-  sequenceProcessOptions,
+  recommendedSequenceJobId,
+  sequenceJobOptions,
 } from './derivedViews'
 
 function card(
@@ -60,7 +60,7 @@ const canvas = {
   nodes: [
     card('Release Manager', 'actor', { kind: 'role' }),
     card('Repository', 'repository', { provider: 'github' }),
-    card('Deploy', 'process', { mode: 'automated' }),
+    card('Deploy', 'system', { kind: 'job' }),
     card('API', 'system', { kind: 'api' }),
     card('Model', 'artifact', { kind: 'container', version: '2.1.0' }),
     card('OpenAPI', 'schema', { kind: 'api', version: '1.4.0' }),
@@ -76,12 +76,11 @@ const canvas = {
     },
   ],
   edges: [
-    relation('runs-actor', 'Release Manager', 'Deploy', 'runs'),
-    relation('runs-repo', 'Repository', 'Deploy', 'runs'),
+    relation('uses-actor', 'Release Manager', 'Deploy', 'uses'),
+    relation('uses-repo', 'Repository', 'Deploy', 'uses'),
     relation('uses-api', 'Deploy', 'API', 'uses'),
     relation('produces-model', 'Deploy', 'Model', 'produces'),
     relation('defines-api', 'API', 'OpenAPI', 'defines'),
-    relation('describes-api', 'OpenAPI', 'API', 'describes'),
     relation('note-link', 'Deploy', 'Delivery note', 'relates_to'),
   ],
 } as JsonCanvas
@@ -110,42 +109,40 @@ describe('derived views', () => {
     expect(ids('contracts')).toEqual(['API', 'OpenAPI'])
     expect(ids('pipeline')).toEqual(['API', 'Deploy', 'Model', 'Release Manager', 'Repository'])
 
-    expect(relationIds('runtime')).toEqual(['produces-model', 'runs-actor', 'uses-api'])
-    expect(relationIds('contracts')).toEqual(['defines-api', 'describes-api'])
+    expect(relationIds('runtime')).toEqual(['produces-model', 'uses-actor', 'uses-api'])
+    expect(relationIds('contracts')).toEqual(['defines-api'])
     expect(relationIds('data-flow')).toEqual([
       'defines-api',
-      'describes-api',
       'produces-model',
       'uses-api',
     ])
   })
 
-  it('infers a stable process sequence from nearby relations', () => {
-    const processes = sequenceProcessOptions(flow.nodes, DEFAULT_ONTOLOGY)
-    expect(processes.map((process) => process.id)).toEqual(['Deploy'])
-    expect(recommendedSequenceProcessId(flow.nodes, flow.edges, DEFAULT_ONTOLOGY)).toBe('Deploy')
+  it('infers a stable job sequence from nearby relations', () => {
+    const jobs = sequenceJobOptions(flow.nodes, DEFAULT_ONTOLOGY)
+    expect(jobs.map((job) => job.id)).toEqual(['Deploy'])
+    expect(recommendedSequenceJobId(flow.nodes, flow.edges, DEFAULT_ONTOLOGY)).toBe('Deploy')
 
     const sequence = deriveSequence(flow.nodes, flow.edges, 'Deploy', DEFAULT_ONTOLOGY)
     expect(sequence.participants.map((participant) => participant.id)).toEqual([
       'Release Manager',
-      'Deploy',
       'API',
+      'Deploy',
       'Repository',
       'Model',
       'OpenAPI',
     ])
     expect(sequence.messages.map((message) => `${message.order}:${message.relationType}`)).toEqual([
-      '1:runs',
-      '2:runs',
+      '1:uses',
+      '2:uses',
       '3:uses',
       '4:produces',
       '5:defines',
-      '6:describes',
     ])
     expect(deriveSequence(flow.nodes, flow.edges, 'Deploy', DEFAULT_ONTOLOGY)).toEqual(sequence)
   })
 
-  it('returns an empty sequence when no process exists', () => {
+  it('returns an empty sequence when no job exists', () => {
     const withoutProcess = toFlowCanvas({
       ...canvas,
       nodes: canvas.nodes?.filter((node) => node.id !== 'Deploy'),
@@ -153,7 +150,7 @@ describe('derived views', () => {
     }, DEFAULT_ONTOLOGY)
 
     expect(deriveSequence(withoutProcess.nodes, withoutProcess.edges, undefined, DEFAULT_ONTOLOGY)).toEqual({
-      processId: '',
+      jobId: '',
       participants: [],
       messages: [],
     })
@@ -166,19 +163,19 @@ const levelCanvas = {
     card('Platform', 'system', { kind: 'service' }),
     card('Archive', 'system', { kind: 'database' }),
     card('Repo', 'repository', { provider: 'github' }),
-    card('Deploy', 'process', { mode: 'automated' }),
-    card('Verify', 'process', { mode: 'automated' }),
+    card('Deploy', 'system', { kind: 'job' }),
+    card('Verify', 'system', { kind: 'job' }),
     card('Model', 'artifact', { kind: 'container' }),
     card('Bundle', 'artifact', { kind: 'dataset', schemaMode: 'shared', schemaRef: 'Manifest' }),
     card('Manifest', 'schema', { kind: 'api', version: '1.0.0' }),
   ],
   edges: [
-    relation('operator-deploy', 'Operator', 'Deploy', 'runs'),
-    relation('operator-verify', 'Operator', 'Verify', 'runs'),
+    relation('operator-deploy', 'Operator', 'Deploy', 'uses'),
+    relation('operator-verify', 'Operator', 'Verify', 'uses'),
     relation('operator-repo', 'Operator', 'Repo', 'uses'),
     relation('operator-bundle', 'Operator', 'Bundle', 'uses'),
-    relation('platform-deploy', 'Platform', 'Deploy', 'runs'),
-    relation('platform-verify', 'Platform', 'Verify', 'runs'),
+    relation('platform-deploy', 'Platform', 'Deploy', 'uses'),
+    relation('platform-verify', 'Platform', 'Verify', 'uses'),
     relation('platform-repo', 'Platform', 'Repo', 'uses'),
     relation('platform-archive', 'Platform', 'Archive', 'uses'),
     relation('repo-manifest', 'Repo', 'Manifest', 'defines'),
@@ -192,7 +189,7 @@ const levelCanvas = {
 const orphanCanvas = {
   nodes: [
     card('Standalone', 'repository', { provider: 'local' }),
-    card('Loose', 'process', { mode: 'manual' }),
+    card('Loose', 'system', { kind: 'job' }),
     card('Unclaimed', 'artifact', { kind: 'container' }),
   ],
   edges: [
@@ -205,54 +202,11 @@ const readinessCanvas = {
   nodes: [
     card('Platform', 'system', { kind: 'service' }),
     card('Standalone', 'repository', { provider: 'local' }),
-    card('Loose', 'process', { mode: 'manual' }),
+    card('Loose', 'system', { kind: 'job' }),
     card('Unclaimed', 'artifact', { kind: 'container' }),
     card('OpenAPI', 'schema', { kind: 'api' }),
   ],
   edges: [],
-} as JsonCanvas
-
-const legacyCanvas = {
-  nodes: [
-    card('Operator', 'actor', { kind: 'role' }),
-    card('Platform', 'system', { kind: 'service' }),
-    card('Other Platform', 'system', { kind: 'worker' }),
-    card('Legacy Service', 'service'),
-    card('Legacy API', 'api'),
-    card('Vendor', 'external_system'),
-    card('Registry Store', 'database'),
-    card('Work Queue', 'queue'),
-    card('Shared Store', 'database'),
-    card('Deployment Ready', 'event'),
-    card('Requirement', 'requirement'),
-    card('Snippet', 'code'),
-    {
-      id: 'Untyped',
-      type: 'text',
-      x: 0,
-      y: 0,
-      width: 220,
-      height: 120,
-      text: '## Untyped card',
-    },
-    card('Decision note', 'note'),
-    {
-      id: 'Group',
-      type: 'group',
-      x: 0,
-      y: 0,
-      width: 400,
-      height: 400,
-      label: 'Group',
-    },
-  ],
-  edges: [
-    relation('platform-registry', 'Platform', 'Registry Store', 'stores_in'),
-    relation('platform-queue', 'Platform', 'Work Queue', 'writes_to'),
-    relation('platform-event', 'Platform', 'Deployment Ready', 'publishes'),
-    relation('platform-shared', 'Platform', 'Shared Store', 'uses'),
-    relation('other-shared', 'Other Platform', 'Shared Store', 'reads_from'),
-  ],
 } as JsonCanvas
 
 interface LevelCase {
@@ -285,8 +239,7 @@ const levelCases: LevelCase[] = [
     },
     unassigned: [],
     edges: [
-      'Operator->Platform:runsx2',
-      'Operator->Platform:usesx2',
+      'Operator->Platform:usesx4',
     ],
     internal: { Platform: 10 },
   },
@@ -311,13 +264,13 @@ const levelCases: LevelCase[] = [
       'Deploy->Model:produces',
       'Deploy->Platform:uses',
       'Operator->Bundle:uses',
-      'Operator->Deploy:runs',
+      'Operator->Deploy:uses',
       'Operator->Repo:uses',
-      'Operator->Verify:runs',
+      'Operator->Verify:uses',
       'Platform->Archive:uses',
-      'Platform->Deploy:runs',
+      'Platform->Deploy:uses',
       'Platform->Repo:uses',
-      'Platform->Verify:runs',
+      'Platform->Verify:uses',
       'Verify->Platform:uses',
     ],
     internal: { Repo: 1 },
@@ -340,13 +293,13 @@ const levelCases: LevelCase[] = [
       'Deploy->Model:produces',
       'Deploy->Platform:uses',
       'Operator->Bundle:uses',
-      'Operator->Deploy:runs',
+      'Operator->Deploy:uses',
       'Operator->Repo:uses',
-      'Operator->Verify:runs',
+      'Operator->Verify:uses',
       'Platform->Archive:uses',
-      'Platform->Deploy:runs',
+      'Platform->Deploy:uses',
       'Platform->Repo:uses',
-      'Platform->Verify:runs',
+      'Platform->Verify:uses',
       'Verify->Platform:uses',
     ],
     internal: { Repo: 1 },
@@ -368,107 +321,22 @@ const levelCases: LevelCase[] = [
       'Deploy->Model:produces',
       'Deploy->Platform:uses',
       'Operator->Bundle:uses',
-      'Operator->Deploy:runs',
+      'Operator->Deploy:uses',
       'Operator->Repo:uses',
-      'Operator->Verify:runs',
+      'Operator->Verify:uses',
       'Platform->Archive:uses',
-      'Platform->Deploy:runs',
+      'Platform->Deploy:uses',
       'Platform->Repo:uses',
-      'Platform->Verify:runs',
+      'Platform->Verify:uses',
       'Repo->Manifest:defines',
       'Verify->Platform:uses',
     ],
     internal: {},
     schemaRefEdge: true,
   },
-  {
-    name: 'level 1 shows legacy context cards and folds data stores and events',
-    canvas: legacyCanvas,
-    level: 1,
-    visible: [
-      'Operator',
-      'Platform',
-      'Other Platform',
-      'Legacy Service',
-      'Legacy API',
-      'Vendor',
-      'Shared Store',
-    ],
-    parents: {
-      'Registry Store': 'Platform',
-      'Work Queue': 'Platform',
-      'Deployment Ready': 'Platform',
-    },
-    unassigned: [],
-    edges: [
-      'Other Platform->Shared Store:reads_from',
-      'Platform->Shared Store:uses',
-    ],
-    internal: { Platform: 3 },
-    notInLevels: ['Requirement', 'Snippet', 'Untyped'],
-  },
-  {
-    name: 'level 2 shows legacy data stores with one owning System',
-    canvas: legacyCanvas,
-    level: 2,
-    visible: [
-      'Operator',
-      'Platform',
-      'Other Platform',
-      'Legacy Service',
-      'Legacy API',
-      'Vendor',
-      'Shared Store',
-      'Registry Store',
-      'Work Queue',
-    ],
-    parents: {
-      'Registry Store': 'Platform',
-      'Work Queue': 'Platform',
-      'Deployment Ready': 'Platform',
-    },
-    unassigned: [],
-    edges: [
-      'Other Platform->Shared Store:reads_from',
-      'Platform->Registry Store:stores_in',
-      'Platform->Shared Store:uses',
-      'Platform->Work Queue:writes_to',
-    ],
-    internal: { Platform: 1 },
-    notInLevels: ['Requirement', 'Snippet', 'Untyped'],
-  },
-  {
-    name: 'level 4 shows legacy events under their publisher',
-    canvas: legacyCanvas,
-    level: 4,
-    visible: [
-      'Operator',
-      'Platform',
-      'Other Platform',
-      'Legacy Service',
-      'Legacy API',
-      'Vendor',
-      'Shared Store',
-      'Registry Store',
-      'Work Queue',
-      'Deployment Ready',
-    ],
-    parents: {
-      'Registry Store': 'Platform',
-      'Work Queue': 'Platform',
-      'Deployment Ready': 'Platform',
-    },
-    unassigned: [],
-    edges: [
-      'Other Platform->Shared Store:reads_from',
-      'Platform->Deployment Ready:publishes',
-      'Platform->Registry Store:stores_in',
-      'Platform->Shared Store:uses',
-      'Platform->Work Queue:writes_to',
-    ],
-    internal: {},
-    notInLevels: ['Requirement', 'Snippet', 'Untyped'],
-  },
+
+
+
   {
     name: 'cards without an owner become one Unassigned card',
     canvas: orphanCanvas,
@@ -559,7 +427,7 @@ const readinessCases: ReadinessCase[] = [
         level: 1,
         available: true,
         ready: false,
-        unassigned: ['repo-model-delivery', 'schema-deployment-record', 'schema-model-manifest'],
+        unassigned: ['repo-model-delivery', 'schema-model-manifest'],
       },
       { level: 2, available: true, ready: true, unassigned: [] },
       { level: 3, available: false, ready: true, unassigned: [] },
@@ -567,7 +435,6 @@ const readinessCases: ReadinessCase[] = [
     ],
     issues: {
       'repo-model-delivery': 1,
-      'schema-deployment-record': 1,
       'schema-model-manifest': 1,
     },
   },
@@ -575,31 +442,12 @@ const readinessCases: ReadinessCase[] = [
     name: 'readiness raises one issue per card for model-delivery-migrated.canvas',
     canvas: exampleCanvas('model-delivery-migrated.canvas'),
     levels: [
-      {
-        level: 1,
-        available: true,
-        ready: false,
-        unassigned: ['schema-cicd-history', 'schema-deployment', 'schema-model-product'],
-      },
-      {
-        level: 2,
-        available: true,
-        ready: false,
-        unassigned: ['schema-cicd-history', 'schema-deployment', 'schema-model-product'],
-      },
-      {
-        level: 3,
-        available: false,
-        ready: false,
-        unassigned: ['schema-cicd-history', 'schema-deployment', 'schema-model-product'],
-      },
+      { level: 1, available: true, ready: true, unassigned: [] },
+      { level: 2, available: true, ready: true, unassigned: [] },
+      { level: 3, available: false, ready: true, unassigned: [] },
       { level: 4, available: true, ready: true, unassigned: [] },
     ],
-    issues: {
-      'schema-cicd-history': 1,
-      'schema-deployment': 1,
-      'schema-model-product': 1,
-    },
+    issues: {},
   },
   {
     name: 'containers and a parentless schema only count below their own level',

@@ -25,12 +25,7 @@ export const LEVEL_NAMES: Record<LevelNumber, string> = {
   4: 'Contracts',
 }
 
-export const ANNOTATION_ENTITY_TYPES = new Set(['note', 'decision', 'risk'])
-
-const LEVEL_ONE_LEGACY_TYPES = new Set(['service', 'api', 'external_system'])
-const DATA_STORE_TYPES = new Set(['database', 'queue'])
-const DATA_STORE_RELATIONS = ['uses', 'stores_in', 'reads_from', 'writes_to'] as const
-const EVENT_RELATIONS = ['publishes', 'emits'] as const
+export const ANNOTATION_ENTITY_TYPES = new Set(['note'])
 
 export interface LevelGraph {
   levels: Map<string, LevelNumber>
@@ -131,26 +126,6 @@ function incomingAny(
   )
 }
 
-function outgoing(
-  edges: CanvasEdge[],
-  nodeId: string,
-  relation: string,
-  nodeById: Map<string, CanvasNode>,
-  toTypes: string[],
-): string[] {
-  return uniqueSorted(
-    edges
-      .filter((edge) => (
-        edge.fromNode === nodeId
-        && edge.toNode !== nodeId
-        && relationOf(edge) === relation
-        && toTypes.includes(entityType(nodeById.get(edge.toNode)))
-      ))
-      .map((edge) => edge.toNode),
-    nodeById,
-  )
-}
-
 function databaseUsers(
   nodeId: string,
   edges: CanvasEdge[],
@@ -164,7 +139,7 @@ function dataStoreSystems(
   edges: CanvasEdge[],
   nodeById: Map<string, CanvasNode>,
 ): string[] {
-  return incomingAny(edges, nodeId, DATA_STORE_RELATIONS, nodeById, ['system'])
+  return incoming(edges, nodeId, 'uses', nodeById, ['system'])
 }
 
 function schemaRefArtifacts(
@@ -187,15 +162,16 @@ function parentCandidates(
   nodeById: Map<string, CanvasNode>,
 ): string[] {
   const type = entityType(node)
-  if (type === 'process') {
+  const kind = field(node, 'kind')
+  if (type === 'system' && kind === 'job') {
     for (const types of [['system'], ['repository'], ['actor']]) {
-      const matches = incoming(edges, node.id, 'runs', nodeById, types)
+      const matches = incoming(edges, node.id, 'uses', nodeById, types)
       if (matches.length > 0) return matches
     }
     return []
   }
   if (type === 'artifact') {
-    for (const types of [['process'], ['system'], ['repository']]) {
+    for (const types of [['system'], ['repository']]) {
       const matches = incoming(edges, node.id, 'produces', nodeById, types)
       if (matches.length > 0) return matches
     }
@@ -207,9 +183,11 @@ function parentCandidates(
   if (type === 'schema') {
     const definers = incoming(edges, node.id, 'defines', nodeById, ['system', 'repository'])
     if (definers.length > 0) return definers
-    const described = outgoing(edges, node.id, 'describes', nodeById, ['system'])
-    if (described.length > 0) return described
-    const users = incoming(edges, node.id, 'uses', nodeById, ['system', 'process'])
+    if (kind === 'event') {
+      const producers = incomingAny(edges, node.id, ['produces'], nodeById)
+      if (producers.length > 0) return producers
+    }
+    const users = incoming(edges, node.id, 'uses', nodeById, ['system'])
     if (users.length === 1) return users
     const artifacts = schemaRefArtifacts(node.id, nodes)
     if (artifacts.length === 1) return artifacts
@@ -217,16 +195,9 @@ function parentCandidates(
     if (schemas.length > 0) return schemas
     return []
   }
-  if (type === 'system' && field(node, 'kind') === 'database') {
+  if (type === 'system' && (kind === 'database' || kind === 'queue')) {
     const users = databaseUsers(node.id, edges, nodeById)
     return users.length === 1 ? users : []
-  }
-  if (DATA_STORE_TYPES.has(type)) {
-    const owners = dataStoreSystems(node.id, edges, nodeById)
-    return owners.length === 1 ? owners : []
-  }
-  if (type === 'event') {
-    return incomingAny(edges, node.id, EVENT_RELATIONS, nodeById)
   }
   return []
 }
@@ -240,18 +211,21 @@ export function computeLevelGraph(
 
   for (const node of nodes) {
     const type = entityType(node)
+    const kind = field(node, 'kind')
     let level: LevelNumber | undefined
-    if (type === 'actor' || type === 'system' || LEVEL_ONE_LEGACY_TYPES.has(type)) {
-      level = type === 'system'
-        && field(node, 'kind') === 'database'
-        && databaseUsers(node.id, edges, nodeById).length === 1
-        ? 2
-        : 1
-    } else if (DATA_STORE_TYPES.has(type)) {
-      level = dataStoreSystems(node.id, edges, nodeById).length === 1 ? 2 : 1
-    } else if (type === 'repository' || type === 'process' || type === 'artifact') {
+    if (type === 'actor') {
+      level = 1
+    } else if (type === 'system') {
+      if (kind === 'job') {
+        level = 2
+      } else if (kind === 'database' || kind === 'queue') {
+        level = dataStoreSystems(node.id, edges, nodeById).length === 1 ? 2 : 1
+      } else {
+        level = 1
+      }
+    } else if (type === 'repository' || type === 'artifact') {
       level = 2
-    } else if (type === 'schema' || type === 'event') {
+    } else if (type === 'schema') {
       level = 4
     }
     if (level) levels.set(node.id, level)
@@ -397,7 +371,7 @@ export function levelReadinessIssues(readiness: LevelReadiness[]): CanvasProfile
       return [{
         code: 'level_unassigned' as const,
         severity: 'warning' as const,
-        message: `${card.name} has no owner at Level ${entry.level} ${entry.name}: add \`defines\`, \`describes\`, \`runs\`, \`produces\`, or \`uses\` from a System.`,
+        message: `${card.name} has no owner at Level ${entry.level} ${entry.name}: add \`defines\`, \`produces\`, or \`uses\` from a System.`,
         nodeId: card.id,
         fieldKey: `level:${entry.level}`,
       }]

@@ -72,12 +72,12 @@ describe('default ontology', () => {
   it('parses entity metadata from a node extension', () => {
     const meta = getEntityMeta({
       app: {
-        entityType: 'database',
+        entityType: 'system',
         fields: { name: 'Postgres', environment: 'production' },
       },
     })
     expect(meta).toEqual({
-      entityType: 'database',
+      entityType: 'system',
       fields: { name: 'Postgres', environment: 'production' },
     })
   })

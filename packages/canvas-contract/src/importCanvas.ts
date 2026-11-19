@@ -1,3 +1,6 @@
+import { migrateOntologyCanvas } from './migrations'
+import type { JsonCanvas } from './jsonCanvas'
+
 export function normalizeImportedCanvas(value: unknown): unknown {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return value
   const canvas = value as Record<string, unknown>
@@ -28,5 +31,5 @@ export function normalizeImportedCanvas(value: unknown): unknown {
     return next
   })
 
-  return { ...canvas, nodes }
+  return migrateOntologyCanvas({ ...canvas, nodes } as JsonCanvas)
 }

@@ -327,9 +327,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     markDirty,
     setNotice,
     setError,
-    ontology,
-    placementPosition: graph.placementPosition,
-    revealPlacement: graph.revealPlacement,
   })
 
   const validation = useCanvasValidation({
@@ -775,7 +772,6 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       }
       graph.addEntityAtCenter(entityTypeId)
     },
-    onAddProcessCanvas: () => void links.addProcessWithCanvas(),
     onViews: () => {
       setViewsLevel(undefined)
       setViewsOpen(true)

@@ -303,17 +303,6 @@ export function validateSchemaContracts(
 
   for (const edge of edges) {
     const relation = relationOf(edge)
-    if (relation === 'describes' && schemaIds.has(edge.fromNode)) {
-      const target = nodesById.get(edge.toNode)
-      const targetType = target ? surfaceKind(target) : ''
-      if (target && (targetType === 'api' || targetType === 'database')) {
-        const list = schemasByTarget.get(edge.toNode) ?? []
-        const schema = nodesById.get(edge.fromNode)
-        if (schema) list.push(schema)
-        schemasByTarget.set(edge.toNode, list)
-        linkedSchemas.add(edge.fromNode)
-      }
-    }
     if (relation === 'uses' && schemaIds.has(edge.toNode)) {
       const set = usesBySystem.get(edge.fromNode) ?? new Set<string>()
       set.add(edge.toNode)
@@ -323,6 +312,14 @@ export function validateSchemaContracts(
     }
     if (relation === 'defines' && schemaIds.has(edge.toNode)) {
       linkedSchemas.add(edge.toNode)
+      const target = nodesById.get(edge.fromNode)
+      const targetType = target ? surfaceKind(target) : ''
+      if (target && (targetType === 'api' || targetType === 'database')) {
+        const list = schemasByTarget.get(edge.fromNode) ?? []
+        const schema = nodesById.get(edge.toNode)
+        if (schema) list.push(schema)
+        schemasByTarget.set(edge.fromNode, list)
+      }
     }
     if ((relation === 'accepts' || relation === 'returns') && schemaIds.has(edge.toNode)) {
       linkedSchemas.add(edge.toNode)

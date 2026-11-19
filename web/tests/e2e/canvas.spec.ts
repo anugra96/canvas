@@ -159,40 +159,32 @@ test('allows an untyped connection between arbitrary cards', async ({ page }) =>
   await expect(page.locator('.canvas-warning-badge').first()).toBeVisible()
 })
 
-test('adds Process and Artifact cards in Systems mode', async ({ page }) => {
+test('shows only the Systems card types in the Add menu', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Canvas type').selectOption('systems')
   await createCanvas(page)
-  await addCanvasItem(page, 'Process')
   await addCanvasItem(page, 'Artifact')
-  await expect(page.locator('.entity-type')).toContainText(['Process', 'Artifact'])
+  await expect(page.locator('.entity-type')).toHaveText('Artifact')
   await page.getByRole('button', { name: 'Add', exact: true }).click()
   const addItems = await page.getByRole('menu', { name: 'Add commands' }).getByRole('menuitem').allInnerTexts()
-  expect(addItems).toEqual([
-    'Note',
-    'System',
-    'Repository',
-    'Actor',
-    'Process',
-    'Artifact',
-    'Schema',
-    'Decision',
-    'Risk',
-    'Process with canvas',
-  ])
+  expect(addItems.sort()).toEqual(['Actor', 'Artifact', 'Note', 'Repository', 'Schema', 'System'])
   await page.keyboard.press('Escape')
 })
 
-test('uses the note name in the card header', async ({ page }) => {
+test('shows the note name and kind in the card header', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Canvas type').selectOption('systems')
   await createCanvas(page)
   await addCanvasItem(page, 'Note')
+  await expect(page.locator('.note-kind')).toHaveText('Note')
   await page.locator('.entity-node').dblclick()
   await page.locator('[data-field-key="name"]').fill('Review note')
   await page.locator('.entity-content-field .rich-editor-content').fill('This is the note body.')
+  await page.locator('[data-field-key="kind"]').selectOption('risk')
   await page.getByRole('button', { name: 'Done' }).click()
   await expect(page.locator('.entity-head strong')).toHaveText('Review note')
+  await expect(page.locator('.note-kind')).toHaveText('Risk')
+  await expect(page.locator('.note-kind')).toHaveClass(/note-kind-risk/)
   await expect(page.locator('.entity-content-preview')).toContainText('This is the note body.')
 })
 
@@ -531,8 +523,8 @@ test('changes a card type from the selection toolbar', async ({ page }) => {
 
   await page.locator('.entity-node').click()
   await expect(page.locator('.selection-toolbar')).toContainText('1 selected')
-  await page.locator('.selection-toolbar').getByRole('combobox', { name: 'Card type' }).selectOption('process')
-  await expect(page.locator('.entity-type')).toHaveText('Process')
+  await page.locator('.selection-toolbar').getByRole('combobox', { name: 'Card type' }).selectOption('system')
+  await expect(page.locator('.entity-type')).toHaveText('System')
   await expect(page.locator('.entity-head strong')).toContainText('Shared model')
   await page.screenshot({ path: 'test-results/card-type-change.png', fullPage: true })
 })
@@ -724,24 +716,7 @@ test('links an existing canvas from a card', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Manage linked canvases' })).toHaveClass(/has-links/)
 })
 
-test('creates a process card with a linked documentation canvas', async ({ page }) => {
-  await page.goto('/')
-  await page.getByLabel('Canvas type').selectOption('systems')
-  await createCanvas(page, 'Process parent')
-  await addCanvasItem(page, 'Process with canvas')
-  await expect(page.locator('.entity-node')).toHaveCount(1)
-  await expect(page.locator('.entity-type')).toHaveText('Process')
-
-  await page.getByRole('button', { name: 'Manage linked canvases' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Linked canvases' })
-  await expect(dialog).toContainText('Process documentation')
-  await dialog.getByRole('button', { name: 'Open Process documentation' }).click()
-  await expect(page.getByRole('heading', { name: 'Process documentation', level: 1 })).toBeVisible()
-  await expect(page.locator('.entity-node')).toHaveCount(4)
-  await expect(page.locator('.entity-type')).toContainText(['Note'])
-})
-
-test('derives focused graph views and a process sequence', async ({ page }) => {
+test('derives focused graph views and a job sequence', async ({ page }) => {
   await page.goto('/')
   await page.evaluate(async () => {
     const response = await fetch('/v1/canvases/import', {
@@ -756,14 +731,14 @@ test('derives focused graph views and a process sequence', async ({ page }) => {
           app: { profile: 'systems', profileVersion: 4, scope: 'container' },
           nodes: [
             { id: 'actor', type: 'text', x: 0, y: 0, width: 260, height: 120, text: '## Actor: Actor', app: { entityType: 'actor', fields: { name: 'Actor', kind: 'role' } } },
-            { id: 'process', type: 'text', x: 340, y: 0, width: 260, height: 140, text: '## Process: Process', app: { entityType: 'process', fields: { name: 'Process', mode: 'automated' } } },
+            { id: 'job', type: 'text', x: 340, y: 0, width: 260, height: 140, text: '## System: Job', app: { entityType: 'system', fields: { name: 'Job', kind: 'job' } } },
             { id: 'system', type: 'text', x: 680, y: 0, width: 260, height: 140, text: '## System: System', app: { entityType: 'system', fields: { name: 'System', kind: 'service' } } },
             { id: 'artifact', type: 'text', x: 680, y: 220, width: 260, height: 140, text: '## Artifact: Artifact', app: { entityType: 'artifact', fields: { name: 'Artifact', kind: 'model' } } },
           ],
           edges: [
-            { id: 'runs', fromNode: 'actor', toNode: 'process', fromSide: 'right', toSide: 'left', toEnd: 'arrow', app: { relationType: 'runs' } },
-            { id: 'uses', fromNode: 'process', toNode: 'system', fromSide: 'right', toSide: 'left', toEnd: 'arrow', app: { relationType: 'uses' } },
-            { id: 'produces', fromNode: 'process', toNode: 'artifact', fromSide: 'bottom', toSide: 'top', toEnd: 'arrow', app: { relationType: 'produces' } },
+            { id: 'uses-actor', fromNode: 'actor', toNode: 'job', fromSide: 'right', toSide: 'left', toEnd: 'arrow', app: { relationType: 'uses' } },
+            { id: 'uses', fromNode: 'job', toNode: 'system', fromSide: 'right', toSide: 'left', toEnd: 'arrow', app: { relationType: 'uses' } },
+            { id: 'produces', fromNode: 'job', toNode: 'artifact', fromSide: 'bottom', toSide: 'top', toEnd: 'arrow', app: { relationType: 'produces' } },
           ],
         },
       }),
@@ -782,19 +757,19 @@ test('derives focused graph views and a process sequence', async ({ page }) => {
 
   await dialog.getByRole('button', { name: '2 Containers' }).click()
   await expect(dialog.locator('.derived-card')).toHaveCount(4)
-  await expect(dialog.locator('.derived-card')).toContainText(['Actor', 'Process', 'System', 'Artifact'])
+  await expect(dialog.locator('.derived-card')).toContainText(['Actor', 'Job', 'System', 'Artifact'])
 
   await dialog.getByRole('tab', { name: 'Runtime' }).click()
   await expect(dialog.locator('.derived-card')).toHaveCount(4)
-  await expect(dialog.locator('.derived-edge-label')).toContainText(['runs', 'uses', 'produces'])
+  await expect(dialog.locator('.derived-edge-label')).toContainText(['uses', 'produces'])
 
   await dialog.getByRole('tab', { name: 'Contracts' }).click()
   await expect(dialog.getByText('No cards match this view.')).toBeVisible()
 
   await dialog.getByRole('tab', { name: 'Sequence' }).click()
-  await expect(dialog.getByLabel('Sequence process')).toHaveCount(1)
+  await expect(dialog.getByLabel('Sequence job')).toHaveCount(1)
   await expect(dialog.locator('.derived-participant')).toHaveCount(4)
-  await expect(dialog.locator('.derived-message-label')).toContainText(['runs', 'uses', 'produces'])
+  await expect(dialog.locator('.derived-message-label')).toContainText(['uses', 'produces'])
   await expect(dialog).toContainText('Inferred order')
 
   await dialog.getByRole('button', { name: 'Close derived views' }).click()

@@ -104,7 +104,7 @@ describe('canvas API', () => {
     expect(document.canvas).toEqual({
       nodes: [],
       edges: [],
-      app: { profile: 'systems', profileVersion: 4, scope: 'container' },
+      app: { profile: 'systems', profileVersion: 5, scope: 'container' },
     })
 
     const list = await app.request('/v1/canvases', { headers: authHeaders })
