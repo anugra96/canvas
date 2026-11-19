@@ -71,6 +71,7 @@ test('opens the Endpoint inspector and raw operation tab', async ({ page }) => {
           operationId: 'getJob',
           parameters: [
             { name: 'job_id', in: 'path', required: true, schema: { type: 'string' } },
+            { name: 'include', in: 'query', schema: { type: 'string' } },
           ],
           responses: { '200': { description: 'Job' } },
         },
@@ -88,8 +89,21 @@ test('opens the Endpoint inspector and raw operation tab', async ({ page }) => {
   await expect(editor.getByLabel('Path')).toHaveValue('/v1/jobs/{job_id}')
   await expect(editor.getByRole('heading', { name: 'Parameters' })).toBeVisible()
   await expect(editor.getByRole('heading', { name: 'Responses' })).toBeVisible()
+  await expect(editor.getByLabel('Parameter 1 name', { exact: true })).toHaveValue('job_id')
+  await expect(editor.getByLabel('Parameter 1 location', { exact: true })).toHaveValue('path')
+  await expect(editor.getByLabel('Parameter 1 required', { exact: true })).toBeChecked()
+  await expect(editor.getByLabel('Parameter 2 name', { exact: true })).toHaveValue('include')
+  await editor.getByLabel('Parameter 2 name', { exact: true }).fill('expand')
+  await editor.getByLabel('Parameter 2 location', { exact: true }).selectOption('query')
+  await expect(editor.getByLabel('Parameter 2 required', { exact: true })).not.toBeChecked()
+  await editor.getByLabel('Parameter 2 type', { exact: true }).selectOption('string')
+  await editor.getByLabel('Parameter 2 format', { exact: true }).selectOption('uuid')
+  await editor.getByLabel('Parameter 2 description', { exact: true }).fill('Expand related jobs')
+  await expect(editor.getByLabel('Remove parameter 2', { exact: true })).toBeVisible()
   await editor.getByRole('tab', { name: 'Raw' }).click()
   await expect(editor.getByLabel('Operation JSON')).toContainText('getJob')
+  await expect(editor.getByLabel('Operation JSON')).toContainText('expand')
+  await expect(editor.getByLabel('Operation JSON')).toContainText('uuid')
 })
 
 test('creates and links an API canvas from a System card', async ({ page, request }) => {

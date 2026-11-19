@@ -413,21 +413,21 @@ export function ApiEndpointEditor({
                   const isPath = parameter.in === 'path'
                   return (
                     <tr key={`${string(parameter.in)}:${string(parameter.name)}:${index}`}>
-                      <td><input aria-label="Parameter name" value={string(parameter.name)} onChange={(event) => updateParameter(index, { name: event.target.value })} /></td>
+                      <td><input aria-label={`Parameter ${index + 1} name`} value={string(parameter.name)} onChange={(event) => updateParameter(index, { name: event.target.value })} /></td>
                       <td>
-                        <select aria-label="Parameter location" value={string(parameter.in)} onChange={(event) => updateParameter(index, { in: event.target.value })}>
+                        <select aria-label={`Parameter ${index + 1} location`} value={string(parameter.in)} onChange={(event) => updateParameter(index, { in: event.target.value })}>
                           {IN_OPTIONS.map((option) => <option key={option} value={option}>{option[0]?.toUpperCase() + option.slice(1)}</option>)}
                         </select>
                       </td>
-                      <td><input aria-label="Parameter required" type="checkbox" checked={isPath || parameter.required === true} disabled={isPath} onChange={(event) => updateParameter(index, { required: event.target.checked })} /></td>
+                      <td><input aria-label={`Parameter ${index + 1} required`} type="checkbox" checked={isPath || parameter.required === true} disabled={isPath} onChange={(event) => updateParameter(index, { required: event.target.checked })} /></td>
                       <td>
-                        <select aria-label="Parameter type" value={string(schema.type) || 'string'} onChange={(event) => updateParameter(index, { schema: { ...schema, type: event.target.value } })}>
+                        <select aria-label={`Parameter ${index + 1} type`} value={string(schema.type) || 'string'} onChange={(event) => updateParameter(index, { schema: { ...schema, type: event.target.value } })}>
                           {TYPE_OPTIONS.map((option) => <option key={option} value={option}>{option[0]?.toUpperCase() + option.slice(1)}</option>)}
                         </select>
                       </td>
                       <td>
                         <select
-                          aria-label="Parameter format"
+                          aria-label={`Parameter ${index + 1} format`}
                           value={string(schema.format)}
                           onChange={(event) => {
                             const nextSchema = { ...schema }
@@ -439,8 +439,8 @@ export function ApiEndpointEditor({
                           {FORMAT_OPTIONS.map((option) => <option key={option || 'none'} value={option}>{option || 'None'}</option>)}
                         </select>
                       </td>
-                      <td><input aria-label="Parameter description" value={string(parameter.description)} onChange={(event) => updateParameter(index, { description: event.target.value })} /></td>
-                      <td><button type="button" className="icon-button" aria-label="Remove parameter" onClick={() => removeParameter(index)}><Trash2 size={13} /></button></td>
+                      <td><input aria-label={`Parameter ${index + 1} description`} value={string(parameter.description)} onChange={(event) => updateParameter(index, { description: event.target.value })} /></td>
+                      <td><button type="button" className="icon-button" aria-label={`Remove parameter ${index + 1}`} onClick={() => removeParameter(index)}><Trash2 size={13} /></button></td>
                     </tr>
                   )
                 })}
@@ -515,7 +515,7 @@ export function ApiEndpointEditor({
                 <div className="api-endpoint-response" key={status}>
                   <div className="api-endpoint-response-row">
                     <input
-                      aria-label="Response status"
+                      aria-label={`Response ${status} status`}
                       value={statusDrafts[status] ?? status}
                       onChange={(event) => {
                         setStatusDrafts((current) => ({ ...current, [status]: event.target.value }))
@@ -532,7 +532,7 @@ export function ApiEndpointEditor({
                         }
                       }}
                     />
-                    <input aria-label="Response description" value={string(body.description)} onChange={(event) => updateResponse(status, { description: event.target.value })} />
+                    <input aria-label={`Response ${status} description`} value={string(body.description)} onChange={(event) => updateResponse(status, { description: event.target.value })} />
                     <select aria-label={`Response ${status} model`} value={model} onChange={(event) => updateResponseModel(status, event.target.value)}>
                       <option value="">None</option>
                       {model && !schemaNames.includes(model) && <option value={model}>{model}</option>}
