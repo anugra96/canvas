@@ -159,6 +159,36 @@ test('allows an untyped connection between arbitrary cards', async ({ page }) =>
   await expect(page.locator('.canvas-warning-badge').first()).toBeVisible()
 })
 
+test('connects selected cards from the toolbar without dragging', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Canvas type').selectOption('systems')
+  await createCanvas(page)
+  await addCanvasItem(page, 'Repository')
+  await addCanvasItem(page, 'System')
+  await expect(page.locator('.entity-node')).toHaveCount(2)
+  await page.waitForTimeout(300)
+
+  const repository = page.locator('.react-flow__node').filter({ hasText: 'Repository' })
+  const system = page.locator('.react-flow__node').filter({ hasText: 'System' })
+  await repository.click()
+  await page.getByRole('button', { name: 'Connect', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Click a card', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('button', { name: 'Click a card', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Connect', exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Connect', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Click a card', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await system.click()
+
+  const relation = page.getByLabel('Edge relation', { exact: true })
+  await expect(relation).toBeVisible()
+  await relation.selectOption('uses')
+  await expect(page.locator('.react-flow__edge')).toHaveCount(1)
+  await expect(page.locator('.edge-label')).toContainText('uses')
+  await expect(page.locator('.edge-warning-badge')).toHaveCount(0)
+})
+
 test('shows only the Systems card types in the Add menu', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Canvas type').selectOption('systems')

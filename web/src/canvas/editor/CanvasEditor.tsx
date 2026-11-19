@@ -806,6 +806,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       else if (graph.pendingConnection) graph.setPendingConnection(null)
       else if (graph.cardMenu) graph.setCardMenu(null)
       else if (graph.edgeLabelEditor) graph.setEdgeLabelEditor(null)
+      else if (graph.connectNodeId) graph.setConnectNodeId(null)
       else graph.clearSelection()
     },
   })

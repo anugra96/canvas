@@ -16,6 +16,7 @@ export function SelectionToolbar({
   membershipLabel,
   canConnect = false,
   connectMode = false,
+  coarsePointer = false,
   onConnect,
   canResize = false,
   onResize,
@@ -45,6 +46,7 @@ export function SelectionToolbar({
   membershipLabel: string
   canConnect?: boolean
   connectMode?: boolean
+  coarsePointer?: boolean
   onConnect?: () => void
   canResize?: boolean
   onResize?: () => void
@@ -86,7 +88,7 @@ export function SelectionToolbar({
           aria-pressed={connectMode}
         >
           <Link2 size={14} />
-          {connectMode ? 'Tap a card' : 'Connect'}
+          {connectMode ? (coarsePointer ? 'Tap a card' : 'Click a card') : 'Connect'}
         </button>
       )}
       {cardTypeValue !== undefined && onCardTypeChange && (

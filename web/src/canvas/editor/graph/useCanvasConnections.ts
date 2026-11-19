@@ -46,10 +46,14 @@ export function useCanvasConnections({
   const onConnect = useCallback((connection: Connection) => {
     const raw = edgeFromConnection(connection, isSystems ? undefined : 'relates_to', ontology)
     if (isSystems) raw.label = 'Define relation'
-    setEdges((current) => addEdge(toFlowEdge(raw, ontology), current))
+    setNodes((current) => current.map((node) => ({ ...node, selected: false })))
+    setEdges((current) => addEdge(toFlowEdge(raw, ontology), current).map((edge) => ({
+      ...edge,
+      selected: edge.id === raw.id,
+    })))
     setConnectNodeId(null)
     markDirty()
-  }, [isSystems, markDirty, ontology, setEdges])
+  }, [isSystems, markDirty, ontology, setEdges, setNodes])
 
   const connectNodes = useCallback((sourceId: string, targetId: string) => {
     const source = nodes.find((node) => node.id === sourceId)
@@ -68,10 +72,14 @@ export function useCanvasConnections({
       : (dy >= 0 ? 'top' : 'bottom')
     const raw = edgeFromConnection({ source: sourceId, target: targetId, sourceHandle, targetHandle }, isSystems ? undefined : 'relates_to', ontology)
     if (isSystems) raw.label = 'Define relation'
-    setEdges((current) => addEdge(toFlowEdge(raw, ontology), current))
+    setNodes((current) => current.map((node) => ({ ...node, selected: false })))
+    setEdges((current) => addEdge(toFlowEdge(raw, ontology), current).map((edge) => ({
+      ...edge,
+      selected: edge.id === raw.id,
+    })))
     setConnectNodeId(null)
     markDirty()
-  }, [isSystems, markDirty, nodes, ontology, setEdges])
+  }, [isSystems, markDirty, nodes, ontology, setEdges, setNodes])
 
   const onConnectEnd = useCallback((
     event: { clientX: number; clientY: number } | TouchEvent,

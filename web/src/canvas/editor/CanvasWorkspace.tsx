@@ -426,8 +426,9 @@ export function CanvasWorkspace({
           selectedNodes={graph.selectedNodes.length}
           selectedEdges={graph.selectedEdges.length}
           canGroup={graph.selectedNodes.some((node) => node.type !== 'group')}
-          canConnect={coarsePointer && Boolean(graph.singleSelectedNode) && graph.singleSelectedNode?.type !== 'group'}
+          canConnect={(profile.id === 'raw' || profile.id === 'systems') && Boolean(graph.singleSelectedNode) && graph.singleSelectedNode?.type !== 'group'}
           connectMode={graph.connectNodeId !== null}
+          coarsePointer={coarsePointer}
           onConnect={() => graph.setConnectNodeId((current) => current ? null : graph.singleSelectedNode?.id ?? null)}
           canResize={Boolean(graph.singleSelectedNode)}
           onResize={() => graph.setSizeDialogOpen(true)}
