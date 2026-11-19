@@ -428,3 +428,103 @@ paths: {}
   const secondDocument = parseYaml(readFileSync(secondPath, 'utf8')) as { security?: unknown }
   expect(secondDocument.security).toBeUndefined()
 })
+
+test('edits a Resource lane title and description', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Import OpenAPI' }).click()
+  const importDialog = page.getByRole('dialog', { name: 'Import OpenAPI' })
+  await importDialog.getByLabel('OpenAPI 3.1 document').fill(JSON.stringify({
+    openapi: '3.1.0',
+    info: { title: 'Hand built API', version: '1.0.0' },
+    paths: {},
+  }))
+  await importDialog.getByRole('button', { name: 'Read document' }).click()
+  await importDialog.getByRole('button', { name: 'Create API canvas' }).click()
+  await expect(page.locator('.canvas-flow')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Resource', exact: true }).click()
+  const addDialog = page.getByRole('dialog', { name: 'Add resource' })
+  await addDialog.getByLabel('Singular').fill('task')
+  await addDialog.getByRole('button', { name: 'Add resource', exact: true }).click()
+
+  const lane = page.getByRole('group', { name: 'Resource tasks', exact: true })
+  await expect(lane).toBeVisible()
+  await page.waitForTimeout(500)
+  await lane.locator('header strong').dblclick()
+  const editor = page.getByRole('dialog', { name: 'Edit Resource' })
+  await expect(editor).toBeVisible()
+  await editor.getByLabel('Name', { exact: true }).fill('Tasks')
+  await editor.getByLabel('Description', { exact: true }).fill('Create, inspect, update, and remove tasks.')
+  await editor.getByRole('button', { name: 'Done' }).click()
+
+  await page.keyboard.press('Enter')
+  await expect(editor).toBeVisible()
+  await editor.getByRole('button', { name: 'Done' }).click()
+
+  await page.getByRole('button', { name: 'More' }).click()
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('menuitem', { name: 'Export OpenAPI YAML' }).click()
+  const download = await downloadPromise
+  const path = await download.path()
+  if (!path) throw new Error('Missing downloaded OpenAPI file')
+  const document = parseYaml(readFileSync(path, 'utf8')) as {
+    tags?: Array<{ name?: string; description?: string }>
+    paths?: Record<string, Record<string, { tags?: string[] }>>
+  }
+  expect(document.tags).toEqual([{
+    name: 'Tasks',
+    description: 'Create, inspect, update, and remove tasks.',
+  }])
+  const tags = Object.values(document.paths ?? {}).flatMap((pathItem) => (
+    Object.values(pathItem).map((operation) => operation.tags)
+  ))
+  expect(tags.length).toBeGreaterThan(0)
+  for (const tag of tags) expect(tag).toEqual(['Tasks'])
+})
+
+test('opens field details by field name and exports maxLength', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Import OpenAPI' }).click()
+  const importDialog = page.getByRole('dialog', { name: 'Import OpenAPI' })
+  await importDialog.getByLabel('OpenAPI 3.1 document').fill(JSON.stringify({
+    openapi: '3.1.0',
+    info: { title: 'Details API', version: '1.0.0' },
+    tags: [{ name: 'Tasks' }],
+    paths: {
+      '/tasks': {
+        get: { tags: ['Tasks'], responses: { '200': { description: 'OK' } } },
+      },
+    },
+    components: {
+      schemas: {
+        Task: {
+          type: 'object',
+          properties: { title: { type: 'string' } },
+        },
+      },
+    },
+  }))
+  await importDialog.getByRole('button', { name: 'Read document' }).click()
+  await importDialog.getByRole('button', { name: 'Create API canvas' }).click()
+  await expect(page.locator('.canvas-flow')).toBeVisible()
+
+  await page.locator('.schema-node').dblclick()
+  const editor = page.getByRole('dialog', { name: 'Edit schema contract' })
+  await editor.getByRole('tab', { name: 'Fields' }).click()
+  await expect(editor.getByRole('button', { name: 'Details title', exact: true })).toBeVisible()
+  await editor.getByRole('button', { name: 'Details title', exact: true }).click()
+  await editor.getByLabel('Max length', { exact: true }).fill('120')
+  await editor.getByRole('button', { name: 'Done' }).click()
+
+  await page.getByRole('button', { name: 'More' }).click()
+  const downloadPromise = page.waitForEvent('download')
+  await page.getByRole('menuitem', { name: 'Export OpenAPI YAML' }).click()
+  const download = await downloadPromise
+  const path = await download.path()
+  if (!path) throw new Error('Missing downloaded OpenAPI file')
+  const document = parseYaml(readFileSync(path, 'utf8')) as {
+    components?: { schemas?: { Task?: { properties?: { title?: { maxLength?: number } } } } }
+  }
+  expect(document.components?.schemas?.Task?.properties?.title?.maxLength).toBe(120)
+})

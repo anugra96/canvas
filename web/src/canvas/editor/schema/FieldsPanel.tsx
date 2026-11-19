@@ -204,6 +204,7 @@ export function FieldsPanel({
                       <button
                         type="button"
                         className="button ghost schema-details-toggle"
+                        aria-label={`Details ${row.name}`}
                         aria-expanded={open}
                         onClick={() => setExpanded((current) => ({ ...current, [key]: !open }))}
                       >

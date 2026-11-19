@@ -1,6 +1,6 @@
 import { Handle, NodeResizer, Position } from '@xyflow/react'
 import { AlertCircle, AlertTriangle, Link2 } from 'lucide-react'
-import type { CSSProperties, ReactNode } from 'react'
+import { useEffect, type CSSProperties, type ReactNode } from 'react'
 
 import { entityTitle, findEntityType, getCanvasLinks } from '@canvas/contract'
 
@@ -57,6 +57,21 @@ export function NodeShell({ node, selected, className, children, onEdit }: NodeS
   if (accent) (style as Record<string, string>)['--card-accent'] = accent
   if (background) style.background = background
   const hasCardColor = Boolean(accent && !isGroup)
+
+  useEffect(() => {
+    if (!isLane || !selected || !onEdit) return
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Enter' || event.metaKey || event.ctrlKey || event.altKey) return
+      const target = event.target
+      if (target instanceof HTMLElement && target.closest('button, a, input, textarea, select, [contenteditable="true"]')) return
+      if (window.document.querySelector('[role="dialog"]')) return
+      event.preventDefault()
+      event.stopPropagation()
+      onEdit?.()
+    }
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
+  }, [isLane, selected, onEdit])
 
   return (
     <>
@@ -127,10 +142,11 @@ export function NodeShell({ node, selected, className, children, onEdit }: NodeS
           if (target.closest('button, a, input, textarea, select')) return
           const rect = event.currentTarget.getBoundingClientRect()
           const edge = 8
-          const nearEdge = event.clientX <= rect.left + edge
-            || event.clientX >= rect.right - edge
-            || event.clientY <= rect.top + edge
-            || event.clientY >= rect.bottom - edge
+          const nearEdge = !(onEdit && target.closest('header'))
+            && (event.clientX <= rect.left + edge
+              || event.clientX >= rect.right - edge
+              || event.clientY <= rect.top + edge
+              || event.clientY >= rect.bottom - edge)
           if (nearEdge) {
             event.preventDefault()
             event.stopPropagation()
