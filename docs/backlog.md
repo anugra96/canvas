@@ -1,6 +1,6 @@
 # Canvas Backlog
 
-Ordered. Specs are linked where they exist. Updated 2026-11-16.
+Ordered. Specs are linked where they exist. Updated 2026-11-21.
 
 ## MVP in progress
 
@@ -41,6 +41,20 @@ Draft model (to be specified):
   edge classes are drawn.
 - Existing API rules in `openapi/edgeVisibility.ts` (hide `contains`, 4xx/5xx
   `returns`, default security) become this model's per-profile defaults.
+
+### City model and the urban planner
+
+The Systems canvas is read as a city map: places keep their address, auto
+layout proposes moves instead of reflowing, and new Review rules cover
+districts, gates, and route manifests. Internal design language first; a
+visible Map mode later. Glossary and phases: `city-model.md`.
+
+| Step | Item | Spec |
+| --- | --- | --- |
+| 1 | Stable geography: planner `place` and `replan` with preview, groups move with cards, seeded derived views | `urban-planner.md` |
+| 2 | Districts and manifests, zoning and routing rules | `city-model.md` |
+| 3 | City form, stage, pins | `city-model.md` |
+| 4 | Map mode experiment | `city-model.md` |
 
 ### Other
 
