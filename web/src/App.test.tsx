@@ -21,6 +21,7 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Canvas name'), 'Test canvas')
     await user.click(within(dialog).getByRole('button', { name: 'Create canvas' }))
 
-    expect(await screen.findByRole('heading', { name: 'Test canvas' })).toBeInTheDocument()
+    // The editor page is a lazy chunk; its first import on a busy CI runner takes longer than the 1 s default.
+    expect(await screen.findByRole('heading', { name: 'Test canvas' }, { timeout: 10_000 })).toBeInTheDocument()
   })
 })
