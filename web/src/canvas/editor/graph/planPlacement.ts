@@ -1,4 +1,5 @@
 import {
+  containsPoint,
   getGroupMembers,
   planLayout,
   type CanvasEdge,
@@ -64,13 +65,14 @@ export function planPlacement(
   }
 }
 
+// Same rule as the planner: a card belongs to a raw group when its centre is inside it.
 function containsNode(groupNode: CanvasFlowNode, card: CanvasFlowNode): boolean {
   const groupSize = nodeDimensions(groupNode)
   const cardSize = nodeDimensions(card)
-  return card.position.x >= groupNode.position.x
-    && card.position.y >= groupNode.position.y
-    && card.position.x + cardSize.width <= groupNode.position.x + groupSize.width
-    && card.position.y + cardSize.height <= groupNode.position.y + groupSize.height
+  return containsPoint(
+    { ...groupNode.position, ...groupSize },
+    { x: card.position.x + cardSize.width / 2, y: card.position.y + cardSize.height / 2 },
+  )
 }
 
 export function applyPlacementToNodes(

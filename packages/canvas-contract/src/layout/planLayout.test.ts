@@ -107,7 +107,12 @@ function membersOf(canvas: JsonCanvas, plan: LayoutPlan, groupNode: CanvasNode):
   if (explicit !== undefined) return [...new Set([...explicit, ...joined])]
   return [...new Set([
     ...(canvas.nodes ?? [])
-      .filter((node) => node.type !== 'group' && contains(rect(original), rect(node)))
+      .filter((node) => node.type !== 'group' && contains(rect(original), {
+        x: node.x + node.width / 2,
+        y: node.y + node.height / 2,
+        width: 0,
+        height: 0,
+      }))
       .map((node) => node.id),
     ...joined,
   ])]
@@ -138,23 +143,25 @@ const cases: PlanCase[] = [
       expect(plan.joins).toEqual([])
     },
   },
-  {
-    name: 'place lands in the nearest free slot beside its connected card',
+  ...([
+    { side: 'right of the card it points from', from: 'a', to: 'c', at: { x: 190, y: -25 } },
+    { side: 'left of the card it points to', from: 'c', to: 'a', at: { x: -290, y: -25 } },
+  ]).map(({ side, from, to, at }): PlanCase => ({
+    name: `place lands level with its connected card, ${side}`,
     canvas: {
       nodes: [card('a', 0, 0), card('c', 900, 900, 200, 100)],
-      edges: [edge('a-c', 'a', 'c', 'uses')],
+      edges: [edge('link', from, to, 'uses')],
     },
     scope: { kind: 'place', nodeIds: ['c'] },
     sizes: {
       a: { width: 100, height: 50 },
       c: { width: 200, height: 100 },
     },
-    check: (plan, applied) => {
+    check: (_plan, applied) => {
       const placed = applied.find((node) => node.id === 'c')!
-      expect(placed.x).toBe(274)
-      expect(placed.y).toBe(-99)
+      expect({ x: placed.x, y: placed.y }).toEqual(at)
     },
-  },
+  })),
   {
     name: 'place joins a shared group and stays inside it',
     canvas: {
@@ -194,6 +201,21 @@ const cases: PlanCase[] = [
       for (const groupNode of applied.filter((node) => node.type === 'group')) {
         expect(overlap(rect(groupNode), rect(placed))).toBe(false)
       }
+    },
+  },
+  {
+    name: 'replan keeps a card that overflows its raw group edge inside the group',
+    canvas: {
+      nodes: [group('g', 0, 0, 200, 400), card('a', 40, 60, 120, 60), card('wide', 40, 200, 260, 60), card('out', 600, 0)],
+      edges: [edge('a-wide', 'a', 'wide', 'uses')],
+    },
+    scope: { kind: 'replan' },
+    check: (_plan, applied) => {
+      const groupNode = applied.find((node) => node.id === 'g')!
+      for (const id of ['a', 'wide']) {
+        expect(contains(rect(groupNode), rect(applied.find((node) => node.id === id)!))).toBe(true)
+      }
+      expect(overlap(rect(groupNode), rect(applied.find((node) => node.id === 'out')!))).toBe(false)
     },
   },
   {

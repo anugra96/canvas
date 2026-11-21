@@ -43,6 +43,7 @@ const GROUP_LABEL_HEIGHT = 40
 const NODE_SEP = 72
 const RANK_SEP = 150
 const SEARCH_RADIUS = 4
+const NEIGHBOUR_GAP = 90
 const ROOT_BLOCK = '\u0000root'
 
 interface Rect {
@@ -130,6 +131,13 @@ function containsRect(outer: Rect, inner: Rect): boolean {
     && inner.y + inner.height <= outer.y + outer.height
 }
 
+export function containsPoint(outer: Rect, point: Point): boolean {
+  return point.x >= outer.x
+    && point.y >= outer.y
+    && point.x <= outer.x + outer.width
+    && point.y <= outer.y + outer.height
+}
+
 function insideGroup(rect: Rect, group: Rect): boolean {
   return rect.x >= group.x + GROUP_PADDING
     && rect.y >= group.y + GROUP_LABEL_HEIGHT
@@ -195,8 +203,13 @@ function resolveMembership(
     for (const candidate of sortById(nodes)) {
       if (candidate.id === group.id || parent.has(candidate.id) || ignoreImplicit.has(candidate.id)) continue
       const candidateRect = nodeRect(candidate, sizes)
-      if (!containsRect(groupRect, candidateRect)) continue
-      if (candidate.type === 'group' && containsRect(candidateRect, groupRect)) continue
+      // A card belongs to the smallest raw group holding its centre (cards often overflow a lane edge);
+      // a nested group must fit fully inside.
+      if (candidate.type === 'group') {
+        if (!containsRect(groupRect, candidateRect) || containsRect(candidateRect, groupRect)) continue
+      } else if (!containsPoint(groupRect, rectCenter(candidateRect))) {
+        continue
+      }
       parent.set(candidate.id, group.id)
     }
   }
@@ -643,17 +656,40 @@ function place(canvas: JsonCanvas, scope: { nodeIds: string[]; base?: Point }, s
     ]
   }
 
-  const candidates = function* (base: Point, width: number, height: number): Generator<Point> {
+  // Try each start in order, then rings around the first. Within a ring, stack in the same column first.
+  const candidates = function* (starts: Point[], width: number, height: number): Generator<Point> {
+    yield* starts
+    const base = starts[0]!
     const stepX = width + CARD_GAP
     const stepY = height + CARD_GAP
-    for (let radius = 0; radius <= SEARCH_RADIUS; radius += 1) {
+    for (let radius = 1; radius <= SEARCH_RADIUS; radius += 1) {
+      const ring: Array<{ row: number; column: number }> = []
       for (let row = -radius; row <= radius; row += 1) {
         for (let column = -radius; column <= radius; column += 1) {
-          if (Math.max(Math.abs(row), Math.abs(column)) !== radius) continue
-          yield { x: base.x + column * stepX, y: base.y + row * stepY }
+          if (Math.max(Math.abs(row), Math.abs(column)) === radius) ring.push({ row, column })
         }
       }
+      ring.sort((left, right) => (
+        Math.abs(left.column) - Math.abs(right.column)
+        || Math.abs(left.row) - Math.abs(right.row)
+        || left.row - right.row
+        || left.column - right.column
+      ))
+      for (const { row, column } of ring) yield { x: base.x + column * stepX, y: base.y + row * stepY }
     }
+  }
+
+  // Aligned slots beside the connected cards: the flow side first (a source sits left of what it points to).
+  const besideSlots = (around: Rect, width: number, height: number, isSource: boolean): Point[] => {
+    const middleY = around.y + around.height / 2 - height / 2
+    const middleX = around.x + around.width / 2 - width / 2
+    const right = { x: around.x + around.width + NEIGHBOUR_GAP, y: middleY }
+    const left = { x: around.x - width - NEIGHBOUR_GAP, y: middleY }
+    return [
+      ...(isSource ? [left, right] : [right, left]),
+      { x: middleX, y: around.y + around.height + NEIGHBOUR_GAP },
+      { x: middleX, y: around.y - height - NEIGHBOUR_GAP },
+    ]
   }
 
   const freeOfCards = (rect: Rect): boolean => (
@@ -686,9 +722,9 @@ function place(canvas: JsonCanvas, scope: { nodeIds: string[]; base?: Point }, s
       : undefined
     const targetGroup = sharedGroup ?? membership.parent.get(placedId)
 
-    let base: Point
-    if (connections.length > 0) {
-      const union = rectUnion(connections.map((id) => {
+    let starts: Point[]
+    const union = connections.length > 0
+      ? rectUnion(connections.map((id) => {
         const connected = nodeById.get(id)!
         const connectedRect = nodeRect(connected, sizes)
         if (positions.has(id) && connected.type !== 'group') {
@@ -696,11 +732,16 @@ function place(canvas: JsonCanvas, scope: { nodeIds: string[]; base?: Point }, s
         }
         return connectedRect
       }))
-      base = union ? rectCenter(union) : { x: rect.x, y: rect.y }
+      : undefined
+    if (union) {
+      const edges = canvas.edges ?? []
+      const outgoing = edges.filter((edge) => edge.fromNode === placedId && edge.toNode !== placedId).length
+      const incoming = edges.filter((edge) => edge.toNode === placedId && edge.fromNode !== placedId).length
+      starts = besideSlots(union, rect.width, rect.height, outgoing > incoming)
     } else if (scope.base) {
-      base = scope.base
+      starts = [scope.base]
     } else {
-      base = fallbackCandidates(rect.width, rect.height)[0]!
+      starts = [fallbackCandidates(rect.width, rect.height)[0]!]
     }
 
     let chosen: { position: Point; growth?: Map<string, Rect> } | undefined
@@ -708,7 +749,7 @@ function place(canvas: JsonCanvas, scope: { nodeIds: string[]; base?: Point }, s
     if (targetGroup) {
       const targetRect = groupRects.get(targetGroup)
       if (targetRect) {
-        for (const candidate of candidates(base, rect.width, rect.height)) {
+        for (const candidate of candidates(starts, rect.width, rect.height)) {
           const candidateRect = { ...rect, x: candidate.x, y: candidate.y }
           if (!insideGroup(candidateRect, targetRect)) continue
           if (!freeOfCards(candidateRect)) continue
@@ -717,7 +758,7 @@ function place(canvas: JsonCanvas, scope: { nodeIds: string[]; base?: Point }, s
           break
         }
         if (!chosen) {
-          for (const candidate of candidates(base, rect.width, rect.height)) {
+          for (const candidate of candidates(starts, rect.width, rect.height)) {
             const candidateRect = { ...rect, x: candidate.x, y: candidate.y }
             if (!freeOfCards(candidateRect)) continue
             if (!freeOfOtherGroups(candidateRect, targetGroup)) continue
@@ -752,7 +793,7 @@ function place(canvas: JsonCanvas, scope: { nodeIds: string[]; base?: Point }, s
         }
       }
     } else {
-      for (const candidate of candidates(base, rect.width, rect.height)) {
+      for (const candidate of candidates(starts, rect.width, rect.height)) {
         const candidateRect = { ...rect, x: candidate.x, y: candidate.y }
         if (!freeOfCards(candidateRect)) continue
         if (!freeOfOtherGroups(candidateRect)) continue
