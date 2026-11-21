@@ -844,7 +844,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     onUndo: graph.undo,
     onRedo: graph.redo,
     onSave: () => { void save() },
-    onTidy: graph.autoLayout,
+    onReplan: graph.replanLayout,
     onTidyApi: graph.autoLayoutApi,
     onTidyDatabase: graph.autoLayoutDatabase,
     onFitCards: graph.autoFitAll,

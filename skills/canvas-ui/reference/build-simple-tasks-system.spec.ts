@@ -84,10 +84,13 @@ test('build Simple Tasks system by hand', async ({ page }) => {
     await page.getByLabel('Edge relation', { exact: true }).selectOption(relation)
   }
 
-  // 3. Tidy after the lines exist: the layout follows them.
+  // 3. Replan after the lines exist: the layout follows them. Apply the preview.
   await page.keyboard.press('Escape')
   await page.getByRole('button', { name: 'More canvas actions', exact: true }).click()
-  await page.getByRole('menuitem', { name: 'Tidy layout' }).click()
+  await page.getByRole('menuitem', { name: 'Replan layout' }).click()
+  await page.getByRole('region', { name: 'Layout preview', exact: true })
+    .getByRole('button', { name: 'Apply', exact: true })
+    .click()
 
   // 4. Download and check what was built.
   await page.getByRole('button', { name: 'More canvas actions', exact: true }).click()

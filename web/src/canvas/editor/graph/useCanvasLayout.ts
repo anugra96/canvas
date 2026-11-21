@@ -1,5 +1,5 @@
 import { useReactFlow } from '@xyflow/react'
-import { useCallback } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import type { AlignmentGuide } from '../../model/alignment'
 import {
@@ -29,6 +29,69 @@ interface UseCanvasLayoutInput {
   flowRef: React.RefObject<HTMLDivElement | null>
 }
 
+export interface LayoutPreviewRect {
+  id: string
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+export interface LayoutPreviewLink {
+  id: string
+  from: { x: number; y: number }
+  to: { x: number; y: number }
+}
+
+export interface LayoutPreview {
+  moves: LayoutMove[]
+  groupResizes: GroupResize[]
+  cards: LayoutPreviewRect[]
+  groups: LayoutPreviewRect[]
+  links: LayoutPreviewLink[]
+  signature: string
+}
+
+interface Bounds {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+const MOVEMENT_EPSILON = 0.5
+
+function layoutSignature(nodes: CanvasFlowNode[], edges: CanvasFlowEdge[]): string {
+  return JSON.stringify({
+    nodes: nodes.map((node) => {
+      const size = nodeDimensions(node)
+      return {
+        id: node.id,
+        x: node.position.x,
+        y: node.position.y,
+        width: size.width,
+        height: size.height,
+        raw: node.data.raw,
+      }
+    }),
+    edges: edges.map((edge) => ({
+      id: edge.id,
+      from: edge.source,
+      to: edge.target,
+      raw: edge.data?.raw,
+    })),
+  })
+}
+
+function unionBounds(rects: Bounds[]): Bounds | undefined {
+  if (rects.length === 0) return undefined
+  const left = Math.min(...rects.map((rect) => rect.x))
+  const top = Math.min(...rects.map((rect) => rect.y))
+  const right = Math.max(...rects.map((rect) => rect.x + rect.width))
+  const bottom = Math.max(...rects.map((rect) => rect.y + rect.height))
+  return { x: left, y: top, width: right - left, height: bottom - top }
+}
+
 export function useCanvasLayout({
   nodes,
   edges,
@@ -38,13 +101,91 @@ export function useCanvasLayout({
   setNotice,
   flowRef,
 }: UseCanvasLayoutInput) {
-  const { fitView } = useReactFlow()
+  const { fitView, fitBounds } = useReactFlow()
+  const [preview, setPreview] = useState<LayoutPreview | null>(null)
+  const previewSignature = useMemo(() => layoutSignature(nodes, edges), [edges, nodes])
+  const activePreview = preview && preview.signature === previewSignature ? preview : null
 
-  const autoLayout = useCallback(() => {
+  const replanLayout = useCallback(() => {
     const sizes: Sizes = Object.fromEntries(nodes.map((node) => [node.id, nodeDimensions(node)]))
     const plan = planLayout(fromFlowCanvas(nodes, edges, {}), { kind: 'replan' }, sizes)
-    const moves = new Map<string, LayoutMove>(plan.moves.map((move) => [move.id, move]))
-    const resizes = new Map<string, GroupResize>(plan.groupResizes.map((resize) => [resize.id, resize]))
+    const nodeById = new Map(nodes.map((node) => [node.id, node]))
+    const moves = plan.moves.filter((move) => (
+      Math.abs(move.to.x - move.from.x) >= MOVEMENT_EPSILON
+      || Math.abs(move.to.y - move.from.y) >= MOVEMENT_EPSILON
+    ))
+    const groupChanges = plan.groupResizes.filter((resize) => {
+      const node = nodeById.get(resize.id)
+      if (!node || node.type !== 'group') return false
+      const size = nodeDimensions(node)
+      return Math.abs(resize.x - node.position.x) >= MOVEMENT_EPSILON
+        || Math.abs(resize.y - node.position.y) >= MOVEMENT_EPSILON
+        || Math.abs(resize.width - size.width) >= MOVEMENT_EPSILON
+        || Math.abs(resize.height - size.height) >= MOVEMENT_EPSILON
+    })
+
+    if (moves.length === 0 && groupChanges.length === 0) {
+      setPreview(null)
+      setNotice('Layout is already tidy.')
+      return
+    }
+
+    const cards = moves.flatMap((move) => {
+      const node = nodeById.get(move.id)
+      if (!node) return []
+      const size = nodeDimensions(node)
+      return [{ id: move.id, x: move.to.x, y: move.to.y, width: size.width, height: size.height }]
+    })
+    const groups = plan.groupResizes.map((resize) => ({ ...resize }))
+    const links = moves.flatMap((move) => {
+      const node = nodeById.get(move.id)
+      if (!node) return []
+      const size = nodeDimensions(node)
+      return [{
+        id: move.id,
+        from: {
+          x: node.position.x + size.width / 2,
+          y: node.position.y + size.height / 2,
+        },
+        to: {
+          x: move.to.x + size.width / 2,
+          y: move.to.y + size.height / 2,
+        },
+      }]
+    })
+    const bounds = unionBounds([
+      ...nodes.map((node) => {
+        const size = nodeDimensions(node)
+        return {
+          x: node.position.x,
+          y: node.position.y,
+          width: size.width,
+          height: size.height,
+        }
+      }),
+      ...cards,
+      ...groups,
+    ])
+    setPreview({
+      moves,
+      groupResizes: plan.groupResizes,
+      cards,
+      groups,
+      links,
+      signature: previewSignature,
+    })
+    if (bounds) {
+      void fitBounds(bounds, { padding: 0.2, duration: 300 })
+    }
+  }, [edges, fitBounds, nodes, previewSignature, setNotice])
+
+  const applyLayoutPreview = useCallback(() => {
+    if (!activePreview) return
+    const moves = new Map<string, LayoutMove>(activePreview.moves.map((move) => [move.id, move]))
+    const resizes = new Map<string, GroupResize>(
+      activePreview.groupResizes.map((resize) => [resize.id, resize]),
+    )
+    const allNodeIds = nodes.map((node) => ({ id: node.id }))
     setNodes((current) => current.map((node) => {
       const move = moves.get(node.id)
       const resize = resizes.get(node.id)
@@ -75,13 +216,21 @@ export function useCanvasLayout({
     }))
     setAlignmentGuides([])
     markDirty()
-    setNotice(plan.moves.length === 0
-      ? 'Layout is already tidy.'
-      : `Layout applied: ${plan.moves.length} card${plan.moves.length === 1 ? '' : 's'} moved.`)
-    window.setTimeout(() => {
-      void fitView({ padding: 0.2, maxZoom: 1.2, duration: 300 })
-    }, 0)
-  }, [edges, fitView, markDirty, nodes, setAlignmentGuides, setNodes, setNotice])
+    setPreview(null)
+    setNotice(`Layout applied: ${activePreview.moves.length} card${activePreview.moves.length === 1 ? '' : 's'} moved.`)
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        void fitView({
+          nodes: allNodeIds,
+          padding: 0.2,
+          maxZoom: 1.2,
+          duration: 300,
+        })
+      })
+    })
+  }, [activePreview, fitView, markDirty, nodes, setAlignmentGuides, setNodes, setNotice])
+
+  const cancelLayoutPreview = useCallback(() => setPreview(null), [])
 
   const autoLayoutApi = useCallback(() => {
     const sizes = Object.fromEntries(nodes.map((node) => [node.id, nodeDimensions(node)]))
@@ -161,7 +310,10 @@ export function useCanvasLayout({
   }, [flowRef, markDirty, nodes, setAlignmentGuides, setNodes, setNotice])
 
   return {
-    autoLayout,
+    replanLayout,
+    applyLayoutPreview,
+    cancelLayoutPreview,
+    layoutPreview: activePreview,
     autoLayoutApi,
     autoLayoutDatabase,
     autoFitAll,

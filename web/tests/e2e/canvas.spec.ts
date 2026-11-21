@@ -39,6 +39,18 @@ function overlaps(left: SavedCanvasNode, right: SavedCanvasNode): boolean {
     && right.y < left.y + left.height
 }
 
+function savedPositions(canvas: { nodes: SavedCanvasNode[] }): Array<{
+  id: string
+  x: number
+  y: number
+  width: number
+  height: number
+}> {
+  return [...canvas.nodes]
+    .sort((left, right) => left.id.localeCompare(right.id))
+    .map((node) => ({ id: node.id, x: node.x, y: node.y, width: node.width, height: node.height }))
+}
+
 test('creates a canvas, edits a card, saves, and reopens it', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: 'Canvases', exact: true })).toBeVisible()
@@ -1013,7 +1025,7 @@ test('merges issues and fixes in one review panel and remembers the tab', async 
   await expect(page.locator('.edge-label')).toContainText('produces')
 })
 
-test('tidy layout keeps grouped systems inside the group and undo restores positions', async ({ page }) => {
+test('replan preview keeps grouped systems inside the group and undo restores positions', async ({ page }) => {
   const modifier = process.platform === 'darwin' ? 'Meta' : 'Control'
   await page.goto('/')
   await page.getByLabel('Canvas type').selectOption('systems')
@@ -1054,18 +1066,38 @@ test('tidy layout keeps grouped systems inside the group and undo restores posit
   const groupBefore = before.nodes.find((node) => node.type === 'group')
   expect(groupBefore?.app?.groupMembers).toHaveLength(2)
 
-  await runCanvasCommand(page, 'Tidy layout')
+  const preview = page.getByRole('region', { name: 'Layout preview' })
+  await runCanvasCommand(page, 'Replan layout')
+  await expect(preview).toBeVisible()
+  await expect(preview).toContainText(/\d+ cards? move/)
+  await preview.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(preview).toHaveCount(0)
+  await waitForSaved(page)
+  expect(savedPositions(await downloadCanvas(page))).toEqual(savedPositions(before))
+
+  await runCanvasCommand(page, 'Replan layout')
+  await expect(preview).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(preview).toHaveCount(0)
+  await waitForSaved(page)
+  expect(savedPositions(await downloadCanvas(page))).toEqual(savedPositions(before))
+
+  await runCanvasCommand(page, 'Replan layout')
+  await expect(preview).toBeVisible()
+  await expect(preview).toContainText(/[1-9]\d* cards? move/)
+  await preview.getByRole('button', { name: 'Apply', exact: true }).click()
+  await expect(preview).toHaveCount(0)
   await expect(page.locator('.editor-notice')).toContainText(/Layout applied: [1-9]\d* cards? moved\./)
   await waitForSaved(page)
   const after = await downloadCanvas(page)
   const group = after.nodes.find((node) => node.type === 'group')
-  if (!group) throw new Error('Missing group after tidy')
+  if (!group) throw new Error('Missing group after replan')
   const members = new Set(group.app?.groupMembers ?? [])
   expect(members.size).toBe(2)
 
   for (const id of members) {
     const member = after.nodes.find((node) => node.id === id)
-    if (!member) throw new Error('Missing group member after tidy')
+    if (!member) throw new Error('Missing group member after replan')
     expect(inside(member, group)).toBe(true)
   }
 
@@ -1087,12 +1119,5 @@ test('tidy layout keeps grouped systems inside the group and undo restores posit
 
   await page.getByRole('button', { name: 'Undo' }).click()
   await waitForSaved(page)
-  const undone = await downloadCanvas(page)
-  const undoneById = new Map(undone.nodes.map((node) => [node.id, node]))
-  for (const node of before.nodes) {
-    const restored = undoneById.get(node.id)
-    if (!restored) throw new Error('Missing card after undo')
-    expect({ x: restored.x, y: restored.y, width: restored.width, height: restored.height })
-      .toEqual({ x: node.x, y: node.y, width: node.width, height: node.height })
-  }
+  expect(savedPositions(await downloadCanvas(page))).toEqual(savedPositions(before))
 })

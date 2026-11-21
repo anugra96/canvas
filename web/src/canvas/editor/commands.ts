@@ -65,7 +65,7 @@ interface CanvasCommandInput {
   onUndo: () => void
   onRedo: () => void
   onSave: () => void
-  onTidy: () => void
+  onReplan: () => void
   onTidyApi: () => void
   onTidyDatabase: () => void
   onFitCards: () => void
@@ -226,13 +226,13 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       run: input.onStandardErrors,
     },
     {
-      id: 'layout.tidy',
-      label: 'Tidy layout',
+      id: 'layout.replan',
+      label: 'Replan layout',
       icon: LayoutGrid,
       surface: 'overflow',
       section: 'layout',
       available: input.profileId !== 'api' && input.profileId !== 'database',
-      run: input.onTidy,
+      run: input.onReplan,
     },
     {
       id: 'layout.tidy-api',

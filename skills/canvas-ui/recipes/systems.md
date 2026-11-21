@@ -5,7 +5,7 @@ the meaning, so their direction matters.
 
 ```text
 Create canvas (Systems) → cards (Actor, System, Repository, Artifact, Schema)
-  → lines (Connect + Edge relation) → notes → Tidy layout → Review → Download .canvas
+  → lines (Connect + Edge relation) → notes → Replan layout → Apply preview → Review → Download .canvas
 ```
 
 ## 1. Cards
@@ -74,8 +74,10 @@ database has two or more users. It is a warning, not an error.
 
 ## 4. Finish
 
-1. `More canvas actions` → `Tidy layout`, after the lines exist (the layout
-   follows them; before that it stacks the cards in one column).
+1. `More canvas actions` → `Replan layout`, after the lines exist (the layout
+   follows them; before that it stacks the cards in one column). The preview
+   opens as `region "Layout preview"`; click `button "Apply"` to move the cards.
+   Escape or `button "Cancel"` discards the preview and leaves positions alone.
 2. `Review` (toolbar) lists issues. Close it with `button "Close review"` before
    you use the toolbar again: the panel covers it.
 3. `More canvas actions` → `Download .canvas`. Check the cards

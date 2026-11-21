@@ -68,7 +68,7 @@ the first accessibility read after load can be empty.
 | --- | --- |
 | `button "Add"` | Menu of card types for this profile (`menuitem` per type) |
 | `button "Display"` | Edge and label visibility presets |
-| `button "More canvas actions"` | Tidy layout for the profile, `Fit cards to content`, `Zoom to fit`, export for the profile (`Export DDL`, `Export OpenAPI YAML`), `Download .canvas`, `Screenshot`, `Keyboard shortcuts` |
+| `button "More canvas actions"` | Replan layout for the profile (then `button "Apply"` in `region "Layout preview"`), `Fit cards to content`, `Zoom to fit`, export for the profile (`Export DDL`, `Export OpenAPI YAML`), `Download .canvas`, `Screenshot`, `Keyboard shortcuts` |
 | `button "Connect"` | Shown when one card is selected (Raw, Systems): click it, then the target card |
 | `button "Review"` | Issues and level readiness; close with `button "Close review"` |
 | `button "Fit View"` | Fit all cards in view. Use it before double-clicking a card that may be off-screen |

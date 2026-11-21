@@ -34,6 +34,7 @@ import { writeViewport } from './viewport'
 import { useApiDesign } from '../apiDesign/ApiDesignContext'
 import { ManagedEdgeChooser } from '../apiDesign/ManagedEdgeChooser'
 import { ConnectionPreview } from './graph/ConnectionPreview'
+import { LayoutPreviewBar, LayoutPreviewGhosts } from './LayoutPreview'
 import type { CanvasGraphState } from './graph/useCanvasGraph'
 import type { CanvasCaptureState } from './capture/useCanvasCapture'
 import type { CanvasValidationEditor } from './validation/useCanvasValidation'
@@ -384,8 +385,16 @@ export function CanvasWorkspace({
                 : { top: guide.position, left: guide.start, width: guide.end - guide.start }}
             />
           ))}
+          {graph.layoutPreview && <LayoutPreviewGhosts preview={graph.layoutPreview} />}
         </ViewportPortal>
       </ReactFlow>
+      {graph.layoutPreview && (
+        <LayoutPreviewBar
+          preview={graph.layoutPreview}
+          onApply={graph.applyLayoutPreview}
+          onCancel={graph.cancelLayoutPreview}
+        />
+      )}
       {capture.areaMode && (
         <div
           className="screenshot-selection-layer"
