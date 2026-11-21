@@ -10,7 +10,7 @@ import {
   type Ontology,
 } from '@canvas/contract'
 
-import type { CanvasFlowEdge, CanvasFlowNode } from '../model/adapter'
+import { nodeDimensions, type CanvasFlowEdge, type CanvasFlowNode } from '../model/adapter'
 import { ApiReferenceView } from '../apiDesign/ApiReferenceView'
 import { layoutDerivedView, type DerivedDiagram } from '../views/diagramLayout'
 import {
@@ -61,8 +61,10 @@ export function DerivedViewsDialog({
   const [jobId, setJobId] = useState('')
   const [level, setLevel] = useState<LevelNumber>(initialLevel ?? (isApi ? 4 : 1))
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
+  const [arrange, setArrange] = useState<'seeded' | 'auto'>('seeded')
   const [exportError, setExportError] = useState('')
   const [levelRequest, setLevelRequest] = useState({ open, initialLevel })
+  const [viewSession, setViewSession] = useState(open)
   const graphSurface = useRef<HTMLDivElement>(null)
   const availableLevels = useMemo(() => {
     const rawNodes = nodes.map((node) => node.data.raw)
@@ -88,7 +90,20 @@ export function DerivedViewsDialog({
       : deriveView(nodes, edges, activeView, ontology, { level, expanded })),
     [activeView, edges, expanded, level, nodes, ontology],
   )
-  const diagram = useMemo(() => layoutDerivedView(view), [view])
+  const canvasSeed = useMemo(() => new Map(nodes.map((node) => {
+    const size = nodeDimensions(node)
+    return [
+      node.id,
+      { x: node.position.x + size.width / 2, y: node.position.y + size.height / 2 },
+    ] as const
+  })), [nodes])
+  const diagram = useMemo(
+    () => layoutDerivedView(
+      view,
+      isApi ? undefined : { seed: canvasSeed, arrange },
+    ),
+    [arrange, canvasSeed, isApi, view],
+  )
   const sequence = useMemo(
     () => (activeView === 'sequence'
       ? deriveSequence(nodes, edges, activeJobId, ontology)
@@ -139,6 +154,11 @@ export function DerivedViewsDialog({
   if (levelRequest.open !== open || levelRequest.initialLevel !== initialLevel) {
     setLevelRequest({ open, initialLevel })
     if (open && initialLevel != null) setLevel(initialLevel)
+  }
+
+  if (viewSession !== open) {
+    setViewSession(open)
+    if (open) setArrange('seeded')
   }
 
   if (!open) return null
@@ -280,6 +300,16 @@ export function DerivedViewsDialog({
               >
                 Collapse all
               </button>
+              {!isApi && (
+                <button
+                  type="button"
+                  className="derived-action"
+                  aria-pressed={arrange === 'auto'}
+                  onClick={() => setArrange((current) => current === 'auto' ? 'seeded' : 'auto')}
+                >
+                  Auto arrange
+                </button>
+              )}
               <button type="button" className="derived-action" onClick={() => runExport('png')}>
                 <Download size={13} /> PNG
               </button>
