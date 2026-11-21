@@ -29,7 +29,6 @@ Different files from Next 1 and 2, so these can run in parallel.
 
 | Item | Spec | Note |
 | --- | --- | --- |
-| CI on `main` is red | — | `web/src/App.test.tsx` "creates a canvas from the empty state and opens it" fails on GitHub Actions since `d1b1e1a`; passes locally. Last green: `b96a92b` |
 | Database Phase 2: checks | `database-profile.md` | |
 | Header: the Systems pill overlaps **Add** at 1280 px wide | — | Small |
 | Schema builder follow-ups: job System schemas, suggest schema from rows, array sub-tables | `schema-builder.md` | |
@@ -57,3 +56,4 @@ Different files from Next 1 and 2, so these can run in parallel.
 | API Phases 1 to 3: model, import, design tools, review, breaking changes | `api-profile.md` | `aa92b9d`, `f1833bb`, `d8a4a94` |
 | Focus tones and 432 Hz tuning | `focus-tones.md` | `d151305` |
 | Bug round: per-category naming, path-level parameters, `$ref` response arrows | — | `e4fbf8b`, `4de7417`, `c170951` |
+| CI on `main` green again: App create test waits for the lazy editor | — | `28a7d17` |
