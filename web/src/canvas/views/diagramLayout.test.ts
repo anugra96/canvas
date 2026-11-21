@@ -129,6 +129,15 @@ describe('seeded derived layouts', () => {
     expect(layoutDerivedView(derived, { seed: centres, arrange: 'seeded' })).toEqual(diagram)
   })
 
+  it('gives a sparse canvas the same compact view as a dense one', () => {
+    const derived = deriveView(flow.nodes, flow.edges, 'architecture', DEFAULT_ONTOLOGY)
+    const spread = new Map([...centres].map(([id, point]) => [id, { x: point.x * 10, y: point.y * 10 }]))
+    const dense = layoutDerivedView(derived, { seed: centres, arrange: 'seeded' })
+    const sparse = layoutDerivedView(derived, { seed: spread, arrange: 'seeded' })
+    expect(Math.abs(sparse.width - dense.width)).toBeLessThanOrEqual(2)
+    expect(Math.abs(sparse.height - dense.height)).toBeLessThanOrEqual(2)
+  })
+
   it('falls back to the dagre layout without two distinct seeds or on auto arrange', () => {
     const derived = deriveView(flow.nodes, flow.edges, 'architecture', DEFAULT_ONTOLOGY)
     const dagre = layoutDerivedView(derived)

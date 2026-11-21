@@ -230,7 +230,77 @@ function resolveMembership(
   return { parent, groups }
 }
 
-function layoutItems(items: LayoutItem[], edges: LayoutEdge[]): Map<string, Point> {
+function connectedClusters(items: LayoutItem[], edges: LayoutEdge[]): LayoutItem[][] {
+  const root = new Map(items.map((item) => [item.id, item.id]))
+  const find = (id: string): string => {
+    let current = id
+    while (root.get(current) !== current) current = root.get(current)!
+    return current
+  }
+  for (const edge of edges) {
+    if (!root.has(edge.source) || !root.has(edge.target)) continue
+    const [left, right] = [find(edge.source), find(edge.target)].sort()
+    if (left !== right) root.set(right!, left!)
+  }
+  const clusters = new Map<string, LayoutItem[]>()
+  for (const item of sortById(items)) {
+    const key = find(item.id)
+    clusters.set(key, [...(clusters.get(key) ?? []), item])
+  }
+  return [...clusters.values()]
+}
+
+// Lay out each connected cluster with dagre, then fill rows in reading order of where the clusters sit now,
+// so cards without relations form a compact block instead of one tall dagre column.
+function layoutItems(items: LayoutItem[], edges: LayoutEdge[], current = new Map<string, Point>()): Map<string, Point> {
+  const clusters = connectedClusters(items, edges)
+  if (clusters.length <= 1) return layoutCluster(items, edges)
+  const laid = clusters.map((cluster) => {
+    const ids = new Set(cluster.map((item) => item.id))
+    const positions = layoutCluster(cluster, edges.filter((edge) => ids.has(edge.source) && ids.has(edge.target)))
+    const left = Math.min(...cluster.map((item) => positions.get(item.id)!.x))
+    const top = Math.min(...cluster.map((item) => positions.get(item.id)!.y))
+    const width = Math.max(...cluster.map((item) => positions.get(item.id)!.x + item.width)) - left
+    const height = Math.max(...cluster.map((item) => positions.get(item.id)!.y + item.height)) - top
+    const anchors = cluster.flatMap((item) => current.get(item.id) ?? [])
+    const anchor = anchors.length > 0
+      ? {
+        x: anchors.reduce((total, point) => total + point.x, 0) / anchors.length,
+        y: anchors.reduce((total, point) => total + point.y, 0) / anchors.length,
+      }
+      : { x: 0, y: 0 }
+    return { cluster, positions, left, top, width, height, anchor, id: cluster[0]!.id }
+  })
+  const heights = laid.map((entry) => entry.height).sort((a, b) => a - b)
+  const band = heights[Math.floor(heights.length / 2)]! + NODE_SEP
+  laid.sort((a, b) => (
+    Math.round(a.anchor.y / band) - Math.round(b.anchor.y / band)
+    || a.anchor.x - b.anchor.x
+    || a.id.localeCompare(b.id)
+  ))
+  const area = laid.reduce((total, entry) => total + (entry.width + NODE_SEP) * (entry.height + NODE_SEP), 0)
+  const rowWidth = Math.max(...laid.map((entry) => entry.width), Math.sqrt(area) * 1.6)
+  const result = new Map<string, Point>()
+  let x = 0
+  let y = 0
+  let rowHeight = 0
+  for (const entry of laid) {
+    if (x > 0 && x + entry.width > rowWidth) {
+      x = 0
+      y += rowHeight + NODE_SEP
+      rowHeight = 0
+    }
+    for (const item of entry.cluster) {
+      const position = entry.positions.get(item.id)!
+      result.set(item.id, { x: x + position.x - entry.left, y: y + position.y - entry.top })
+    }
+    x += entry.width + NODE_SEP
+    rowHeight = Math.max(rowHeight, entry.height)
+  }
+  return result
+}
+
+function layoutCluster(items: LayoutItem[], edges: LayoutEdge[]): Map<string, Point> {
   const positions = new Map<string, Point>()
   if (items.length === 0) return positions
   const graph = new dagre.graphlib.Graph({ multigraph: true })
@@ -289,6 +359,15 @@ function blockEdges(
   return flow.length > 0 ? flow : crossing
 }
 
+function currentCentres(ids: string[], context: PlanContext): Map<string, Point> {
+  const centres = new Map<string, Point>()
+  for (const id of ids) {
+    const node = context.nodeById.get(id)
+    if (node) centres.set(id, rectCenter(nodeRect(node, context.sizes)))
+  }
+  return centres
+}
+
 function layoutGroup(groupId: string, context: PlanContext): GroupLayout {
   const group = context.nodeById.get(groupId)
   if (!group) {
@@ -334,7 +413,7 @@ function layoutGroup(groupId: string, context: PlanContext): GroupLayout {
     }
   }
 
-  const positions = layoutItems(items, blockEdges(context, itemFor))
+  const positions = layoutItems(items, blockEdges(context, itemFor), currentCentres([...itemIds], context))
   const left = Math.min(...items.map((item) => positions.get(item.id)!.x))
   const top = Math.min(...items.map((item) => positions.get(item.id)!.y))
   const right = Math.max(...items.map((item) => positions.get(item.id)!.x + item.width))
@@ -387,7 +466,7 @@ function layoutRootBlock(context: PlanContext): GroupLayout {
   })
   const itemIds = new Set(items.map((item) => item.id))
   const itemFor = (nodeId: string) => (itemIds.has(nodeId) ? nodeId : undefined)
-  const positions = layoutItems(items, blockEdges(context, itemFor))
+  const positions = layoutItems(items, blockEdges(context, itemFor), currentCentres([...itemIds], context))
   if (items.length === 0) {
     return { size: { width: 0, height: 0 }, cardOffsets: new Map(), groupBoxes: new Map() }
   }
@@ -451,7 +530,15 @@ function replan(canvas: JsonCanvas, sizes: Sizes | undefined): LayoutPlan {
     }
     return undefined
   }
-  const topPositions = layoutItems(topItems, blockEdges(context, topItemFor, false))
+  const topCentres = currentCentres(topGroups.map((group) => group.id), context)
+  const rootCentres = [...currentCentres([...rootLayout.cardOffsets.keys()], context).values()]
+  if (rootCentres.length > 0) {
+    topCentres.set(ROOT_BLOCK, {
+      x: rootCentres.reduce((total, point) => total + point.x, 0) / rootCentres.length,
+      y: rootCentres.reduce((total, point) => total + point.y, 0) / rootCentres.length,
+    })
+  }
+  const topPositions = layoutItems(topItems, blockEdges(context, topItemFor, false), topCentres)
   const cardPositions = new Map<string, Point>()
   const groupBoxes = new Map<string, Rect>()
 

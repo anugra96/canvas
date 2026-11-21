@@ -219,6 +219,23 @@ const cases: PlanCase[] = [
     },
   },
   {
+    name: 'replan packs unconnected cards into rows instead of one tall column',
+    canvas: {
+      nodes: Array.from({ length: 9 }, (_, index) => card(`n${index}`, (index % 3) * 400, Math.floor(index / 3) * 300)),
+      edges: [],
+    },
+    scope: { kind: 'replan' },
+    check: (_plan, applied) => {
+      const xs = applied.map((node) => node.x)
+      const ys = applied.map((node) => node.y)
+      const width = Math.max(...xs.map((x) => x + 120)) - Math.min(...xs)
+      const height = Math.max(...ys.map((y) => y + 60)) - Math.min(...ys)
+      expect(height).toBeLessThanOrEqual(width * 2)
+      // Packing follows where cards sit now: the top-left card stays first.
+      expect(applied.find((node) => node.id === 'n0')!.x).toBe(Math.min(...xs))
+    },
+  },
+  {
     name: 'place uses the base point for an unconnected card',
     canvas: {
       nodes: [card('a', 0, 0), card('c', 900, 900)],

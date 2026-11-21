@@ -170,7 +170,8 @@ function seedScale(entries: SeedEntry[]): number {
     0,
   ) / entries.length
   if (!Number.isFinite(median) || median <= 0) return 1
-  return Math.max(1, (extent + SEEDED_GAP) / median)
+  // Scale either way so neighbours sit about one card apart: a sparse canvas must not give a sparse view.
+  return Math.min(4, Math.max(0.02, (extent + SEEDED_GAP) / median))
 }
 
 function needsPush(rect: SeedRect, placed: SeedRect): boolean {

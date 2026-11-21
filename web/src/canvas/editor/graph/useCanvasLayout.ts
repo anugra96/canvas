@@ -103,7 +103,8 @@ export function useCanvasLayout({
 }: UseCanvasLayoutInput) {
   const { fitView, fitBounds } = useReactFlow()
   const [preview, setPreview] = useState<LayoutPreview | null>(null)
-  const previewSignature = useMemo(() => layoutSignature(nodes, edges), [edges, nodes])
+  // Only serialise the canvas while a preview is open; dragging with no preview stays cheap.
+  const previewSignature = useMemo(() => (preview ? layoutSignature(nodes, edges) : ''), [edges, nodes, preview])
   const activePreview = preview && preview.signature === previewSignature ? preview : null
 
   const replanLayout = useCallback(() => {
@@ -172,12 +173,12 @@ export function useCanvasLayout({
       cards,
       groups,
       links,
-      signature: previewSignature,
+      signature: layoutSignature(nodes, edges),
     })
     if (bounds) {
       void fitBounds(bounds, { padding: 0.2, duration: 300 })
     }
-  }, [edges, fitBounds, nodes, previewSignature, setNotice])
+  }, [edges, fitBounds, nodes, setNotice])
 
   const applyLayoutPreview = useCallback(() => {
     if (!activePreview) return
