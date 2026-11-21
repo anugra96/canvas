@@ -1,6 +1,6 @@
 # Focus Tones and 432 Hz Tuning
 
-Status: Proposed (draft 2026-11-17, not built)
+Status: Built (`d151305`)
 Applies to: the Ambience player (`web/src/atmosphere/ambience/`, `web/src/AmbiencePicker.tsx`)
 
 ## Decision

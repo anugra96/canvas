@@ -1,6 +1,6 @@
 # Levels, Review Modes, and View Readiness
 
-Status: Proposed (draft 2026-11-16, not built)
+Status: Step 1 built (`70685ac`, `e669947`). Step 2 not built
 Applies to: Systems canvases (Step 1); linked API and Database canvases (Step 2)
 
 ## Decision

@@ -1,6 +1,6 @@
 # Schema Builder, Rows Preview, and Embedded Schemas
 
-Status: Proposed MVP (draft 2026-11-16, not built)
+Status: MVP built (`7cd39be`, `5694a9c`). Follow-ups in `backlog.md`
 Applies to: Schema cards (Systems and API profiles); Artifact cards (Systems)
 
 ## Decision

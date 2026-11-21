@@ -1,6 +1,6 @@
 # API Profile Contract
 
-Status: Proposed v1 (spec agreed 2026-11-16, not built)
+Status: Phases 1 to 3 built (`aa92b9d`, `f1833bb`, `d8a4a94`). Phase 4 next, after districts (`backlog.md`)
 Profile ID: `api`
 Version: `1`
 Format: OpenAPI 3.1 (JSON and YAML), JSON Schema 2020-12

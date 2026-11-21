@@ -1,6 +1,6 @@
 # Edge Classes and the Display Control
 
-Status: Proposed (draft 2026-11-16, not built)
+Status: Built (`acd8a01`, `cd0fe92`)
 Applies to: the editable canvas on every profile
 
 ## Decision

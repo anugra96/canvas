@@ -1,6 +1,6 @@
 # Database Profile Contract
 
-Status: Proposed v1 (draft 2026-11-16, not built)
+Status: Phase 1 built (`aa7b002`, `92d5588`). Phases 2 to 4 not built
 Profile ID: `database`
 Version: `1`
 Format: PostgreSQL DDL (Postgres 15+), `pg_dump --schema-only` output
