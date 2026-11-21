@@ -2,16 +2,27 @@ import { useReactFlow } from '@xyflow/react'
 import { useCallback } from 'react'
 
 import type { AlignmentGuide } from '../../model/alignment'
-import { estimateDatabaseSizes, layoutApiCanvas, layoutDatabaseCanvas } from '@canvas/contract'
-import { autoLayoutCanvas } from '../../model/autoLayout'
-import { nodeDimensions, type CanvasFlowEdge, type CanvasFlowNode } from '../../model/adapter'
+import {
+  estimateDatabaseSizes,
+  layoutApiCanvas,
+  layoutDatabaseCanvas,
+  planLayout,
+  type GroupResize,
+  type LayoutMove,
+  type Sizes,
+} from '@canvas/contract'
+import {
+  fromFlowCanvas,
+  nodeDimensions,
+  type CanvasFlowEdge,
+  type CanvasFlowNode,
+} from '../../model/adapter'
 import { findBestCardSize } from '../autoFit'
 
 interface UseCanvasLayoutInput {
   nodes: CanvasFlowNode[]
   edges: CanvasFlowEdge[]
   setNodes: (update: (current: CanvasFlowNode[]) => CanvasFlowNode[]) => void
-  setEdges: (update: (current: CanvasFlowEdge[]) => CanvasFlowEdge[]) => void
   setAlignmentGuides: (guides: AlignmentGuide[]) => void
   markDirty: () => void
   setNotice: (message: string) => void
@@ -22,7 +33,6 @@ export function useCanvasLayout({
   nodes,
   edges,
   setNodes,
-  setEdges,
   setAlignmentGuides,
   markDirty,
   setNotice,
@@ -31,16 +41,47 @@ export function useCanvasLayout({
   const { fitView } = useReactFlow()
 
   const autoLayout = useCallback(() => {
-    const layout = autoLayoutCanvas(nodes, edges)
-    setNodes(() => layout.nodes)
-    setEdges(() => layout.edges)
+    const sizes: Sizes = Object.fromEntries(nodes.map((node) => [node.id, nodeDimensions(node)]))
+    const plan = planLayout(fromFlowCanvas(nodes, edges, {}), { kind: 'replan' }, sizes)
+    const moves = new Map<string, LayoutMove>(plan.moves.map((move) => [move.id, move]))
+    const resizes = new Map<string, GroupResize>(plan.groupResizes.map((resize) => [resize.id, resize]))
+    setNodes((current) => current.map((node) => {
+      const move = moves.get(node.id)
+      const resize = resizes.get(node.id)
+      if (!move && !resize) return node
+      if (resize && node.type === 'group') {
+        return {
+          ...node,
+          position: { x: resize.x, y: resize.y },
+          style: { ...node.style, width: resize.width, height: resize.height },
+          data: {
+            ...node.data,
+            raw: {
+              ...node.data.raw,
+              x: resize.x,
+              y: resize.y,
+              width: resize.width,
+              height: resize.height,
+            },
+          },
+        }
+      }
+      if (!move) return node
+      return {
+        ...node,
+        position: move.to,
+        data: { ...node.data, raw: { ...node.data.raw, x: move.to.x, y: move.to.y } },
+      }
+    }))
     setAlignmentGuides([])
-    setNotice('Architecture layout applied.')
     markDirty()
+    setNotice(plan.moves.length === 0
+      ? 'Layout is already tidy.'
+      : `Layout applied: ${plan.moves.length} card${plan.moves.length === 1 ? '' : 's'} moved.`)
     window.setTimeout(() => {
       void fitView({ padding: 0.2, maxZoom: 1.2, duration: 300 })
     }, 0)
-  }, [edges, fitView, markDirty, nodes, setAlignmentGuides, setEdges, setNodes, setNotice])
+  }, [edges, fitView, markDirty, nodes, setAlignmentGuides, setNodes, setNotice])
 
   const autoLayoutApi = useCallback(() => {
     const sizes = Object.fromEntries(nodes.map((node) => [node.id, nodeDimensions(node)]))

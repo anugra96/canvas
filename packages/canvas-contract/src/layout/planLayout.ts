@@ -259,6 +259,7 @@ function layoutItems(items: LayoutItem[], edges: LayoutEdge[]): Map<string, Poin
 function blockEdges(
   context: PlanContext,
   itemFor: (nodeId: string) => string | undefined,
+  preferFlow = true,
 ): LayoutEdge[] {
   const nodeById = context.nodeById
   const crossing: LayoutEdge[] = []
@@ -268,6 +269,7 @@ function blockEdges(
     if (!source || !target || source === target) continue
     crossing.push({ id: edge.id, source, target, edge })
   }
+  if (!preferFlow) return crossing
   const flow = crossing.filter(({ edge }) => (
     edgeClass(edge, nodeById.get(edge.fromNode), nodeById.get(edge.toNode)) === 'flow'
   ))
@@ -436,7 +438,7 @@ function replan(canvas: JsonCanvas, sizes: Sizes | undefined): LayoutPlan {
     }
     return undefined
   }
-  const topPositions = layoutItems(topItems, blockEdges(context, topItemFor))
+  const topPositions = layoutItems(topItems, blockEdges(context, topItemFor, false))
   const cardPositions = new Map<string, Point>()
   const groupBoxes = new Map<string, Rect>()
 
@@ -682,6 +684,7 @@ function place(canvas: JsonCanvas, scope: { nodeIds: string[]; base?: Point }, s
       && connectedCards.every((id) => membership.parent.get(id) !== undefined)
       ? [...connectedGroups][0]
       : undefined
+    const targetGroup = sharedGroup ?? membership.parent.get(placedId)
 
     let base: Point
     if (connections.length > 0) {
@@ -702,14 +705,14 @@ function place(canvas: JsonCanvas, scope: { nodeIds: string[]; base?: Point }, s
 
     let chosen: { position: Point; growth?: Map<string, Rect> } | undefined
 
-    if (sharedGroup) {
-      const targetRect = groupRects.get(sharedGroup)
+    if (targetGroup) {
+      const targetRect = groupRects.get(targetGroup)
       if (targetRect) {
         for (const candidate of candidates(base, rect.width, rect.height)) {
           const candidateRect = { ...rect, x: candidate.x, y: candidate.y }
           if (!insideGroup(candidateRect, targetRect)) continue
           if (!freeOfCards(candidateRect)) continue
-          if (!freeOfOtherGroups(candidateRect, sharedGroup)) continue
+          if (!freeOfOtherGroups(candidateRect, targetGroup)) continue
           chosen = { position: candidate }
           break
         }
@@ -717,9 +720,9 @@ function place(canvas: JsonCanvas, scope: { nodeIds: string[]; base?: Point }, s
           for (const candidate of candidates(base, rect.width, rect.height)) {
             const candidateRect = { ...rect, x: candidate.x, y: candidate.y }
             if (!freeOfCards(candidateRect)) continue
-            if (!freeOfOtherGroups(candidateRect, sharedGroup)) continue
+            if (!freeOfOtherGroups(candidateRect, targetGroup)) continue
             const growth = proposedGroupGrowth(
-              sharedGroup,
+              targetGroup,
               placedId,
               candidateRect,
               context,
@@ -735,7 +738,7 @@ function place(canvas: JsonCanvas, scope: { nodeIds: string[]; base?: Point }, s
           for (const fallback of fallbackCandidates(rect.width, rect.height)) {
             const candidateRect = { ...rect, x: fallback.x, y: fallback.y }
             const growth = proposedGroupGrowth(
-              sharedGroup,
+              targetGroup,
               placedId,
               candidateRect,
               context,
@@ -772,16 +775,18 @@ function place(canvas: JsonCanvas, scope: { nodeIds: string[]; base?: Point }, s
     const placedRect = { ...rect, x: position.x, y: position.y }
     cardRects.set(placedId, placedRect)
 
-    if (sharedGroup) {
-      membership.parent.set(placedId, sharedGroup)
-      joins.push({ groupId: sharedGroup, nodeId: placedId })
+    if (targetGroup) {
+      if (sharedGroup) {
+        membership.parent.set(placedId, sharedGroup)
+        joins.push({ groupId: sharedGroup, nodeId: placedId })
+      }
       for (const [groupId, next] of chosen?.growth ?? []) {
         groupRects.set(groupId, next)
         resizes.set(groupId, next)
       }
-      if (!groupRects.has(sharedGroup)) {
-        const next = originalGroupRects.get(sharedGroup)
-        if (next) groupRects.set(sharedGroup, next)
+      if (!groupRects.has(targetGroup)) {
+        const next = originalGroupRects.get(targetGroup)
+        if (next) groupRects.set(targetGroup, next)
       }
     }
   }

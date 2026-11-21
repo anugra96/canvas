@@ -22,6 +22,7 @@ import {
   type AddApiEndpointInput,
   type AddApiResourceInput,
   type AddDatabaseTableInput,
+  type CanvasEdge,
   type CanvasNode,
   type DatabaseReferenceConnection,
   type EntityFields,
@@ -56,6 +57,7 @@ import { EditorDialogs } from './EditorDialogs'
 import { useCanvasCommands } from './commands'
 import { useCanvasDocument } from './document/useCanvasDocument'
 import { makeEntityNode } from './graph/nodes'
+import { applyPlacementToNodes } from './graph/planPlacement'
 import { useCanvasGraph } from './graph/useCanvasGraph'
 import { useCanvasCapture } from './capture/useCanvasCapture'
 import { useCanvasLinks } from './links/useCanvasLinks'
@@ -434,22 +436,34 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     if (!schemaType) return { ok: false, error: 'The schema card type is unavailable.' }
     const schemaId = createNodeId()
     const extracted = extractArtifactSchema(fields, schemaId)
-    const placement = graph.placementPosition(schemaType.defaultSize.width, schemaType.defaultSize.height)
-    const base = makeEntityNode('schema', placement, ontology)
+    const base = makeEntityNode('schema', { x: 0, y: 0 }, ontology)
     if (!base) return { ok: false, error: 'Could not create the Schema card.' }
+    const draft = { ...base, id: schemaId } as CanvasNode
+    const placement = graph.placementPosition(draft, {
+      extraEdges: [{
+        id: `place:${schemaId}`,
+        fromNode: artifactId,
+        toNode: schemaId,
+        app: { relationType: 'uses' },
+      } as CanvasEdge],
+    })
     const schemaFields = { ...(base.app?.fields ?? {}), ...extracted.schema }
     const schemaText = renderEntityMarkdown(schemaType, schemaFields)
     const created = {
-      ...base,
-      id: schemaId,
-      app: { ...(base.app ?? {}), entityType: 'schema', fields: schemaFields },
+      ...draft,
+      x: placement.position.x,
+      y: placement.position.y,
+      app: { ...(draft.app ?? {}), entityType: 'schema', fields: schemaFields },
       text: schemaText,
     } as CanvasNode
-    setNodes((current) => insertNodes(
-      current.map((node) => (
-        node.id === artifactId ? withEntityFields(node, extracted.artifact, ontology) : node
-      )),
-      [{ ...toFlowNode(created), selected: true }],
+    setNodes((current) => applyPlacementToNodes(
+      insertNodes(
+        current.map((node) => (
+          node.id === artifactId ? withEntityFields(node, extracted.artifact, ontology) : node
+        )),
+        [{ ...toFlowNode(created), selected: true }],
+      ),
+      placement,
     ))
     markDirty()
     graph.revealPlacement(placement.visible)

@@ -22,6 +22,7 @@ import { buildSuggestions, type CanvasSuggestion } from '../../suggestions/sugge
 import { fromFlowCanvas, nodeDimensions, toFlowEdge, toFlowNode, type CanvasFlowEdge, type CanvasFlowNode } from '../../model/adapter'
 import { edgeFromConnection } from '../../model/edgeRelations'
 import { makeEntityNode } from '../graph/nodes'
+import { applyPlacementToNodes, planPlacement } from '../graph/planPlacement'
 import { prioritizeValidationIssues } from '../prioritizeIssues'
 import { blockedExportIssues } from '../reviewExport'
 import type { ReviewTab } from '../ReviewPanel'
@@ -33,48 +34,26 @@ import {
   type ValidationSuppression,
 } from '../validationSuppressions'
 
-function suggestedPlacement(
-target: CanvasFlowNode,
-width: number,
-height: number,
-nodeList: CanvasFlowNode[],
-): { x: number; y: number; sourceHandle: CanvasNodeSide; targetHandle: CanvasNodeSide } {
+function placementHandles(
+  target: CanvasFlowNode,
+  placed: CanvasNode,
+): { sourceHandle: CanvasNodeSide; targetHandle: CanvasNodeSide } {
   const size = nodeDimensions(target)
-  const gap = 90
-  const candidates = [
-    {
-      x: target.position.x - width - gap,
-      y: target.position.y + (size.height - height) / 2,
-      sourceHandle: 'right' as const,
-      targetHandle: 'left' as const,
-    },
-    {
-      x: target.position.x + size.width + gap,
-      y: target.position.y + (size.height - height) / 2,
-      sourceHandle: 'left' as const,
-      targetHandle: 'right' as const,
-    },
-    {
-      x: target.position.x + (size.width - width) / 2,
-      y: target.position.y - height - gap,
-      sourceHandle: 'bottom' as const,
-      targetHandle: 'top' as const,
-    },
-    {
-      x: target.position.x + (size.width - width) / 2,
-      y: target.position.y + size.height + gap,
-      sourceHandle: 'top' as const,
-      targetHandle: 'bottom' as const,
-    },
-  ]
-  const isFree = (candidate: { x: number; y: number }) => nodeList.every((node) => {
-    const nodeSize = nodeDimensions(node)
-    return candidate.x + width + gap <= node.position.x
-      || candidate.x >= node.position.x + nodeSize.width + gap
-      || candidate.y + height + gap <= node.position.y
-      || candidate.y >= node.position.y + nodeSize.height + gap
-  })
-  return candidates.find(isFree) ?? candidates[0]!
+  if (placed.x + placed.width <= target.position.x) {
+    return { sourceHandle: 'right', targetHandle: 'left' }
+  }
+  if (placed.x >= target.position.x + size.width) {
+    return { sourceHandle: 'left', targetHandle: 'right' }
+  }
+  if (placed.y + placed.height <= target.position.y) {
+    return { sourceHandle: 'bottom', targetHandle: 'top' }
+  }
+  if (placed.y >= target.position.y + size.height) {
+    return { sourceHandle: 'top', targetHandle: 'bottom' }
+  }
+  return placed.x < target.position.x
+    ? { sourceHandle: 'right', targetHandle: 'left' }
+    : { sourceHandle: 'left', targetHandle: 'right' }
 }
 
 interface UseCanvasValidationInput {
@@ -258,13 +237,7 @@ export function useCanvasValidation({
           target.data.entity?.fields.name ?? target.data.entity?.fields.title ?? '',
         ).trim()
         const name = `${targetName || targetEntityType?.label || entityType.label} ${fix.nameSuffix}`
-        const placement = suggestedPlacement(
-          target,
-          entityType.defaultSize.width,
-          entityType.defaultSize.height,
-          nextNodes,
-        )
-        const base = makeEntityNode(fix.entityType, placement, ontology)
+        const base = makeEntityNode(fix.entityType, { x: 0, y: 0 }, ontology)
         if (!base) continue
         const fields = { ...emptyEntityFields(entityType), name }
         const raw = {
@@ -272,14 +245,26 @@ export function useCanvasValidation({
           app: { ...(base.app ?? {}), fields },
           text: renderEntityMarkdown(entityType, fields),
         } as CanvasNode
-        const newNode = toFlowNode(raw)
-        const edge = edgeFromConnection({
+        const draftEdge = edgeFromConnection({
           source: raw.id,
           target: target.id,
-          sourceHandle: placement.sourceHandle,
-          targetHandle: placement.targetHandle,
+          sourceHandle: 'right',
+          targetHandle: 'left',
         }, fix.relationType, ontology)
-        nextNodes = [...nextNodes, newNode]
+        const placement = planPlacement(nextNodes, nextEdges, {
+          node: raw,
+          extraEdges: [draftEdge],
+        })
+        const placed = { ...raw, x: placement.position.x, y: placement.position.y }
+        const handles = placementHandles(target, placed)
+        const newNode = toFlowNode(placed)
+        const edge = edgeFromConnection({
+          source: placed.id,
+          target: target.id,
+          sourceHandle: handles.sourceHandle,
+          targetHandle: handles.targetHandle,
+        }, fix.relationType, ontology)
+        nextNodes = applyPlacementToNodes([...nextNodes, newNode], placement)
         nextEdges = [...nextEdges, toFlowEdge(edge, ontology)]
         addedIds.push(newNode.id)
         focusIds.push(target.id, newNode.id)

@@ -48,7 +48,6 @@ export function useCanvasGraph({
     nodes,
     edges,
     setNodes,
-    setEdges,
     setAlignmentGuides: nodeState.setAlignmentGuides,
     markDirty,
     setNotice,
@@ -88,6 +87,7 @@ export function useCanvasGraph({
   })
   const placement = useCanvasPlacement({
     nodes,
+    edges,
     setNodes,
     markDirty,
     ontology,

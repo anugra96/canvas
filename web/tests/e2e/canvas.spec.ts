@@ -1,8 +1,43 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { addCanvasItem, runCanvasCommand, createCanvas, waitForSaved } from './helpers'
+
+interface SavedCanvasNode {
+  id: string
+  type: string
+  x: number
+  y: number
+  width: number
+  height: number
+  app?: { groupMembers?: string[] }
+}
+
+async function downloadCanvas(page: Page): Promise<{ nodes: SavedCanvasNode[] }> {
+  const downloadPromise = page.waitForEvent('download')
+  await runCanvasCommand(page, 'Download .canvas')
+  const path = await (await downloadPromise).path()
+  if (!path) throw new Error('Missing downloaded canvas file')
+  return JSON.parse(readFileSync(path, 'utf8')) as { nodes: SavedCanvasNode[] }
+}
+
+function inside(
+  card: SavedCanvasNode,
+  group: SavedCanvasNode,
+): boolean {
+  return card.x >= group.x
+    && card.y >= group.y
+    && card.x + card.width <= group.x + group.width
+    && card.y + card.height <= group.y + group.height
+}
+
+function overlaps(left: SavedCanvasNode, right: SavedCanvasNode): boolean {
+  return left.x < right.x + right.width
+    && right.x < left.x + left.width
+    && left.y < right.y + right.height
+    && right.y < left.y + left.height
+}
 
 test('creates a canvas, edits a card, saves, and reopens it', async ({ page }) => {
   await page.goto('/')
@@ -976,4 +1011,88 @@ test('merges issues and fixes in one review panel and remembers the tab', async 
   await expect(panel).toHaveCount(0)
   await expect(page.locator('.entity-node')).toHaveCount(2)
   await expect(page.locator('.edge-label')).toContainText('produces')
+})
+
+test('tidy layout keeps grouped systems inside the group and undo restores positions', async ({ page }) => {
+  const modifier = process.platform === 'darwin' ? 'Meta' : 'Control'
+  await page.goto('/')
+  await page.getByLabel('Canvas type').selectOption('systems')
+  await createCanvas(page, 'Urban planner')
+  await addCanvasItem(page, 'System')
+  await addCanvasItem(page, 'System')
+  await expect(page.locator('.entity-node')).toHaveCount(2)
+  await page.waitForTimeout(400)
+
+  const nodes = page.locator('.react-flow__node')
+  const from = await nodes.nth(0).locator('.react-flow__handle-right').boundingBox()
+  const to = await nodes.nth(1).locator('.react-flow__handle-left').boundingBox()
+  if (!from || !to) throw new Error('Missing connection handles')
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 })
+  await page.mouse.up()
+  await page.getByLabel('Edge relation', { exact: true }).selectOption('uses')
+  await expect(page.locator('.react-flow__edge')).toHaveCount(1)
+  await page.waitForTimeout(300)
+
+  await page.keyboard.press(`${modifier}+a`)
+  await page.locator('.selection-toolbar').getByRole('button', { name: 'Group' }).click()
+  await expect(page.locator('.group-node')).toHaveCount(1)
+
+  await addCanvasItem(page, 'System')
+  await expect(page.locator('.entity-node')).toHaveCount(3)
+  const outside = page.locator('.entity-node').nth(2)
+  const outsideBox = await outside.boundingBox()
+  if (!outsideBox) throw new Error('Missing outside card')
+  await page.mouse.move(outsideBox.x + 40, outsideBox.y + 30)
+  await page.mouse.down()
+  await page.mouse.move(outsideBox.x + 260, outsideBox.y + 190, { steps: 12 })
+  await page.mouse.up()
+
+  await waitForSaved(page)
+  const before = await downloadCanvas(page)
+  const groupBefore = before.nodes.find((node) => node.type === 'group')
+  expect(groupBefore?.app?.groupMembers).toHaveLength(2)
+
+  await runCanvasCommand(page, 'Tidy layout')
+  await expect(page.locator('.editor-notice')).toContainText(/Layout applied: [1-9]\d* cards? moved\./)
+  await waitForSaved(page)
+  const after = await downloadCanvas(page)
+  const group = after.nodes.find((node) => node.type === 'group')
+  if (!group) throw new Error('Missing group after tidy')
+  const members = new Set(group.app?.groupMembers ?? [])
+  expect(members.size).toBe(2)
+
+  for (const id of members) {
+    const member = after.nodes.find((node) => node.id === id)
+    if (!member) throw new Error('Missing group member after tidy')
+    expect(inside(member, group)).toBe(true)
+  }
+
+  const cards = after.nodes.filter((node) => node.type !== 'group')
+  for (let leftIndex = 0; leftIndex < cards.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < cards.length; rightIndex += 1) {
+      expect(overlaps(cards[leftIndex]!, cards[rightIndex]!)).toBe(false)
+    }
+  }
+  for (const card of cards) {
+    if (!members.has(card.id)) expect(overlaps(card, group)).toBe(false)
+  }
+
+  const beforeById = new Map(before.nodes.map((node) => [node.id, node]))
+  expect(after.nodes.some((node) => {
+    const previous = beforeById.get(node.id)
+    return previous && (previous.x !== node.x || previous.y !== node.y)
+  })).toBe(true)
+
+  await page.getByRole('button', { name: 'Undo' }).click()
+  await waitForSaved(page)
+  const undone = await downloadCanvas(page)
+  const undoneById = new Map(undone.nodes.map((node) => [node.id, node]))
+  for (const node of before.nodes) {
+    const restored = undoneById.get(node.id)
+    if (!restored) throw new Error('Missing card after undo')
+    expect({ x: restored.x, y: restored.y, width: restored.width, height: restored.height })
+      .toEqual({ x: node.x, y: node.y, width: node.width, height: node.height })
+  }
 })

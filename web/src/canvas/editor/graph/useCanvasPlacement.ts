@@ -1,16 +1,22 @@
 import { useReactFlow } from '@xyflow/react'
 import { useCallback, useState, type MouseEvent } from 'react'
 
-import { findEntityType, type Ontology } from '@canvas/contract'
+import { findEntityType, type CanvasNode, type Ontology } from '@canvas/contract'
 
-import { toFlowNode, type CanvasFlowNode } from '../../model/adapter'
+import { toFlowNode, type CanvasFlowEdge, type CanvasFlowNode } from '../../model/adapter'
 import { insertNodes } from '../../model/insertNodes'
 import type { CardMenuState } from './types'
 import { makeEntityNode, makeTextNode } from './nodes'
-import { findPlacementPosition, type Placement } from './placement'
+import {
+  applyPlacementToNodes,
+  planPlacement,
+  type Placement,
+  type PlaceRequest,
+} from './planPlacement'
 
 interface UseCanvasPlacementInput {
   nodes: CanvasFlowNode[]
+  edges: CanvasFlowEdge[]
   setNodes: (update: (current: CanvasFlowNode[]) => CanvasFlowNode[]) => void
   markDirty: () => void
   ontology: Ontology
@@ -21,6 +27,7 @@ interface UseCanvasPlacementInput {
 
 export function useCanvasPlacement({
   nodes,
+  edges,
   setNodes,
   markDirty,
   ontology,
@@ -87,21 +94,24 @@ export function useCanvasPlacement({
     return { x: position.x - width / 2, y: position.y - height / 2 }
   }, [clientToFlow, flowRef])
 
-  const placementPosition = useCallback((width: number, height: number): Placement => {
+  const placementPosition = useCallback((
+    node: CanvasNode,
+    options: Omit<PlaceRequest, 'node'> = {},
+  ): Placement => {
     const bounds = flowRef.current?.getBoundingClientRect()
-    return findPlacementPosition({
-      base: centerPosition(width, height),
-      width,
-      height,
-      nodes,
-      bounds: bounds
-        ? {
-          topLeft: clientToFlow(bounds.left, bounds.top),
-          bottomRight: clientToFlow(bounds.right, bounds.bottom),
-        }
-        : undefined,
+    const plan = planPlacement(nodes, edges, {
+      node,
+      ...(options.base ? { base: options.base } : { base: centerPosition(node.width, node.height) }),
+      ...(options.extraEdges ? { extraEdges: options.extraEdges } : {}),
     })
-  }, [centerPosition, clientToFlow, flowRef, nodes])
+    const visible = !bounds || (
+      plan.position.x >= clientToFlow(bounds.left, bounds.top).x + 16
+      && plan.position.y >= clientToFlow(bounds.left, bounds.top).y + 16
+      && plan.position.x + node.width <= clientToFlow(bounds.right, bounds.bottom).x - 16
+      && plan.position.y + node.height <= clientToFlow(bounds.right, bounds.bottom).y - 16
+    )
+    return { ...plan, visible }
+  }, [centerPosition, clientToFlow, edges, flowRef, nodes])
 
   const revealPlacement = useCallback((visible: boolean) => {
     if (visible) return
@@ -110,6 +120,21 @@ export function useCanvasPlacement({
     }, 60)
   }, [fitView])
 
+  const insertPlaced = useCallback((
+    raw: CanvasNode,
+    options: Omit<PlaceRequest, 'node'> = {},
+  ): Placement => {
+    const placement = placementPosition(raw, options)
+    const placed = { ...raw, x: placement.position.x, y: placement.position.y }
+    setNodes((current) => applyPlacementToNodes(
+      insertNodes(current, [{ ...toFlowNode(placed), selected: true }]),
+      placement,
+    ))
+    markDirty()
+    revealPlacement(placement.visible)
+    return placement
+  }, [markDirty, placementPosition, revealPlacement, setNodes])
+
   const addAtCenter = useCallback(() => {
     addCard(centerPosition(360, 200))
   }, [addCard, centerPosition])
@@ -117,10 +142,10 @@ export function useCanvasPlacement({
   const addNoteAtCenter = useCallback(() => {
     const noteType = findEntityType(ontology, 'note')
     if (!noteType) return
-    const placement = placementPosition(noteType.defaultSize.width, noteType.defaultSize.height)
-    addEntity('note', placement)
-    revealPlacement(placement.visible)
-  }, [addEntity, ontology, placementPosition, revealPlacement])
+    const raw = makeEntityNode('note', centerPosition(noteType.defaultSize.width, noteType.defaultSize.height), ontology)
+    if (!raw) return
+    insertPlaced(raw)
+  }, [centerPosition, insertPlaced, ontology])
 
   const addEntityAtCenter = useCallback((entityTypeId: string) => {
     const entityType = findEntityType(ontology, entityTypeId)
@@ -129,10 +154,14 @@ export function useCanvasPlacement({
       addEntity(entityTypeId, centerPosition(entityType.defaultSize.width, entityType.defaultSize.height))
       return
     }
-    const placement = placementPosition(entityType.defaultSize.width, entityType.defaultSize.height)
-    addEntity(entityTypeId, placement)
-    revealPlacement(placement.visible)
-  }, [addEntity, centerPosition, isSystems, ontology, placementPosition, revealPlacement])
+    const raw = makeEntityNode(
+      entityTypeId,
+      centerPosition(entityType.defaultSize.width, entityType.defaultSize.height),
+      ontology,
+    )
+    if (!raw) return
+    insertPlaced(raw)
+  }, [addEntity, centerPosition, insertPlaced, isSystems, ontology])
 
   return {
     cardMenu,
