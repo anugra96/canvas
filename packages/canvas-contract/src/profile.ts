@@ -7,6 +7,7 @@ import {
   getEntityMeta,
   type Ontology,
 } from './ontology'
+import { validateZoning } from './zoning'
 
 export const canvasProfileRelationRuleSchema = z.object({
   relationType: z.string().min(1),
@@ -76,6 +77,10 @@ export const PROFILE_ISSUE_CODES = [
   'schema_unused',
   'endpoint_without_resource',
   'level_unassigned',
+  'unzoned_card',
+  'district_without_owner',
+  'shared_landmark',
+  'route_bypasses_gate',
 ] as const
 
 export type ProfileIssueCode = (typeof PROFILE_ISSUE_CODES)[number]
@@ -339,6 +344,10 @@ export function validateProfileCanvas(
 
   for (const edge of edges) {
     issues.push(...validateProfileEdge(edge, nodesById, profile))
+  }
+
+  if (profile.id === 'systems') {
+    issues.push(...validateZoning(canvas))
   }
 
   return issues

@@ -42,6 +42,10 @@ export const ISSUE_TIERS: Record<ProfileIssueCode, IssueTier> = {
   schema_unused: 'publish',
   endpoint_without_resource: 'design',
   level_unassigned: 'design',
+  unzoned_card: 'publish',
+  district_without_owner: 'publish',
+  shared_landmark: 'design',
+  route_bypasses_gate: 'design',
 }
 
 export const MODE_TIERS: Record<ReviewMode, ReadonlySet<IssueTier>> = {

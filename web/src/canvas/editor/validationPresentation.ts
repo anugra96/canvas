@@ -176,11 +176,35 @@ const ISSUE_COPY: Record<CanvasProfileIssue['code'], { label: string; why: strin
   },
   level_unassigned: {
     label: 'Unassigned at level',
-    why: 'Add an owner relation so the card folds into a visible parent.',
+    why: 'Add a `uses`, `produces`, or `defines` line from a System so the card folds into a visible parent.',
+  },
+  unzoned_card: {
+    label: 'Unzoned system',
+    why: 'Place the System inside a district, or make its group a district.',
+  },
+  district_without_owner: {
+    label: 'District without owner',
+    why: 'Choose an Actor as the district owner.',
+  },
+  shared_landmark: {
+    label: 'Shared database',
+    why: 'Give each district its own database, or route through a gate.',
+  },
+  route_bypasses_gate: {
+    label: 'Route bypasses gate',
+    why: 'Route cross-district calls through an API or queue.',
   },
 }
 
+function isZoningCode(code: CanvasProfileIssue['code']): boolean {
+  return code === 'unzoned_card'
+    || code === 'district_without_owner'
+    || code === 'shared_landmark'
+    || code === 'route_bypasses_gate'
+}
+
 function issueCategory(code: CanvasProfileIssue['code']): string {
+  if (isZoningCode(code)) return 'Zoning'
   if (code.startsWith('schema_')) return 'Schema'
   if (code.startsWith('example_')) return 'Examples'
   if (code === 'operation_invalid' || code === 'ref_unresolved' || code === 'operation_duplicate') return 'API'

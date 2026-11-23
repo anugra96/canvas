@@ -39,6 +39,8 @@ const TIER_CODES: Record<IssueTier, ProfileIssueCode[]> = {
     'security_missing',
     'get_with_body',
     'endpoint_without_resource',
+    'shared_landmark',
+    'route_bypasses_gate',
   ],
   publish: [
     'missing_required_field',
@@ -46,6 +48,8 @@ const TIER_CODES: Record<IssueTier, ProfileIssueCode[]> = {
     'list_pagination_missing',
     'naming_inconsistent',
     'schema_unused',
+    'unzoned_card',
+    'district_without_owner',
   ],
 }
 

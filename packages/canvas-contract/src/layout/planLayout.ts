@@ -230,6 +230,12 @@ function resolveMembership(
   return { parent, groups }
 }
 
+// The one membership rule zoning and Replan share: explicit groupMembers first,
+// else the smallest raw group holding the card's centre (nested groups fit fully inside).
+export function groupParents(canvas: JsonCanvas, sizes?: Sizes): Map<string, string> {
+  return resolveMembership(canvas.nodes ?? [], sizes, new Set()).parent
+}
+
 function connectedClusters(items: LayoutItem[], edges: LayoutEdge[]): LayoutItem[][] {
   const root = new Map(items.map((item) => [item.id, item.id]))
   const find = (id: string): string => {
@@ -489,16 +495,17 @@ function layoutRootBlock(context: PlanContext): GroupLayout {
 function replan(canvas: JsonCanvas, sizes: Sizes | undefined): LayoutPlan {
   const nodes = canvas.nodes ?? []
   const nodeById = new Map(nodes.map((node) => [node.id, node]))
-  const membership = resolveMembership(nodes, sizes, new Set())
+  const parent = groupParents(canvas, sizes)
+  const groups = sortById(nodes.filter((node) => node.type === 'group'))
   const context: PlanContext = {
     canvas,
     nodes,
     nodeById,
     sizes,
-    parent: membership.parent,
-    groups: membership.groups,
+    parent,
+    groups,
   }
-  const topGroups = membership.groups.filter((group) => !membership.parent.has(group.id))
+  const topGroups = groups.filter((group) => !parent.has(group.id))
   const groupLayouts = new Map<string, GroupLayout>()
   for (const group of topGroups) {
     groupLayouts.set(group.id, layoutGroup(group.id, context))
@@ -519,7 +526,7 @@ function replan(canvas: JsonCanvas, sizes: Sizes | undefined): LayoutPlan {
     const seen = new Set<string>()
     while (current !== undefined && !seen.has(current)) {
       seen.add(current)
-      const parentId = membership.parent.get(current)
+      const parentId = parent.get(current)
       if (parentId === undefined) {
         const node = nodeById.get(current)
         if (!node) return undefined
@@ -604,7 +611,7 @@ function replan(canvas: JsonCanvas, sizes: Sizes | undefined): LayoutPlan {
       reason: 'replan',
     })
   }
-  const groupResizes: GroupResize[] = sortById(membership.groups).map((group) => {
+  const groupResizes: GroupResize[] = sortById(groups).map((group) => {
     const box = groupBoxes.get(group.id) ?? nodeRect(group, sizes)
     return { id: group.id, x: box.x, y: box.y, width: box.width, height: box.height }
   })

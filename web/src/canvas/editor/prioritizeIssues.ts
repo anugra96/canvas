@@ -46,6 +46,10 @@ const CODE_WEIGHT: Record<CanvasProfileIssue['code'], number> = {
   missing_endpoint: 25,
   untyped_text: 20,
   level_unassigned: 37,
+  unzoned_card: 58,
+  district_without_owner: 57,
+  shared_landmark: 46,
+  route_bypasses_gate: 47,
 }
 
 function nodeType(node: CanvasFlowNode | undefined): string {

@@ -69,11 +69,16 @@ export const canvasLinkSchema = z.object({
   label: z.string().trim().min(1).max(120).optional(),
 })
 
+export const canvasDistrictSchema = z.object({
+  ownerId: z.string().optional(),
+}).passthrough()
+
 export const canvasNodeMetaSchema = z.object({
   entityType: z.string().min(1).optional(),
   fields: z.record(z.string(), entityFieldValueSchema).optional(),
   groupMembers: z.array(z.string().min(1)).optional(),
   canvasLinks: z.array(canvasLinkSchema).optional(),
+  district: canvasDistrictSchema.optional(),
   inferred: z.boolean().optional(),
 }).passthrough()
 
@@ -96,6 +101,7 @@ export type EntityFieldValue = z.infer<typeof entityFieldValueSchema>
 export type CanvasEntityMeta = z.infer<typeof canvasEntityMetaSchema>
 export type CanvasNodeMeta = z.infer<typeof canvasNodeMetaSchema>
 export type CanvasLink = z.infer<typeof canvasLinkSchema>
+export type CanvasDistrict = z.infer<typeof canvasDistrictSchema>
 export type CanvasEdgeMeta = z.infer<typeof canvasEdgeMetaSchema>
 
 export type EntityFields = Record<string, EntityFieldValue>
@@ -566,6 +572,11 @@ export function getCanvasLinks(node: { app?: unknown }): CanvasLink[] {
 export function getGroupMembers(node: { app?: unknown }): string[] | undefined {
   const parsed = canvasNodeMetaSchema.safeParse(node.app)
   return parsed.success ? parsed.data.groupMembers : undefined
+}
+
+export function getDistrict(node: { app?: unknown }): CanvasDistrict | undefined {
+  const parsed = canvasNodeMetaSchema.safeParse(node.app)
+  return parsed.success ? parsed.data.district : undefined
 }
 
 export function getEdgeMeta(edge: { app?: unknown }): CanvasEdgeMeta | undefined {
