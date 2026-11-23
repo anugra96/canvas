@@ -485,10 +485,11 @@ test('colors a group without hiding its edges', async ({ page }) => {
   await expect(page.locator('.selection-toolbar')).toContainText('1 selected')
   await page.locator('.selection-toolbar').getByRole('button', { name: 'Color 1' }).click()
 
-  const background = await page.locator('.group-node').first().evaluate(
-    (element) => getComputedStyle(element).backgroundColor,
-  )
-  expect(background).toMatch(/(?:251, 70, 76|0\.984314 0\.27451 0\.298039)/)
+  // Groups are outlines only: the color goes on the border (after its transition), and there is no fill.
+  const group = page.locator('.group-node').first()
+  await expect.poll(() => group.evaluate((element) => getComputedStyle(element).borderTopColor))
+    .toMatch(/(?:251, 70, 76|0\.984314 0\.27451 0\.298039)/)
+  expect(await group.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe('rgba(0, 0, 0, 0)')
   await expect(page.locator('.react-flow__edge')).toHaveCount(1)
   await page.screenshot({ path: 'test-results/group-color.png', fullPage: true })
 })
