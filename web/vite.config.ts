@@ -57,6 +57,13 @@ export default defineConfig({
               priority: 5,
             },
             {
+              // planLayout makes dagre load on every page. Inside the size-split vendor chunks it reordered them, and a
+              // CommonJS wrapper (unified's `extend`) ran before its helper existed: production start-up failed.
+              name: 'layout',
+              test: /node_modules[\\/]@dagrejs/,
+              priority: 4,
+            },
+            {
               name: 'flow',
               test: /node_modules[\\/](@xyflow|d3-|zustand)/,
               priority: 3,
