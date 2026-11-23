@@ -72,8 +72,8 @@ the first accessibility read after load can be empty.
 | `menuitem "Database settings"` | Database canvases: open the database card editor, creating the card named after the canvas when missing |
 | `button "Add table here"` | In a Schema lane header: open Add table with that lane's schema filled in |
 | `button "Connect"` | Shown when one card is selected (Raw, Systems): click it, then the target card |
-| `button "District"` | Shown when one group is selected (Systems): toggles the group between a district and a plain group |
-| `combobox "District owner"` | Shown for a selected district (Systems): picks the owning Actor card, or `No owner` |
+| `combobox "Group owner"` | Shown when one group is selected (Systems, Ownership checks on): picks the owning Actor card; `No owner` makes it a plain group |
+| `button "Ownership checks"` | Review header (Systems): turns group owners and ownership checks off or on for the canvas |
 | `combobox "Endpoint"` | Shown for one selected `uses` line to an API System: picks the endpoint the call uses, or `No endpoint` |
 | `button "Create or open API canvas"` | In an API System's editor: creates and links an API canvas, then opens it on the next click |
 | `button "Create or open Database canvas"` | In a Database System's editor: creates and links a Database canvas, then opens it on the next click |

@@ -123,11 +123,11 @@ export function ReviewPanel({
               className="review-districts"
               aria-pressed={districtsEnabled}
               title={districtsEnabled
-                ? 'Turn off districts: hide district controls and zoning checks on this canvas'
-                : 'Turn on districts: district controls and zoning checks'}
+                ? 'Turn off group owners and ownership checks on this canvas'
+                : 'Turn on group owners and ownership checks on this canvas'}
               onClick={() => onDistrictsEnabledChange(!districtsEnabled)}
             >
-              Districts
+              Ownership checks
             </button>
           )}
           {hiddenByModeCount > 0 && (

@@ -62,7 +62,7 @@ export function validateZoning(canvas: Pick<JsonCanvas, 'nodes' | 'edges'>): Can
     issues.push({
       code: 'unzoned_card',
       severity: 'warning',
-      message: `System "${nodeName(node)}" is outside any district.`,
+      message: `System "${nodeName(node)}" is outside any group with an owner.`,
       nodeId: node.id,
     })
   }
@@ -77,8 +77,8 @@ export function validateZoning(canvas: Pick<JsonCanvas, 'nodes' | 'edges'>): Can
       code: 'district_without_owner',
       severity: 'warning',
       message: ownerId
-        ? `District "${label}" is owned by "${owner ? nodeName(owner) : ownerId}", which is not an Actor card on this canvas.`
-        : `District "${label}" has no owner.`,
+        ? `Group "${label}" is owned by "${owner ? nodeName(owner) : ownerId}", which is not an Actor card on this canvas.`
+        : `Group "${label}" has no owner.`,
       nodeId: node.id,
     })
   }
@@ -107,7 +107,7 @@ export function validateZoning(canvas: Pick<JsonCanvas, 'nodes' | 'edges'>): Can
     issues.push({
       code: 'shared_landmark',
       severity: 'warning',
-      message: `Database "${nodeName(node)}" is used from districts ${labels.map((label) => `"${label}"`).join(' and ')}${sources.length > 0 ? ` by ${sources.map((name) => `"${name}"`).join(', ')}` : ''}.`,
+      message: `Database "${nodeName(node)}" is used from groups ${labels.map((label) => `"${label}"`).join(' and ')}${sources.length > 0 ? ` by ${sources.map((name) => `"${name}"`).join(', ')}` : ''}.`,
       nodeId: node.id,
     })
   }
@@ -125,7 +125,7 @@ export function validateZoning(canvas: Pick<JsonCanvas, 'nodes' | 'edges'>): Can
     issues.push({
       code: 'route_bypasses_gate',
       severity: 'warning',
-      message: `Route from "${source ? nodeName(source) : edge.fromNode}" in "${districtLabel(nodeById, sourceDistrict)}" to "${nodeName(target)}" in "${districtLabel(nodeById, targetDistrict)}" bypasses a gate.`,
+      message: `"${source ? nodeName(source) : edge.fromNode}" in "${districtLabel(nodeById, sourceDistrict)}" calls "${nodeName(target)}" in "${districtLabel(nodeById, targetDistrict)}" directly, not through its API or queue.`,
       edgeId: edge.id,
       nodeId: target.id,
     })

@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Building2, Copy, Group as GroupIcon, Link2, Scaling, Trash2, X } from 'lucide-react'
+import { ArrowLeftRight, Copy, Group as GroupIcon, Link2, Scaling, Trash2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 import { canvasEndpoints, type CanvasLink, type EdgeOrigin } from '@canvas/contract'
@@ -99,12 +99,10 @@ export function SelectionToolbar({
   allowUnspecified = false,
   onRelationChange,
   onToggleMembership,
-  canEditDistrict = false,
-  districtIsDistrict = false,
-  districtOwnerId,
-  districtOwners = [],
-  onToggleDistrict,
-  onDistrictOwnerChange,
+  canEditGroupOwner = false,
+  groupOwnerId,
+  groupOwners = [],
+  onGroupOwnerChange,
   onDuplicate,
   onDelete,
   onClear,
@@ -139,12 +137,10 @@ export function SelectionToolbar({
   allowUnspecified?: boolean
   onRelationChange?: (value: string) => void
   onToggleMembership: () => void
-  canEditDistrict?: boolean
-  districtIsDistrict?: boolean
-  districtOwnerId?: string
-  districtOwners?: Array<{ id: string; name: string }>
-  onToggleDistrict?: () => void
-  onDistrictOwnerChange?: (ownerId: string | undefined) => void
+  canEditGroupOwner?: boolean
+  groupOwnerId?: string
+  groupOwners?: Array<{ id: string; name: string }>
+  onGroupOwnerChange?: (ownerId: string | undefined) => void
   onDuplicate: () => void
   onDelete: () => void
   onClear: () => void
@@ -262,27 +258,17 @@ export function SelectionToolbar({
           {membershipLabel}
         </button>
       )}
-      {canEditDistrict && onToggleDistrict && (
-        <button
-          className={`button${districtIsDistrict ? ' primary' : ''}`}
-          onClick={onToggleDistrict}
-          aria-pressed={districtIsDistrict}
-        >
-          <Building2 size={14} />
-          District
-        </button>
-      )}
-      {districtIsDistrict && onDistrictOwnerChange && (
+      {canEditGroupOwner && onGroupOwnerChange && (
         <label className="toolbar-field selection-district-owner">
-          <span>District owner</span>
+          <span>Owner</span>
           <select
             className="template-select"
-            aria-label="District owner"
-            value={districtOwnerId ?? ''}
-            onChange={(event) => onDistrictOwnerChange(event.target.value || undefined)}
+            aria-label="Group owner"
+            value={groupOwnerId ?? ''}
+            onChange={(event) => onGroupOwnerChange(event.target.value || undefined)}
           >
             <option value="">No owner</option>
-            {districtOwners.map((owner) => (
+            {groupOwners.map((owner) => (
               <option key={owner.id} value={owner.id}>{owner.name}</option>
             ))}
           </select>

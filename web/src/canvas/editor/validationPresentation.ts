@@ -183,20 +183,20 @@ const ISSUE_COPY: Record<CanvasProfileIssue['code'], { label: string; why: strin
     why: 'Add a uses, produces, or defines line from a System so the card folds into a visible parent.',
   },
   unzoned_card: {
-    label: 'Unzoned system',
-    why: 'Place the System inside a district, or make its group a district.',
+    label: 'System outside any owned group',
+    why: 'Move the System into a group that has an owner, or give its group an owner.',
   },
   district_without_owner: {
-    label: 'District without owner',
-    why: 'Choose an Actor as the district owner.',
+    label: 'Group owner missing',
+    why: 'Choose an Actor on this canvas as the group owner.',
   },
   shared_landmark: {
-    label: 'Shared database',
-    why: 'Give each district its own database, or route through a gate.',
+    label: 'Database used by more than one team',
+    why: 'Give each team its own database, or call the owning team through its API.',
   },
   route_bypasses_gate: {
-    label: 'Route bypasses gate',
-    why: 'Route cross-district calls through an API or queue.',
+    label: "Call skips the other team's API",
+    why: "Call the other team's API or queue, not its database or internal services.",
   },
 }
 
@@ -208,7 +208,7 @@ function isZoningCode(code: CanvasProfileIssue['code']): boolean {
 }
 
 function issueCategory(code: CanvasProfileIssue['code']): string {
-  if (isZoningCode(code)) return 'Zoning'
+  if (isZoningCode(code)) return 'Ownership'
   if (code.startsWith('schema_')) return 'Schema'
   if (code.startsWith('example_')) return 'Examples'
   if (code === 'operation_invalid' || code === 'ref_unresolved' || code === 'operation_duplicate') return 'API'

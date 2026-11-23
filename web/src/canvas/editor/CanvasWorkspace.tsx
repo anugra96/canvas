@@ -494,12 +494,10 @@ export function CanvasWorkspace({
           canManageMembership={graph.canManageMembership}
           membershipLabel={graph.allSelectedCardsAreMembers ? 'Remove from group' : 'Add to group'}
           onToggleMembership={graph.toggleGroupMembership}
-          canEditDistrict={isSystems && districtsEnabled && Boolean(graph.singleSelectedGroup)}
-          districtIsDistrict={graph.singleSelectedGroupIsDistrict}
-          districtOwnerId={graph.singleSelectedDistrictOwnerId}
-          districtOwners={graph.districtOwners}
-          onToggleDistrict={graph.toggleSelectedDistrict}
-          onDistrictOwnerChange={graph.setSelectedDistrictOwner}
+          canEditGroupOwner={isSystems && districtsEnabled && Boolean(graph.singleSelectedGroup)}
+          groupOwnerId={graph.singleSelectedGroupOwnerId}
+          groupOwners={graph.groupOwners}
+          onGroupOwnerChange={graph.setSelectedGroupOwner}
           onDuplicate={graph.duplicateSelection}
           onDelete={graph.deleteSelected}
           onClear={graph.clearSelection}

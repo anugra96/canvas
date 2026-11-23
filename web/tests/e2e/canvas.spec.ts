@@ -1123,7 +1123,7 @@ test('replan preview keeps grouped systems inside the group and undo restores po
   expect(savedPositions(await downloadCanvas(page))).toEqual(savedPositions(before))
 })
 
-test('makes a district with an owner, turns districts off and on, and undo returns a plain group', async ({ page }) => {
+test('gives a group an owner, hides owners with Ownership checks off, and No owner returns a plain group', async ({ page }) => {
   const modifier = process.platform === 'darwin' ? 'Meta' : 'Control'
   await page.goto('/')
   await page.getByLabel('Canvas type').selectOption('systems')
@@ -1153,51 +1153,37 @@ test('makes a district with an owner, turns districts off and on, and undo retur
   }
 
   await selectGroup()
-  const districtButton = page.getByRole('button', { name: 'District', exact: true })
-  await expect(districtButton).toHaveAttribute('aria-pressed', 'false')
-  await districtButton.click()
-  await expect(districtButton).toHaveAttribute('aria-pressed', 'true')
+  const owner = page.getByLabel('Group owner', { exact: true })
+  await expect(owner).toHaveValue('')
+  await owner.selectOption({ label: 'Finance team' })
+  await expect(page.locator('.group-label')).toContainText('Finance team')
+  await expect(page.locator('.group-node')).toHaveClass(/district-node/)
   await page.waitForTimeout(400)
 
+  // Ownership checks off: no owner picker, no owner name; on brings both back. The owner stays saved.
   await page.getByRole('button', { name: /Review/ }).click()
   const panel = page.locator('.review-panel')
-  await panel.getByLabel('Review mode').selectOption('Publish')
-  await expect(panel.getByText('District without owner')).toBeVisible()
-
-  // Turning districts off for the canvas hides zoning checks and the district controls; on brings both back.
-  const districtsSwitch = panel.getByRole('button', { name: 'Districts', exact: true })
-  await districtsSwitch.click()
-  await expect(districtsSwitch).toHaveAttribute('aria-pressed', 'false')
-  await expect(panel.getByText('District without owner')).toHaveCount(0)
+  const checks = panel.getByRole('button', { name: 'Ownership checks', exact: true })
+  await expect(checks).toHaveAttribute('aria-pressed', 'true')
+  await checks.click()
+  await expect(checks).toHaveAttribute('aria-pressed', 'false')
   await panel.getByRole('button', { name: 'Close review' }).click()
+  await expect(page.locator('.group-owner')).toBeHidden()
   await selectGroup()
-  await expect(page.getByRole('button', { name: 'District', exact: true })).toHaveCount(0)
+  await expect(page.getByLabel('Group owner', { exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: /Review/ }).click()
-  await districtsSwitch.click()
-  await expect(districtsSwitch).toHaveAttribute('aria-pressed', 'true')
-  await expect(panel.getByText('District without owner')).toBeVisible()
+  await checks.click()
   await panel.getByRole('button', { name: 'Close review' }).click()
-  await selectGroup()
+  await expect(page.locator('.group-owner')).toBeVisible()
 
-  await expect(page.getByLabel('District owner', { exact: true })).toBeVisible()
-  await page.getByLabel('District owner', { exact: true }).selectOption({ label: 'Finance team' })
-  await expect(page.locator('.group-label')).toContainText('Finance team')
-  await page.waitForTimeout(400)
-
-  await page.getByRole('button', { name: /Review/ }).click()
-  await expect(panel.getByText('District without owner')).toHaveCount(0)
-  await panel.getByRole('button', { name: 'Close review' }).click()
-
+  // No owner turns it back into a plain group; Undo restores the owner.
   await selectGroup()
-  await page.getByRole('button', { name: 'Undo' }).click()
-  await page.waitForTimeout(400)
-  await expect(page.locator('.group-label')).not.toContainText('Finance team')
-  await selectGroup()
-  await page.getByRole('button', { name: 'Undo' }).click()
-  await page.waitForTimeout(400)
-  await selectGroup()
-  await expect(page.getByRole('button', { name: 'District', exact: true })).toHaveAttribute('aria-pressed', 'false')
+  await page.getByLabel('Group owner', { exact: true }).selectOption('')
   await expect(page.locator('.group-label')).toHaveText('Group')
+  await expect(page.locator('.group-node')).not.toHaveClass(/district-node/)
+  await page.getByRole('button', { name: 'Undo' }).click()
+  await page.waitForTimeout(400)
+  await expect(page.locator('.group-label')).toContainText('Finance team')
 })
 
 test('views open fitted to the window, never below half size, and export stays full size', async ({ page }) => {

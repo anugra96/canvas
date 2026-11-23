@@ -5,7 +5,7 @@ the meaning, so their direction matters.
 
 ```text
 Create canvas (Systems) → cards (Actor, System, Repository, Artifact, Schema)
-  → lines (Connect + Edge relation) → notes → Zone (group + District + District owner)
+  → lines (Connect + Edge relation) → notes → Owners (group + Group owner)
   → Replan layout → Apply preview → Review → Download .canvas
 ```
 
@@ -37,24 +37,25 @@ Rules:
 - **One fact, one card.** Put decisions and risks in a Note with that kind,
   then link the note to the card it is about.
 
-## 2. Zone
+## 2. Owners
 
-Once the Systems are placed, group them into districts. A district is a group
-with an owner; plain groups stay visual.
+Once the Systems are placed, group the ones one team owns and give the group an
+owner. A group with an owner is a team boundary; a group without one stays visual.
 
-1. Select the cards that belong in one district, then `button "Group"` in the
+1. Select the cards that belong together, then `button "Group"` in the
    selection toolbar.
 2. Click the group's empty edge so the toolbar says `1 selected` (the group
    only, not its cards).
-3. Click `button "District"`. It stays pressed and the group border marks the
-   district.
-4. Choose `combobox "District owner"` and pick an Actor card, or `No owner`.
-   The group label shows the owner after the label, e.g. `Payments · Finance team`.
-5. Repeat for each district.
+3. Choose `combobox "Group owner"` and pick an Actor card. The group outline
+   turns solid and the label shows the owner, e.g. `Payments · Finance team`.
+   `No owner` makes it a plain group again.
+4. Repeat for each team.
 
-Review reports district issues under `Zoning`: `Unzoned system`,
-`District without owner`, `Shared database`, and `Route bypasses gate`.
-`District without owner` is a Publish warning.
+Review reports ownership issues under `Ownership`: `System outside any owned group`,
+`Group owner missing`, `Database used by more than one team`, and
+`Call skips the other team's API`. The first two are Publish warnings. They run
+only once a group has an owner. `button "Ownership checks"` in the Review header
+turns owners and these checks off for the canvas (the owners stay saved).
 
 ## 3. Lines
 

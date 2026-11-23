@@ -193,8 +193,8 @@ export function useCanvasSelection({
   const singleSelectedNode = selectedNodes.length === 1 ? selectedNodes[0] : undefined
   const singleSelectedGroup = singleSelectedNode?.type === 'group' ? singleSelectedNode : undefined
   const singleSelectedGroupId = singleSelectedGroup?.id
-  const singleSelectedDistrict = singleSelectedGroup ? getDistrict(singleSelectedGroup.data.raw) : undefined
-  const singleSelectedGroupIsDistrict = singleSelectedDistrict !== undefined
+  // A group with an owner is a team boundary (stored as app.district); "district" stays out of the UI.
+  const singleSelectedGroupOwnerId = singleSelectedGroup ? getDistrict(singleSelectedGroup.data.raw)?.ownerId : undefined
   const districtOwners = nodes
     .filter((node) => node.data.entity?.entityType === 'actor')
     .map((node) => ({
@@ -206,28 +206,14 @@ export function useCanvasSelection({
     ? singleSelectedNode.data.entity?.entityType ?? 'text'
     : undefined
 
-  function toggleSelectedDistrict() {
+  // Choosing an owner makes the group a boundary; "No owner" makes it a plain group again.
+  function setSelectedGroupOwner(ownerId: string | undefined) {
     if (!singleSelectedGroupId) return
-    const makeDistrict = !singleSelectedGroupIsDistrict
     setNodes((current) => current.map((node) => {
       if (node.id !== singleSelectedGroupId || node.type !== 'group') return node
       const app = { ...(node.data.raw.app ?? {}) }
-      if (makeDistrict) app.district = {}
+      if (ownerId) app.district = { ...(getDistrict(node.data.raw) ?? {}), ownerId }
       else delete app.district
-      return { ...node, data: { ...node.data, raw: { ...node.data.raw, app } } }
-    }))
-    markDirty()
-  }
-
-  function setSelectedDistrictOwner(ownerId: string | undefined) {
-    if (!singleSelectedGroupId) return
-    setNodes((current) => current.map((node) => {
-      if (node.id !== singleSelectedGroupId) return node
-      const app = { ...(node.data.raw.app ?? {}) }
-      const district = { ...(getDistrict(node.data.raw) ?? {}) }
-      if (ownerId) district.ownerId = ownerId
-      else delete district.ownerId
-      app.district = district
       return { ...node, data: { ...node.data, raw: { ...node.data.raw, app } } }
     }))
     markDirty()
@@ -288,16 +274,14 @@ export function useCanvasSelection({
     selectedRelationValue,
     singleSelectedNode,
     singleSelectedGroup,
-    singleSelectedGroupIsDistrict,
-    singleSelectedDistrictOwnerId: singleSelectedDistrict?.ownerId,
-    districtOwners,
+    singleSelectedGroupOwnerId,
+    groupOwners: districtOwners,
     cardTypeValue,
     canManageMembership,
     allSelectedCardsAreMembers,
     changeCardType,
     toggleGroupMembership,
-    toggleSelectedDistrict,
-    setSelectedDistrictOwner,
+    setSelectedGroupOwner,
   }
 }
 
