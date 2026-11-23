@@ -30,8 +30,9 @@ card before the next one. Never edit stored canvas JSON or call the API to
 4. **Open a card editor** by double-clicking the card. For a lane (Schema,
    Resource), double-click its title (`header strong`), not its body: the body
    holds other cards.
-5. **Edit, then Done.** Every editor closes with `button "Done"`. Read the card
-   afterwards to confirm the change.
+5. **Edit, then Done.** Card editors close with `button "Done"`; the Database
+   settings dialog closes with `button "Save"`. Read the card afterwards to
+   confirm the change.
 6. **The form refuses invalid edits silently or with an alert.** After Done,
    check the card. If a change is missing, read `getByRole('alert')` in the
    editor. Never retry blindly.
@@ -69,7 +70,7 @@ the first accessibility read after load can be empty.
 | `button "Add"` | Menu of card types for this profile (`menuitem` per type) |
 | `button "Display"` | Edge and label visibility presets |
 | `button "More canvas actions"` | Replan layout for the profile (then `button "Apply"` in `region "Layout preview"`), `Fit cards to content`, `Zoom to fit`, export for the profile (`Export DDL`, `Export OpenAPI YAML`), `Download .canvas`, `Screenshot`, `Keyboard shortcuts` |
-| `menuitem "Database settings"` | Database canvases: open the database card editor, creating the card named after the canvas when missing |
+| `menuitem "Database settings"` | Database canvases: open `dialog "Database settings"`; `Save` updates the stored Database definition, creating it when missing. No Database card is drawn |
 | `button "Add table here"` | In a Schema lane header: open Add table with that lane's schema filled in |
 | `button "Connect"` | Shown when one card is selected (Raw, Systems): click it, then the target card |
 | `combobox "Group owner"` | Shown when one group is selected (Systems, Ownership checks on): picks the owning Actor card; `No owner` makes it a plain group |

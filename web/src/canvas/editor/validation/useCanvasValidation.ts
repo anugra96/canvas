@@ -79,6 +79,7 @@ interface UseCanvasValidationInput {
   selectEdge: (id: string) => void
   markDirty: () => void
   setNotice: (message: string) => void
+  onOpenDatabaseSettings?: () => void
   onRevealCards?: (ids: string[]) => void
 }
 
@@ -101,6 +102,7 @@ export function useCanvasValidation({
   selectEdge,
   markDirty,
   setNotice,
+  onOpenDatabaseSettings,
   onRevealCards,
 }: UseCanvasValidationInput) {
   const { fitView } = useReactFlow()
@@ -374,6 +376,11 @@ export function useCanvasValidation({
 
   const focusValidationIssue = useCallback((issue: CanvasProfileIssue) => {
     if (issue.nodeId) {
+      const target = nodesRef.current.find((node) => node.id === issue.nodeId)
+      if (target?.data.entity?.entityType === 'database_definition') {
+        onOpenDatabaseSettings?.()
+        return
+      }
       onRevealCards?.([issue.nodeId])
       setNodes((current) => current.map((node) => ({
         ...node,
@@ -393,7 +400,7 @@ export function useCanvasValidation({
         })
       }
     }
-  }, [edges, fitView, onRevealCards, selectEdge, setEdges, setNodes])
+  }, [edges, fitView, onOpenDatabaseSettings, onRevealCards, selectEdge, setEdges, setNodes])
 
   const nodeIssues = new Map<string, CanvasProfileIssue[]>()
   const edgeIssues = new Map<string, CanvasProfileIssue[]>()

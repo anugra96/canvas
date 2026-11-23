@@ -5128,6 +5128,27 @@ select {
   gap: 8px;
 }
 
+.database-settings-dialog {
+  width: min(620px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+}
+
+.database-settings-fields {
+  display: grid;
+  gap: 12px;
+}
+
+.database-settings-fields .entity-field {
+  gap: 5px;
+}
+
+.database-settings-fields .entity-field input,
+.database-settings-fields .entity-field textarea,
+.database-settings-fields .entity-field select {
+  width: 100%;
+}
+
 .canvas-card {
   position: relative;
   padding: 0;

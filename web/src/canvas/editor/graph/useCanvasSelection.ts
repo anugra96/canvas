@@ -120,7 +120,10 @@ export function useCanvasSelection({
   }, [edges, markDirty, nodes, redoHistory, setEdges, setNodes])
 
   const selectAll = useCallback(() => {
-    setNodes((current) => current.map((node) => ({ ...node, selected: true })))
+    setNodes((current) => current.map((node) => ({
+      ...node,
+      selected: node.data.entity?.entityType !== 'database_definition',
+    })))
     setEdges((current) => current.map((edge) => ({ ...edge, selected: true })))
   }, [setEdges, setNodes])
 

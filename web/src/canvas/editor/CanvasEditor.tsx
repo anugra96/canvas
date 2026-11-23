@@ -10,6 +10,7 @@ import {
   buildApiReferenceDocument,
   createNodeId,
   deriveManagedRelations,
+  emptyEntityFields,
   exportDatabaseDdl,
   exportOpenApiDocument,
   findEntityType,
@@ -68,6 +69,7 @@ import { useDatabaseManagedRelations } from '../database/useDatabaseManagedRelat
 import { AddTableDialog } from '../database/AddTableDialog'
 import { DatabaseDesignProvider } from '../database/DatabaseDesignProvider'
 import { DatabaseImportDialog } from '../database/DatabaseImportDialog'
+import { DatabaseSettingsDialog } from '../database/DatabaseSettingsDialog'
 import type { DatabaseImportResult } from '@canvas/contract/database-import'
 import { insertNodes } from '../model/insertNodes'
 import {
@@ -181,6 +183,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const [addEndpointOpen, setAddEndpointOpen] = useState(false)
   const [addTableRequest, setAddTableRequest] = useState<{ schema?: string } | null>(null)
   const [databaseImportOpen, setDatabaseImportOpen] = useState(false)
+  const [databaseSettingsOpen, setDatabaseSettingsOpen] = useState(false)
   const [compareHead, setCompareHead] = useState<JsonObject | null>(null)
   const [suppressions, setSuppressions] = useState<ValidationSuppression[]>(() => (
     readValidationSuppressions(document.canvas)
@@ -216,14 +219,22 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     ontology,
     apiReference,
   }), [apiReference, displayState, nodes, ontology, rawEdges, rawNodes, revealedCardIds])
+  const drawnNodes = useMemo(() => (
+    isDatabase
+      ? nodes.filter((node) => node.data.entity?.entityType !== 'database_definition')
+      : nodes
+  ), [isDatabase, nodes])
   const visibleNodes = useMemo(() => {
     const ids = displayView.visibleNodeIds
-    return nodes.filter((node) => ids.has(node.id))
-  }, [displayView.visibleNodeIds, nodes])
+    return drawnNodes.filter((node) => ids.has(node.id))
+  }, [displayView.visibleNodeIds, drawnNodes])
   const visibleEdges = useMemo(() => {
     const ids = new Set(displayView.edges.map((edge) => edge.id))
-    return edges.filter((edge) => ids.has(edge.id))
-  }, [displayView.edges, edges])
+    const nodeIds = new Set(visibleNodes.map((node) => node.id))
+    return edges.filter((edge) => (
+      ids.has(edge.id) && nodeIds.has(edge.source) && nodeIds.has(edge.target)
+    ))
+  }, [displayView.edges, edges, visibleNodes])
   const revealedCardLabels = useMemo(() => revealedCardIds.flatMap((id) => {
     const node = nodes.find((candidate) => candidate.id === id)
     if (!node) return []
@@ -340,6 +351,8 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     setError,
   })
 
+  const openDatabaseSettings = useCallback(() => setDatabaseSettingsOpen(true), [])
+
   const validation = useCanvasValidation({
     client,
     nodes,
@@ -359,6 +372,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     selectEdge: graph.selectEdge,
     markDirty,
     setNotice,
+    onOpenDatabaseSettings: openDatabaseSettings,
     onRevealCards: (ids) => {
       const hiddenIds = ids.filter((id) => {
         const node = nodes.find((candidate) => candidate.id === id)
@@ -801,29 +815,30 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     }, 0)
   }, [fitView, markDirty, ontology, setEdges, setNodes, setNotice])
 
-  const openDatabaseSettings = useCallback(() => {
-    const existing = nodes.find((node) => node.data.entity?.entityType === 'database_definition')
-    if (existing) {
-      openNodeEditor(existing.id)
-      return
-    }
+  const saveDatabaseSettings = useCallback((fields: EntityFields) => {
     const entityType = findEntityType(ontology, 'database_definition')
     if (!entityType) {
       setError('The Database card type is unavailable.')
       return
     }
-    const raw = makeEntityNode(
-      'database_definition',
-      graph.centerPosition(entityType.defaultSize.width, entityType.defaultSize.height),
-      ontology,
-    )
-    if (!raw) return
-    const fields = { ...(raw.app?.fields ?? {}), name: title.trim() || 'Database' }
-    raw.app = { ...(raw.app ?? {}), fields }
-    raw.text = renderEntityMarkdown(entityType, fields)
-    graph.insertPlaced(raw)
-    window.setTimeout(() => openNodeEditor(raw.id), 0)
-  }, [graph, nodes, ontology, openNodeEditor, setError, title])
+    setNodes((current) => {
+      const existing = current.find((node) => (
+        node.data.entity?.entityType === 'database_definition'
+      ))
+      if (existing) {
+        return current.map((node) => (
+          node.id === existing.id ? withEntityFields(node, fields, ontology) : node
+        ))
+      }
+      const raw = makeEntityNode('database_definition', { x: 0, y: 0 }, ontology)
+      if (!raw) return current
+      raw.app = { ...(raw.app ?? {}), entityType: 'database_definition', fields }
+      raw.text = renderEntityMarkdown(entityType, fields)
+      return [...current, { ...toFlowNode(raw), selected: false }]
+    })
+    setDatabaseSettingsOpen(false)
+    markDirty()
+  }, [markDirty, ontology, setError, setNodes])
 
   const actions = useMemo<CanvasEditorActions>(
     () => ({
@@ -929,6 +944,11 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
 
   useEditorShortcuts(commands)
 
+  const databaseDefinition = nodes.find((node) => (
+    node.data.entity?.entityType === 'database_definition'
+  ))
+  const databaseDefinitionType = findEntityType(ontology, 'database_definition')
+
   return (
     <CanvasEditorActionsContext.Provider value={actions}>
       <CanvasValidationContext.Provider value={validation.validation}>
@@ -944,7 +964,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
             commands={commands}
             display={{
               state: displayState,
-              cardTypes: displayCardTypes(rawNodes, ontology),
+              cardTypes: displayCardTypes(drawnNodes.map((node) => node.data.raw), ontology),
               hiddenCards: displayView.hiddenCards,
               hiddenEdges: displayView.hiddenEdges,
               revealedCardLabels,
@@ -986,7 +1006,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
             districtsEnabled={districtsEnabled}
             onDistrictsEnabledChange={changeDistrictsEnabled}
             onOpenLevel={openLevelInViews}
-            showDatabaseEmptyPanel={isDatabase && nodes.length === 0}
+            showDatabaseEmptyPanel={isDatabase && visibleNodes.length === 0}
             onAddTableFromEmpty={() => setAddTableRequest({})}
             onAddEnumFromEmpty={() => graph.addEntityAtCenter('db_enum')}
             onImportDdlFromEmpty={() => setDatabaseImportOpen(true)}
@@ -1065,6 +1085,17 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
             onCreate={importDatabaseIntoCanvas}
             onClose={() => setDatabaseImportOpen(false)}
           />
+          {databaseSettingsOpen && databaseDefinitionType && (
+            <DatabaseSettingsDialog
+              entityType={databaseDefinitionType}
+              initialFields={databaseDefinition?.data.entity?.fields ?? {
+                ...emptyEntityFields(databaseDefinitionType),
+                name: title.trim() || 'Database',
+              }}
+              onSave={saveDatabaseSettings}
+              onClose={() => setDatabaseSettingsOpen(false)}
+            />
+          )}
           {blockedExport && (
             <PublishBlockedDialog
               label={blockedExport.label}

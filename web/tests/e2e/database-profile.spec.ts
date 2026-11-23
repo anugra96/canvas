@@ -123,6 +123,33 @@ test('guides a first database design from the empty canvas to table editing', as
   await expect(panel.getByRole('button', { name: 'Add enum', exact: true })).toBeVisible()
   await expect(panel.getByRole('button', { name: 'Import DDL', exact: true })).toBeVisible()
 
+  const cardCount = await page.locator('.react-flow__node').count()
+  await page.getByRole('button', { name: 'More canvas actions' }).click()
+  await page.getByRole('menuitem', { name: 'Database settings', exact: true }).click()
+  const databaseSettings = page.getByRole('dialog', { name: 'Database settings' })
+  await expect(databaseSettings).toBeVisible()
+  await databaseSettings.getByLabel('Name', { exact: true }).fill('first_use_db')
+  await databaseSettings.getByLabel('Extensions', { exact: true }).fill('pgcrypto public')
+  await databaseSettings.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect(databaseSettings).toBeHidden()
+  await expect(page.locator('.react-flow__node')).toHaveCount(cardCount)
+  await expect(panel).toBeVisible()
+
+  await page.getByRole('button', { name: 'More canvas actions' }).click()
+  await page.getByRole('menuitem', { name: 'Database settings', exact: true }).click()
+  await expect(databaseSettings.getByLabel('Name', { exact: true })).toHaveValue('first_use_db')
+  await databaseSettings.getByLabel('Name', { exact: true }).fill('discarded name')
+  await page.keyboard.press('Escape')
+  await expect(databaseSettings).toBeHidden()
+  await page.getByRole('button', { name: 'More canvas actions' }).click()
+  await page.getByRole('menuitem', { name: 'Database settings', exact: true }).click()
+  await expect(databaseSettings.getByLabel('Name', { exact: true })).toHaveValue('first_use_db')
+  await databaseSettings.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(databaseSettings).toBeHidden()
+
+  const ddl = await exportDdl(page)
+  expect(ddl).toContain('CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;')
+
   await panel.getByRole('button', { name: 'Add table', exact: true }).click()
   const addTableDialog = page.getByRole('dialog', { name: 'Add table' })
   await addTableDialog.getByLabel('Table name').fill('orders')
@@ -162,21 +189,6 @@ test('guides a first database design from the empty canvas to table editing', as
   ))
   expect(addLabels).toEqual(['Table', 'Enum', 'Schema (namespace)', 'Note'])
   await page.keyboard.press('Escape')
-
-  await page.getByRole('button', { name: 'More canvas actions' }).click()
-  await page.getByRole('menuitem', { name: 'Database settings', exact: true }).click()
-  let databaseEditor = page.getByRole('dialog', { name: 'Edit Database' })
-  await expect(databaseEditor).toBeVisible()
-  await databaseEditor.getByRole('button', { name: 'Done' }).click()
-  const databaseCard = page.getByRole('group', { name: 'Database First use database', exact: true })
-  await expect(databaseCard).toHaveCount(1)
-
-  await page.getByRole('button', { name: 'More canvas actions' }).click()
-  await page.getByRole('menuitem', { name: 'Database settings', exact: true }).click()
-  databaseEditor = page.getByRole('dialog', { name: 'Edit Database' })
-  await expect(databaseEditor).toBeVisible()
-  await databaseEditor.getByRole('button', { name: 'Done' }).click()
-  await expect(databaseCard).toHaveCount(1)
 
   const lane = page.getByRole('group', { name: 'Schema public', exact: true })
   await expect(lane).toBeVisible()
@@ -315,24 +327,14 @@ test('edits enum values as plain lines and keeps Extra DDL read-only', async ({ 
 
   await page.getByRole('button', { name: 'More canvas actions' }).click()
   await page.getByRole('menuitem', { name: 'Database settings', exact: true }).click()
-  editor = page.getByRole('dialog', { name: 'Edit Database' })
+  editor = page.getByRole('dialog', { name: 'Database settings' })
   await expect(editor).toBeVisible()
   await expect(editor.getByLabel('Extra DDL', { exact: true })).not.toBeEditable()
+  await editor.getByRole('button', { name: 'Cancel', exact: true }).click()
 })
 
-test('places new tables inside their lane and sizes a new Database card', async ({ page }) => {
+test('places new tables inside their lane', async ({ page }) => {
   await createDatabaseCanvas(page, 'Lane growth')
-
-  await page.getByRole('button', { name: 'More canvas actions' }).click()
-  await page.getByRole('menuitem', { name: 'Database settings', exact: true }).click()
-  const databaseEditor = page.getByRole('dialog', { name: 'Edit Database' })
-  await expect(databaseEditor).toBeVisible()
-  await databaseEditor.getByRole('button', { name: 'Done' }).click()
-  const databaseCard = page.getByRole('group', { name: 'Database Lane growth', exact: true })
-  await expect(databaseCard).toBeVisible()
-  const databaseBox = await databaseCard.boundingBox()
-  if (!databaseBox) throw new Error('Missing Database card')
-  expect(databaseBox.height).toBeLessThan(160)
 
   await addTable(page, 'parent')
   const lane = page.locator('.react-flow__node').filter({ has: page.locator('.db-schema-card') }).first()
@@ -413,16 +415,10 @@ test('names cards and Add menu items for assistive technology', async ({ page })
   }
   await page.keyboard.press('Escape')
 
-  await page.getByRole('button', { name: 'More canvas actions' }).click()
-  await page.getByRole('menuitem', { name: 'Database settings', exact: true }).click()
-  let editor = page.getByRole('dialog', { name: 'Edit Database' })
-  await editor.getByLabel('Name', { exact: true }).fill('simple_tasks')
-  await editor.getByRole('button', { name: 'Done' }).click()
-
   await page.getByRole('button', { name: 'Add', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Schema (namespace)', exact: true }).click()
   await page.locator('.db-schema-head').dblclick()
-  editor = page.getByRole('dialog', { name: 'Edit Schema' })
+  let editor = page.getByRole('dialog', { name: 'Edit Schema' })
   await editor.getByLabel('Name', { exact: true }).fill('app')
   await editor.getByRole('button', { name: 'Done' }).click()
 
@@ -435,7 +431,6 @@ test('names cards and Add menu items for assistive technology', async ({ page })
 
   await addTable(page, 'task', 'app')
 
-  await expect(page.locator('[aria-label="Database simple_tasks"]')).toBeVisible()
   await expect(page.locator('[aria-label="Schema app"]')).toBeVisible()
   await expect(page.locator('[aria-label="Enum public.task_status"]')).toBeVisible()
   await expect(page.locator('[aria-label="Table app.task"]')).toBeVisible()

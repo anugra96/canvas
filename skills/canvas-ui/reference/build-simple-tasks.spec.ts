@@ -70,13 +70,13 @@ test('build simple_tasks by hand', async ({ page }) => {
   await page.getByRole('dialog').getByRole('button', { name: 'Create canvas', exact: true }).click()
   await expect(page).toHaveURL(/\/canvas\//)
 
-  // 2. Database card
+  // 2. Database settings
   await page.getByRole('button', { name: 'More canvas actions', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Database settings', exact: true }).click()
   await page.getByLabel('Name', { exact: true }).fill('simple_tasks')
   await page.getByLabel('Server version', { exact: true }).fill('16')
   await page.getByLabel('Extensions', { exact: true }).fill('pgcrypto public')
-  await page.getByRole('button', { name: 'Done', exact: true }).click()
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
 
   // 3. Enums (a new card is selected; open it before anything else changes selection)
   for (const e of [{ name: 'task_status', values: 'open\nin_progress\ndone' }, { name: 'member_role', values: 'owner\neditor\nviewer' }]) {
@@ -106,16 +106,17 @@ test('build simple_tasks by hand', async ({ page }) => {
     for (const [i, c] of t.columns.entries()) {
       const n = i + 1
       const field = (name: string) => ed.getByLabel(`Column ${n} ${name}`, { exact: true })
-      if (!(await field('name').count())) await ed.getByRole('button', { name: 'Add column', exact: true }).click()
+      if (!(await field('name').count())) await ed.getByRole('button', { name: 'Add column', exact: true }).first().click()
       await field('name').fill(c.name)
       await field('type').fill(c.type)
+      await ed.getByRole('button', { name: `More for ${c.name}`, exact: true }).click()
       await field('identity').selectOption(c.identity ?? '')
       if (!c.identity && (c.default !== undefined || (await field('default').inputValue()) !== '')) {
         await field('default').fill(c.default ?? '')
       }
       if (c.comment) await field('comment').fill(c.comment)
       if (c.generated) await field('generated').fill(c.generated)
-      await field('nullable').setChecked(!!c.nullable)
+      await field('not null').setChecked(!c.nullable)
       await field('primary key').setChecked(!!c.pk)
       await field('unique').setChecked(!!c.unique)
     }
