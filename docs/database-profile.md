@@ -132,6 +132,20 @@ interface TableDefinition {
    (`uuid` default `gen_random_uuid()`, or `bigint` identity), plus
    `created_at timestamptz not null default now()`.
 
+### First use (decided 2026-11-23)
+
+A new user could not tell that tables are the main card or that columns are
+edited in **Edit Table**. Fixes:
+
+| Change | Choice |
+| --- | --- |
+| Empty canvas | Panel "Design a PostgreSQL database" with **Add table**, **Add enum**, **Import DDL**; Import DDL loads into this empty canvas as one undoable edit |
+| Add menu | Table, Enum, Schema (namespace), Note; the Database card is not in Add |
+| Database card | Stays a stored card (no migration); reached through **Database settings** in More canvas actions, which creates it when missing |
+| Schema lane | **Add table here** opens Add table with that schema |
+| Table hint | "Double-click to edit columns" while the table has only the starter columns; no stored flag |
+| Naming | Keep "Schema" (Postgres term); only the Add menu adds "(namespace)" |
+
 ### Phase 2: checks
 
 Same Review panel, Issues, Fixes, and ignore-with-reason behaviour.
