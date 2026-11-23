@@ -30,7 +30,6 @@ Different files from Next 1 and 2, so these can run in parallel.
 | --- | --- | --- |
 | Database Phase 2: checks | `database-profile.md` | |
 | Header: the Systems pill overlaps **Add** at 1280 px wide | — | Small |
-| Views dialog: zoom to fit on open; Replan preview ghosts faint on the dark theme | `urban-planner.md` | Small, found in Step 1 review |
 | Schema builder follow-ups: job System schemas, suggest schema from rows, array sub-tables | `schema-builder.md` | |
 
 ## Parked

@@ -62,6 +62,7 @@ export function DerivedViewsDialog({
   const [level, setLevel] = useState<LevelNumber>(initialLevel ?? (isApi ? 4 : 1))
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const [arrange, setArrange] = useState<'seeded' | 'auto'>('seeded')
+  const [fit, setFit] = useState(true)
   const [exportError, setExportError] = useState('')
   const [levelRequest, setLevelRequest] = useState({ open, initialLevel })
   const [viewSession, setViewSession] = useState(open)
@@ -310,6 +311,14 @@ export function DerivedViewsDialog({
                   Auto arrange
                 </button>
               )}
+              <button
+                type="button"
+                className="derived-action"
+                aria-pressed={fit}
+                onClick={() => setFit((current) => !current)}
+              >
+                Fit to window
+              </button>
               <button type="button" className="derived-action" onClick={() => runExport('png')}>
                 <Download size={13} /> PNG
               </button>
@@ -358,6 +367,7 @@ export function DerivedViewsDialog({
                   footer={footer}
                   notInLevels={view.notInLevels}
                   surfaceRef={graphSurface}
+                  fit={fit}
                   onExpand={(id) => setExpanded((current) => new Set(current).add(id))}
                   onShowInCanvas={onShowInCanvas}
                 />
@@ -378,6 +388,7 @@ function GraphDiagram({
   footer,
   notInLevels,
   surfaceRef,
+  fit,
   onExpand,
   onShowInCanvas,
 }: {
@@ -386,9 +397,13 @@ function GraphDiagram({
   footer: string
   notInLevels: DerivedUnassignedItem[]
   surfaceRef: RefObject<HTMLDivElement | null>
+  fit: boolean
   onExpand: (id: string) => void
   onShowInCanvas?: (id: string) => void
 }) {
+  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const empty = diagram.nodes.length === 0 && notInLevels.length === 0
+  const scale = useFitScale(fit, empty, scrollRef, surfaceRef)
   if (diagram.nodes.length === 0 && notInLevels.length === 0) {
     return (
       <div className="derived-empty">
@@ -399,7 +414,12 @@ function GraphDiagram({
   }
 
   return (
-    <div className="derived-scroll">
+    <div className="derived-scroll" ref={scrollRef}>
+      <div
+        className="derived-fit"
+        style={{ width: scale.size.width * scale.value, height: scale.size.height * scale.value }}
+      >
+      <div className="derived-fit-inner" style={{ transform: `scale(${scale.value})` }}>
       <div className="derived-export-surface" ref={surfaceRef}>
         <div
           className="derived-graph"
@@ -526,8 +546,45 @@ function GraphDiagram({
         )}
         <footer className="derived-export-footer">{footer}</footer>
       </div>
+      </div>
+      </div>
     </div>
   )
+}
+
+const FIT_MARGIN = 48
+// Below half size card text is unreadable; a taller view scrolls instead.
+const MIN_FIT_SCALE = 0.5
+
+// Scale the diagram down to fit the scroll area. Measured sizes are layout sizes, so the transform does not feed back.
+function useFitScale(
+  fit: boolean,
+  empty: boolean,
+  scrollRef: RefObject<HTMLDivElement | null>,
+  surfaceRef: RefObject<HTMLDivElement | null>,
+) {
+  const [size, setSize] = useState({ width: 0, height: 0 })
+  const [room, setRoom] = useState({ width: 0, height: 0 })
+
+  useEffect(() => {
+    const scroll = scrollRef.current
+    const surface = surfaceRef.current
+    if (!scroll || !surface || typeof ResizeObserver === 'undefined') return
+    const measure = () => {
+      setSize({ width: surface.offsetWidth, height: surface.offsetHeight })
+      setRoom({ width: scroll.clientWidth - FIT_MARGIN, height: scroll.clientHeight - FIT_MARGIN })
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(scroll)
+    observer.observe(surface)
+    return () => observer.disconnect()
+  }, [empty, scrollRef, surfaceRef])
+
+  const value = fit && size.width > 0 && size.height > 0 && room.width > 0 && room.height > 0
+    ? Math.min(1, Math.max(MIN_FIT_SCALE, Math.min(room.width / size.width, room.height / size.height)))
+    : 1
+  return { size, value }
 }
 
 function SequenceDiagram({ sequence }: { sequence: DerivedSequence }) {

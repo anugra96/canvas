@@ -103,6 +103,7 @@ Seeded layout is deterministic, so export stays stable.
 | Replan layout | Toolbar and command menu | Auto layout on Systems canvases |
 | Tidy group | Selection toolbar on a group | — |
 | Auto arrange | Derived views dialog | — |
+| Fit to window (on by default, never below 50%; export stays full size) | Derived views dialog | — |
 
 API and Database canvases keep `layoutApiCanvas` and `layoutDatabaseCanvas`
 in Step 1. They move onto the planner in Step 2.

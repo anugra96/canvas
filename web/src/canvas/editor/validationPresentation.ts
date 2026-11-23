@@ -176,7 +176,7 @@ const ISSUE_COPY: Record<CanvasProfileIssue['code'], { label: string; why: strin
   },
   level_unassigned: {
     label: 'Unassigned at level',
-    why: 'Add a `uses`, `produces`, or `defines` line from a System so the card folds into a visible parent.',
+    why: 'Add a uses, produces, or defines line from a System so the card folds into a visible parent.',
   },
   unzoned_card: {
     label: 'Unzoned system',

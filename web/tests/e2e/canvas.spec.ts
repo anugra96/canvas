@@ -1184,3 +1184,34 @@ test('makes a district with an owner and undo returns a plain group', async ({ p
   await expect(page.getByRole('button', { name: 'District', exact: true })).toHaveAttribute('aria-pressed', 'false')
   await expect(page.locator('.group-label')).toHaveText('Group')
 })
+
+test('views open fitted to the window, never below half size, and export stays full size', async ({ page }) => {
+  const example = fileURLToPath(new URL('../../../examples/model-delivery-exact-layout.canvas', import.meta.url))
+  const response = await page.request.post('/v1/canvases/import', {
+    headers: { authorization: 'Bearer local-dev' },
+    data: { title: 'Views fit', canvas: JSON.parse(readFileSync(example, 'utf8')) },
+  })
+  expect(response.ok()).toBe(true)
+  const { id } = await response.json() as { id: string }
+  await page.setViewportSize({ width: 1600, height: 1000 })
+  await page.goto(`/canvas/${id}`)
+  await page.getByRole('button', { name: 'Views', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Derived views' })
+  const graph = dialog.getByRole('img', { name: /derived diagram/ })
+  const fit = dialog.getByRole('button', { name: 'Fit to window' })
+  await expect(fit).toHaveAttribute('aria-pressed', 'true')
+
+  const width = async () => (await graph.boundingBox())!.width
+  await expect.poll(width).toBeLessThan(await graph.evaluate((element) => (element as HTMLElement).offsetWidth))
+  const fitted = await width()
+  const natural = await graph.evaluate((element) => (element as HTMLElement).offsetWidth)
+  expect(fitted).toBeGreaterThanOrEqual(natural * 0.5 - 1)
+
+  const download = page.waitForEvent('download')
+  await dialog.getByRole('button', { name: 'PNG' }).click()
+  const png = readFileSync(await (await download).path())
+  expect(png.readUInt32BE(16)).toBeGreaterThan(natural * 2) // 2x pixel ratio of the unscaled surface
+
+  await fit.click()
+  await expect.poll(width).toBeCloseTo(natural, 0)
+})
