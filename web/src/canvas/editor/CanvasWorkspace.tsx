@@ -14,6 +14,7 @@ import {
   attachResponseModel,
   columnFromDatabaseHandle,
   edgeOrigin,
+  getCanvasLinks,
   getEdgeMeta,
   referenceRouteEdge,
   removeModelReference,
@@ -27,6 +28,7 @@ import {
 } from '@canvas/contract'
 import type { Connection, EdgeChange } from '@xyflow/react'
 
+import type { CanvasClient } from '../../api/client'
 import { CanvasBackdrop } from '../backdrop/CanvasBackdrop'
 import { nodeDimensions, type CanvasFlowEdge, type CanvasFlowNode } from '../model/adapter'
 import { useCanvasEditorActions } from './CanvasEditorContext'
@@ -69,6 +71,7 @@ const edgeTypes = {
 }
 
 interface CanvasWorkspaceProps {
+  client: CanvasClient
   documentId: string
   nodes: CanvasFlowNode[]
   edges: CanvasFlowEdge[]
@@ -94,6 +97,7 @@ interface CanvasWorkspaceProps {
 }
 
 export function CanvasWorkspace({
+  client,
   documentId,
   nodes,
   edges,
@@ -203,6 +207,19 @@ export function CanvasWorkspace({
   const selectedOrigin = graph.selectedEdges.length === 1
     ? renderedEdges.find((edge) => edge.selected)?.data
     : undefined
+  const selectedEndpointEdge = graph.selectedEdges.length === 1 ? graph.selectedEdges[0] : undefined
+  const selectedEndpointRelation = selectedEndpointEdge?.data?.relationType
+  const selectedEndpointTargetId = selectedEndpointEdge?.target
+  const endpointTarget = useMemo(() => {
+    if (!selectedEndpointTargetId || selectedEndpointRelation !== 'uses') return undefined
+    const target = nodes.find((node) => node.id === selectedEndpointTargetId)
+    const entity = target?.data.entity
+    if (!target || entity?.entityType !== 'system' || String(entity.fields.kind ?? '') !== 'api') return undefined
+    const links = getCanvasLinks(target.data.raw)
+    if (links.length === 0) return undefined
+    return { nodeId: target.id, links }
+  }, [nodes, selectedEndpointRelation, selectedEndpointTargetId])
+  const endpointValue = selectedEndpointEdge?.data?.raw.app?.endpoint ?? ''
   const editorOrigin = graph.edgeLabelEditor
     ? renderedEdges.find((edge) => edge.id === graph.edgeLabelEditor?.edgeId)?.data
     : undefined
@@ -467,6 +484,10 @@ export function CanvasWorkspace({
           onDelete={graph.deleteSelected}
           onClear={graph.clearSelection}
           onColor={graph.applyColor}
+          client={client}
+          endpointTarget={endpointTarget}
+          endpointValue={endpointValue}
+          onEndpointChange={graph.changeEndpoint}
           edgeOrigin={selectedOrigin?.origin as EdgeOrigin | undefined}
           edgeOriginCardName={selectedOrigin?.originCardName as string | undefined}
           onOpenOriginCard={selectedOrigin?.originCardId

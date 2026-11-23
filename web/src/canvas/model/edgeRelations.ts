@@ -114,6 +114,35 @@ export function applyRelationToFlowEdge(
 }
 
 
+export function applyEndpointToFlowEdge(
+  edge: CanvasFlowEdge,
+  endpoint: string | undefined,
+  ontology: Ontology = DEFAULT_ONTOLOGY,
+): CanvasFlowEdge {
+  const raw = edge.data?.raw
+  if (!raw) return edge
+  const value = endpoint?.trim() || undefined
+  const app = { ...(raw.app ?? {}) }
+  if (value) app.endpoint = value
+  else delete app.endpoint
+  const relation = edge.data?.relationType
+    ? findRelationType(ontology, edge.data.relationType)
+    : undefined
+  const label = value ?? raw.label ?? relation?.label
+  return {
+    ...edge,
+    label,
+    data: {
+      ...edge.data,
+      label,
+      raw: {
+        ...raw,
+        ...(Object.keys(app).length > 0 ? { app } : { app: undefined }),
+      },
+    },
+  }
+}
+
 export function reverseFlowEdge(edge: CanvasFlowEdge): CanvasFlowEdge {
   const raw = edge.data?.raw
   if (!raw) return edge

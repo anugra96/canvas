@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
 import { parse as parseYaml } from 'yaml'
 
-import { createCanvas } from './helpers'
+import { createCanvas, waitForSaved } from './helpers'
 
 const engineFixture = readFileSync(
   new URL('../../../packages/canvas-contract/src/openapi/fixtures/skyward-engine-v1.json', import.meta.url),
@@ -149,6 +149,112 @@ test('creates and links an API canvas from a System card', async ({ page, reques
   await editor.getByRole('button', { name: 'Create or open API canvas' }).click()
   await expect(page.getByRole('status').filter({ hasText: 'Created API canvas' })).toBeVisible()
   await expect(page.locator('.save-status')).toHaveText('Saved', { timeout: 5000 })
+})
+
+test('picks an endpoint for a uses line and links a database System to its canvas', async ({ page, request }) => {
+  const systems = await request.post('/v1/canvases/import', {
+    headers: { authorization: 'Bearer local-dev' },
+    data: {
+      title: 'Endpoint flow',
+      canvas: {
+        nodes: [
+          {
+            id: 'service', type: 'text', x: 0, y: 0, width: 360, height: 220, text: '',
+            app: {
+              entityType: 'system',
+              fields: { name: 'Tasks web', kind: 'service', owner: '', status: 'active' },
+            },
+          },
+          {
+            id: 'api-system', type: 'text', x: 520, y: 0, width: 360, height: 220, text: '',
+            app: {
+              entityType: 'system',
+              fields: { name: 'Engine API', kind: 'api', owner: '', status: 'active' },
+            },
+          },
+        ],
+        edges: [{
+          id: 'uses-api',
+          fromNode: 'service',
+          toNode: 'api-system',
+          fromSide: 'right',
+          toSide: 'left',
+          toEnd: 'arrow',
+          app: { relationType: 'uses' },
+        }],
+        app: { profile: 'systems', profileVersion: 5 },
+      },
+    },
+  })
+  expect(systems.ok()).toBe(true)
+  const database = await request.post('/v1/canvases/import', {
+    headers: { authorization: 'Bearer local-dev' },
+    data: {
+      title: 'Database link',
+      canvas: {
+        nodes: [{
+          id: 'database-system', type: 'text', x: 0, y: 0, width: 360, height: 220, text: '',
+          app: {
+            entityType: 'system',
+            fields: { name: 'Orders DB', kind: 'database', owner: '', status: 'active' },
+          },
+        }],
+        edges: [],
+        app: { profile: 'systems', profileVersion: 5 },
+      },
+    },
+  })
+  expect(database.ok()).toBe(true)
+
+  await page.goto('/')
+  await page.locator('.canvas-card').filter({ hasText: 'Endpoint flow' }).getByRole('button', { name: /^Open / }).click()
+  await expect(page.locator('.canvas-flow')).toBeVisible()
+  await page.getByRole('group', { name: 'System Engine API', exact: true }).dblclick()
+  const editor = page.getByRole('dialog', { name: 'Edit System' })
+  await editor.getByRole('button', { name: 'Create or open API canvas' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Created API canvas' })).toBeVisible()
+  await waitForSaved(page)
+  await editor.getByRole('button', { name: 'Create or open API canvas' }).click()
+  await expect(page.locator('.profile-badge')).toHaveText('API')
+
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Resource', exact: true }).click()
+  const resourceDialog = page.getByRole('dialog', { name: 'Add resource' })
+  await resourceDialog.getByLabel('Singular').fill('job')
+  await resourceDialog.getByLabel('Path prefix').fill('/v1')
+  await resourceDialog.getByRole('button', { name: 'Add resource', exact: true }).click()
+  await expect(page.locator('.api-endpoint-preview')).toHaveCount(5)
+
+  await page.getByRole('navigation', { name: 'Canvas trail' }).getByRole('button', { name: 'Endpoint flow' }).click()
+  await expect(page.getByRole('heading', { name: 'Endpoint flow', level: 1 })).toBeVisible()
+  await expect(page.locator('.profile-badge')).toHaveText('Systems')
+  await page.locator('.edge-label').click()
+  await expect(page.getByLabel('Edge relation')).toHaveValue('uses')
+  const endpoint = page.getByLabel('Endpoint', { exact: true })
+  await expect(endpoint).toBeVisible()
+  await endpoint.selectOption('POST /v1/jobs')
+  await expect(page.locator('.edge-label')).toHaveText('POST /v1/jobs')
+  await waitForSaved(page)
+  await page.reload()
+  await expect(page.locator('.edge-label')).toHaveText('POST /v1/jobs')
+
+  await page.goto('/')
+  await page.locator('.canvas-card').filter({ hasText: 'Database link' }).getByRole('button', { name: /^Open / }).click()
+  await expect(page.locator('.canvas-flow')).toBeVisible()
+  await page.getByRole('group', { name: 'System Orders DB', exact: true }).dblclick()
+  const databaseEditor = page.getByRole('dialog', { name: 'Edit System' })
+  await databaseEditor.getByRole('button', { name: 'Create or open Database canvas' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Created Database canvas' })).toBeVisible()
+  await waitForSaved(page)
+  await databaseEditor.getByRole('button', { name: 'Create or open Database canvas' }).click()
+  await expect(page.locator('.profile-badge')).toHaveText('Database')
+  const openedUrl = page.url()
+  await page.getByRole('navigation', { name: 'Canvas trail' }).getByRole('button', { name: 'Database link' }).click()
+  await page.getByRole('group', { name: 'System Orders DB', exact: true }).dblclick()
+  await page.getByRole('dialog', { name: 'Edit System' })
+    .getByRole('button', { name: 'Create or open Database canvas' }).click()
+  await expect(page).toHaveURL(openedUrl)
+  await expect(page.locator('.profile-badge')).toHaveText('Database')
 })
 
 test('draws an Endpoint to Schema relation through the managed chooser', async ({ page, request }) => {

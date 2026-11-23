@@ -336,6 +336,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   })
 
   const validation = useCanvasValidation({
+    client,
     nodes,
     edges,
     baseCanvas,
@@ -343,6 +344,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     ontology,
     isSystems: isStructured,
     isApi,
+    isSystemsCanvas: isSystems,
     reviewMode,
     suppressions,
     setSuppressions,
@@ -786,7 +788,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       editEdgeLabel: graph.openEdgeLabelEditor,
       selectEdge: graph.selectEdge,
       openCanvasLinks: links.openCanvasLinks,
-      createOrOpenApiCanvas: links.createOrOpenApiCanvas,
+      createOrOpenProfileCanvas: links.createOrOpenProfileCanvas,
       openNodeEditor,
       addDatabaseReference,
       removeDatabaseReference,
@@ -803,7 +805,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       graph.updateLabel,
       graph.updateText,
       inlineSchemaCard,
-      links.createOrOpenApiCanvas,
+      links.createOrOpenProfileCanvas,
       links.openCanvasLinks,
       openNodeEditor,
       removeDatabaseReference,
@@ -912,6 +914,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
           <ApiDesignProvider nodes={nodes} enabled={isApi}>
             <NodeEditRequestContext.Provider value={nodeEditRequest}>
             <CanvasWorkspace
+            client={client}
             documentId={document.id}
             nodes={visibleNodes}
             edges={visibleEdges}

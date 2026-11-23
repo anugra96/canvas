@@ -4,6 +4,7 @@ import {
   levelReadiness,
   levelReadinessIssues,
   validateApiDesign,
+  validateEndpointLinks,
   validateProfileCanvas,
   type CanvasProfile,
   type JsonCanvas,
@@ -22,6 +23,7 @@ export function useProfileValidation({
   ontology,
   isSystems,
   isApi,
+  linkedEndpoints = new Map(),
 }: {
   nodes: CanvasFlowNode[]
   edges: CanvasFlowEdge[]
@@ -30,6 +32,7 @@ export function useProfileValidation({
   ontology: Ontology
   isSystems: boolean
   isApi: boolean
+  linkedEndpoints?: ReadonlyMap<string, readonly string[]>
 }) {
   return useMemo(() => {
     if (!isSystems) return { issues: [], levelReadiness: [] }
@@ -42,10 +45,11 @@ export function useProfileValidation({
         ...(isApi ? validateApiExamples(canvas.nodes ?? []) : []),
         ...(isApi ? validateApiOperations(canvas.nodes ?? []) : []),
         ...(isApi ? validateApiDesign(canvas) : []),
+        ...validateEndpointLinks(canvas, linkedEndpoints),
         ...validateSemanticRules(canvas.nodes ?? [], canvas.edges ?? []),
         ...levelReadinessIssues(readiness),
       ],
       levelReadiness: readiness,
     }
-  }, [baseCanvas, edges, isApi, isSystems, nodes, ontology, profile])
+  }, [baseCanvas, edges, isApi, isSystems, linkedEndpoints, nodes, ontology, profile])
 }

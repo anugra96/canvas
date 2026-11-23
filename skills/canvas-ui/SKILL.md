@@ -72,6 +72,9 @@ the first accessibility read after load can be empty.
 | `button "Connect"` | Shown when one card is selected (Raw, Systems): click it, then the target card |
 | `button "District"` | Shown when one group is selected (Systems): toggles the group between a district and a plain group |
 | `combobox "District owner"` | Shown for a selected district (Systems): picks the owning Actor card, or `No owner` |
+| `combobox "Endpoint"` | Shown for one selected `uses` line to an API System: picks the endpoint the call uses, or `No endpoint` |
+| `button "Create or open API canvas"` | In an API System's editor: creates and links an API canvas, then opens it on the next click |
+| `button "Create or open Database canvas"` | In a Database System's editor: creates and links a Database canvas, then opens it on the next click |
 | `button "Review"` | Issues and level readiness; close with `button "Close review"` |
 | `button "Fit View"` | Fit all cards in view. Use it before double-clicking a card that may be off-screen |
 | `button "Undo"`, `button "Redo"` | Undo the last change |

@@ -121,7 +121,7 @@ export function toFlowEdge(
       ? databaseColumnHandleId(toColumn, raw.toSide === 'right' ? 'right' : 'left')
       : raw.toSide ?? 'left',
     type: 'canvas',
-    data: { raw, label: raw.label ?? relation?.label, relationType },
+    data: { raw, label: meta?.endpoint ?? raw.label ?? relation?.label, relationType },
     style: { stroke: color, strokeWidth: 2 },
     markerEnd: raw.toEnd === 'none'
       ? undefined

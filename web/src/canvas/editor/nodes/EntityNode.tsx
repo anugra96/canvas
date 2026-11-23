@@ -147,6 +147,7 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
   const title = entityTitle(entityType, meta.fields)
   const iconColor = colorFor(entityType.color)
   const systemKind = entityType.id === 'system' ? String(meta.fields.kind ?? '') : ''
+  const linkedProfile = systemKind === 'api' ? 'api' : systemKind === 'database' ? 'database' : undefined
   const iconName = systemKind === 'database'
     ? 'database'
     : systemKind === 'queue'
@@ -187,14 +188,18 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
         }
       }}
     >
-      {entityType.id === 'system' && meta.fields.kind === 'api' && (
+      {linkedProfile && (
         <button
           type="button"
           className="button ghost api-canvas-command"
-          onClick={() => actions.createOrOpenApiCanvas(id, title || 'API canvas')}
+          onClick={() => actions.createOrOpenProfileCanvas(
+            id,
+            title || (linkedProfile === 'api' ? 'API canvas' : 'Database canvas'),
+            linkedProfile,
+          )}
         >
-          <Cable size={16} />
-          Create or open API canvas
+          {linkedProfile === 'api' ? <Cable size={16} /> : <Database size={16} />}
+          {linkedProfile === 'api' ? 'Create or open API canvas' : 'Create or open Database canvas'}
         </button>
       )}
       {propertyFields.length > 0 && (

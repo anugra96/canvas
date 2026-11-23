@@ -112,29 +112,34 @@ export function useCanvasLinks({
     setNotice(`Created and linked "${child.title}".`)
   }, [canvasLinkNodeId, client, profileId, setNotice, updateCanvasLinks])
 
-  const createOrOpenApiCanvas = useCallback(async (nodeId: string, cardTitle: string) => {
+  const createOrOpenProfileCanvas = useCallback(async (
+    nodeId: string,
+    cardTitle: string,
+    targetProfile: 'api' | 'database',
+  ) => {
     const node = nodes.find((candidate) => candidate.id === nodeId)
     if (!node) return
     if (dirty) {
       const saved = await save()
       if (!saved) return
     }
+    const linkLabel = targetProfile === 'api' ? 'API canvas' : 'Database canvas'
     setError('')
     try {
       const links = getCanvasLinks(node.data.raw)
       const canvases = await client.listCanvases()
-      const linkedApi = links.find((link) => (
-        canvases.some((canvas) => canvas.id === link.canvasId && canvas.profile === 'api')
+      const linkedCanvas = links.find((link) => (
+        canvases.some((canvas) => canvas.id === link.canvasId && canvas.profile === targetProfile)
       ))
-      if (linkedApi) {
-        onOpenLinkedCanvas(linkedApi.canvasId, linkedApi.label ?? 'API canvas')
+      if (linkedCanvas) {
+        onOpenLinkedCanvas(linkedCanvas.canvasId, linkedCanvas.label ?? linkLabel)
         return
       }
-      const child = await client.createCanvas(cardTitle, 'api')
-      updateCanvasLinks(nodeId, (current) => [...current, createCanvasLink(child.id, 'API canvas')])
-      setNotice(`Created API canvas "${child.title}" and linked it to this card.`)
+      const child = await client.createCanvas(cardTitle, targetProfile)
+      updateCanvasLinks(nodeId, (current) => [...current, createCanvasLink(child.id, linkLabel)])
+      setNotice(`Created ${linkLabel} "${child.title}" and linked it to this card.`)
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not create the API canvas.')
+      setError(cause instanceof Error ? cause.message : `Could not create the ${linkLabel}.`)
     }
   }, [client, dirty, nodes, onOpenLinkedCanvas, save, setError, setNotice, updateCanvasLinks])
 
@@ -180,7 +185,7 @@ export function useCanvasLinks({
     canvasOptionsError,
     currentCanvasId: documentId,
     openCanvasLinks,
-    createOrOpenApiCanvas,
+    createOrOpenProfileCanvas,
     closeCanvasLinks,
     linkExistingCanvas,
     unlinkCanvas,

@@ -1,9 +1,80 @@
 import { ArrowLeftRight, Building2, Copy, Group as GroupIcon, Link2, Scaling, Trash2, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
 
-import type { EdgeOrigin } from '@canvas/contract'
+import { canvasEndpoints, type CanvasLink, type EdgeOrigin } from '@canvas/contract'
 
+import type { CanvasClient } from '../../api/client'
 import { useOntology } from '../../ontology/OntologyContext'
 import { CANVAS_COLOR_PRESETS } from '../model/adapter'
+
+interface EndpointTarget {
+  nodeId: string
+  links: CanvasLink[]
+}
+
+function EndpointPicker({
+  client,
+  target,
+  value,
+  onChange,
+}: {
+  client: CanvasClient
+  target: EndpointTarget
+  value: string
+  onChange: (endpoint: string | undefined) => void
+}) {
+  const [state, setState] = useState<
+    { nodeId: string; status: 'loading' } | { nodeId: string; status: 'missing' } | { nodeId: string; status: 'ready'; options: string[] }
+  >({ nodeId: target.nodeId, status: 'loading' })
+  const current = state.nodeId === target.nodeId ? state : { status: 'loading' as const }
+
+  useEffect(() => {
+    let active = true
+    const nodeId = target.nodeId
+    async function load() {
+      try {
+        const canvases = await client.listCanvases()
+        const link = target.links.find((candidate) => (
+          canvases.some((canvas) => canvas.id === candidate.canvasId && canvas.profile === 'api')
+        ))
+        if (!link) {
+          if (active) setState({ nodeId, status: 'missing' })
+          return
+        }
+        const document = await client.getCanvas(link.canvasId)
+        if (active) setState({ nodeId, status: 'ready', options: canvasEndpoints(document.canvas) })
+      } catch {
+        if (active) setState({ nodeId, status: 'missing' })
+      }
+    }
+    void load()
+    return () => {
+      active = false
+    }
+  }, [client, target])
+
+  if (current.status === 'loading') return null
+  if (current.status === 'missing') return null
+  const options = current.options
+  const missing = Boolean(value) && !options.includes(value)
+  return (
+    <label className="toolbar-field selection-endpoint">
+      <span>Endpoint</span>
+      <select
+        className="template-select"
+        aria-label="Endpoint"
+        value={value}
+        onChange={(event) => onChange(event.target.value || undefined)}
+      >
+        <option value="">No endpoint</option>
+        {missing && <option value={value}>{`${value} (missing)`}</option>}
+        {options.map((endpoint) => (
+          <option key={endpoint} value={endpoint}>{endpoint}</option>
+        ))}
+      </select>
+    </label>
+  )
+}
 
 export function SelectionToolbar({
   selectedNodes,
@@ -38,6 +109,10 @@ export function SelectionToolbar({
   onDelete,
   onClear,
   onColor,
+  client,
+  endpointTarget,
+  endpointValue = '',
+  onEndpointChange,
   edgeOrigin,
   edgeOriginCardName,
   onOpenOriginCard,
@@ -74,6 +149,10 @@ export function SelectionToolbar({
   onDelete: () => void
   onClear: () => void
   onColor: (color: string | undefined) => void
+  client?: CanvasClient
+  endpointTarget?: EndpointTarget
+  endpointValue?: string
+  onEndpointChange?: (endpoint: string | undefined) => void
   edgeOrigin?: EdgeOrigin
   edgeOriginCardName?: string
   onOpenOriginCard?: () => void
@@ -153,6 +232,14 @@ export function SelectionToolbar({
             ))}
           </select>
         </label>
+      )}
+      {selectedEdges === 1 && client && endpointTarget && onEndpointChange && (
+        <EndpointPicker
+          client={client}
+          target={endpointTarget}
+          value={endpointValue}
+          onChange={onEndpointChange}
+        />
       )}
       {selectedEdges === 1 && edgeOrigin && (
         <span className="selection-origin">

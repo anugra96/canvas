@@ -76,6 +76,16 @@ Direction rule: **the line points from the actor of the sentence.** "Tasks API
 uses Tasks DB" is a line from Tasks API to Tasks DB. A line that breaks the
 table appears as an issue in `Review`.
 
+After drawing a `uses` line to a System with kind `api`, keep the line selected
+and choose `combobox "Endpoint"`. It lists the linked API canvas's endpoints as
+`METHOD /path`; the choice becomes the line label and the Sequence message.
+`No endpoint` clears it.
+
+A System with kind `database` opens its Database canvas with
+`button "Create or open Database canvas"` in its editor. The first click creates
+and links a Database canvas titled after the card; click again to open it. An
+API System uses `button "Create or open API canvas"` the same way.
+
 ## 4. Levels (Context, Containers, Components, Contracts)
 
 `Views` shows the canvas at four levels. A card folds into the card that

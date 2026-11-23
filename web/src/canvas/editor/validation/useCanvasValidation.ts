@@ -1,11 +1,14 @@
 import { useReactFlow } from '@xyflow/react'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
   applyApiCheckFix,
+  canvasEndpoints,
   deriveManagedRelations,
   emptyEntityFields,
   findEntityType,
+  getCanvasLinks,
+  getEdgeMeta,
   getEntityMeta,
   issueVisibleInMode,
   renderEntityMarkdown,
@@ -18,6 +21,7 @@ import {
   type ReviewMode,
 } from '@canvas/contract'
 
+import type { CanvasClient } from '../../../api/client'
 import { buildSuggestions, type CanvasSuggestion } from '../../suggestions/suggestionEngine'
 import { fromFlowCanvas, nodeDimensions, toFlowEdge, toFlowNode, type CanvasFlowEdge, type CanvasFlowNode } from '../../model/adapter'
 import { edgeFromConnection } from '../../model/edgeRelations'
@@ -57,6 +61,7 @@ function placementHandles(
 }
 
 interface UseCanvasValidationInput {
+  client: CanvasClient
   nodes: CanvasFlowNode[]
   edges: CanvasFlowEdge[]
   baseCanvas: JsonCanvas
@@ -64,6 +69,7 @@ interface UseCanvasValidationInput {
   ontology: Ontology
   isSystems: boolean
   isApi: boolean
+  isSystemsCanvas: boolean
   reviewMode: ReviewMode
   suppressions: ValidationSuppression[]
   setSuppressions: (update: (current: ValidationSuppression[]) => ValidationSuppression[]) => void
@@ -76,6 +82,7 @@ interface UseCanvasValidationInput {
 }
 
 export function useCanvasValidation({
+  client,
   nodes,
   edges,
   baseCanvas,
@@ -83,6 +90,7 @@ export function useCanvasValidation({
   ontology,
   isSystems,
   isApi,
+  isSystemsCanvas,
   reviewMode,
   suppressions,
   setSuppressions,
@@ -98,6 +106,76 @@ export function useCanvasValidation({
   const [reviewTab, setReviewTab] = useState<ReviewTab>('issues')
   const [validationFocusRequest, setValidationFocusRequest] = useState<{ key: string; requestId: number } | null>(null)
   const validationRequestId = useRef(0)
+  const [linkedEndpoints, setLinkedEndpoints] = useState<ReadonlyMap<string, readonly string[]>>(new Map())
+  const nodesRef = useRef(nodes)
+  const edgesRef = useRef(edges)
+  const linkedEndpointsRequest = useRef(0)
+
+  useEffect(() => {
+    nodesRef.current = nodes
+  }, [nodes])
+
+  useEffect(() => {
+    edgesRef.current = edges
+  }, [edges])
+
+  const loadLinkedEndpoints = useCallback(async () => {
+    const request = ++linkedEndpointsRequest.current
+    if (!isSystemsCanvas) {
+      setLinkedEndpoints(new Map())
+      return
+    }
+    const currentNodes = nodesRef.current
+    const nodesById = new Map(currentNodes.map((node) => [node.id, node]))
+    const targets = new Map<string, CanvasFlowNode>()
+    for (const edge of edgesRef.current) {
+      const raw = edge.data?.raw
+      if (!raw || !getEdgeMeta(raw)?.endpoint?.trim()) continue
+      const target = nodesById.get(edge.target)
+      const entity = target ? getEntityMeta(target.data.raw) : undefined
+      if (!target || entity?.entityType !== 'system' || String(entity.fields.kind ?? '') !== 'api') continue
+      if (getCanvasLinks(target.data.raw).length === 0) continue
+      targets.set(target.id, target)
+    }
+    if (targets.size === 0) {
+      if (request === linkedEndpointsRequest.current) setLinkedEndpoints(new Map())
+      return
+    }
+    let canvases
+    try {
+      canvases = await client.listCanvases()
+    } catch {
+      if (request === linkedEndpointsRequest.current) setLinkedEndpoints(new Map())
+      return
+    }
+    const endpointsByCanvas = new Map<string, readonly string[]>()
+    const next = new Map<string, readonly string[]>()
+    await Promise.all([...targets.values()].map(async (target) => {
+      const link = getCanvasLinks(target.data.raw).find((candidate) => (
+        canvases.some((canvas) => canvas.id === candidate.canvasId && canvas.profile === 'api')
+      ))
+      if (!link) return
+      let endpoints = endpointsByCanvas.get(link.canvasId)
+      if (!endpoints) {
+        try {
+          const document = await client.getCanvas(link.canvasId)
+          endpoints = canvasEndpoints(document.canvas)
+        } catch {
+          return
+        }
+        endpointsByCanvas.set(link.canvasId, endpoints)
+      }
+      next.set(target.id, endpoints)
+    }))
+    if (request === linkedEndpointsRequest.current) setLinkedEndpoints(next)
+  }, [client, isSystemsCanvas])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadLinkedEndpoints()
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [loadLinkedEndpoints])
 
   const profileValidation = useProfileValidation({
     nodes,
@@ -107,6 +185,7 @@ export function useCanvasValidation({
     ontology,
     isSystems,
     isApi,
+    linkedEndpoints,
   })
   const suppressionByFingerprint = useMemo(
     () => new Map(suppressions.map((suppression) => [suppression.fingerprint, suppression])),
@@ -329,6 +408,7 @@ export function useCanvasValidation({
   }
 
   const openValidationIssue = useCallback((issue: CanvasProfileIssue) => {
+    void loadLinkedEndpoints()
     focusValidationIssue(issue)
     validationRequestId.current += 1
     setValidationFocusRequest({
@@ -337,12 +417,13 @@ export function useCanvasValidation({
     })
     setReviewTab('issues')
     setReviewOpen(true)
-  }, [focusValidationIssue])
+  }, [focusValidationIssue, loadLinkedEndpoints])
 
   const openReview = useCallback(() => {
+    void loadLinkedEndpoints()
     setValidationFocusRequest(null)
     setReviewOpen(true)
-  }, [])
+  }, [loadLinkedEndpoints])
 
   const closeReview = useCallback(() => {
     setReviewOpen(false)

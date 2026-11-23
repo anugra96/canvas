@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react'
 import type { Ontology } from '@canvas/contract'
 
 import {
+  applyEndpointToFlowEdge,
   applyLabelToFlowEdge,
   applyRelationToFlowEdge,
   reconnectFlowEdge,
@@ -100,6 +101,13 @@ export function useCanvasEdges({
     markDirty()
   }, [edgeLabelEditor, markDirty, setEdges])
 
+  const changeEndpoint = useCallback((endpoint: string | undefined) => {
+    setEdges((current) => current.map((edge) => (
+      edge.selected ? applyEndpointToFlowEdge(edge, endpoint, ontology) : edge
+    )))
+    markDirty()
+  }, [markDirty, ontology, setEdges])
+
   return {
     edgeLabelEditor,
     setEdgeLabelEditor,
@@ -110,6 +118,7 @@ export function useCanvasEdges({
     reverseSelectedEdges,
     changeRelation,
     saveEdgeLabel,
+    changeEndpoint,
   }
 }
 

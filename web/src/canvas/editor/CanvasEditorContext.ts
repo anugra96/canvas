@@ -19,7 +19,7 @@ export interface CanvasEditorActions {
   editEdgeLabel: (id: string, clientX: number, clientY: number) => void
   selectEdge: (id: string) => void
   openCanvasLinks: (id: string) => void
-  createOrOpenApiCanvas: (id: string, title: string) => void
+  createOrOpenProfileCanvas: (id: string, title: string, profile: 'api' | 'database') => void
   openNodeEditor: (id: string) => void
   addDatabaseReference: (connection: DatabaseReferenceConnection) => boolean
   removeDatabaseReference: (edgeId: string) => void
