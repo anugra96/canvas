@@ -812,6 +812,11 @@ p {
   white-space: nowrap;
 }
 
+.edge-label.endpoint {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .edge-label-wrap {
   position: absolute;
   z-index: 1004;

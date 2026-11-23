@@ -49,6 +49,8 @@ export function CanvasEdge({
   const labelY = pathResult.labelY
   const label = data?.label
   const untyped = !data?.relationType
+  // An endpoint label is a case-sensitive path: show it as written.
+  const endpoint = Boolean(data?.raw?.app?.endpoint)
   const origin = data?.origin as EdgeOrigin | undefined
   const originCardName = data?.originCardName as string | undefined
   const tooltip = origin === 'managed'
@@ -88,7 +90,7 @@ export function CanvasEdge({
           >
             {label && (
               <div
-                className={`edge-label${untyped ? ' untyped' : ''}`}
+                className={`edge-label${untyped ? ' untyped' : ''}${endpoint ? ' endpoint' : ''}`}
                 title={tooltip}
                 onClick={(event) => {
                   event.stopPropagation()
