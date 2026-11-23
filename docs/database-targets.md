@@ -1,0 +1,142 @@
+# Database Targets
+
+Status: Draft for review (2026-11-23), not built
+Applies to: Database canvases. Extends `database-profile.md`; replaces its "PostgreSQL only" decision.
+
+## Decision
+
+A Database canvas holds one **neutral data model**: tables, columns with neutral
+types, keys, relations, enums, and sample rows. The user may design without
+choosing a database. A **target** (PostgreSQL, SQLite, or DynamoDB) can be set at
+any time in **Database settings**. The target adds:
+
+- a type mapping from neutral types to the target's types,
+- target rules as Review issues ("what blocks export to this target"),
+- the target's export (and later import).
+
+One model with one adapter per target. No second Database profile, no parallel
+stores. Switching the target never rewrites the model; Review reports what does
+not fit.
+
+```text
+Neutral model ──► Target adapter (types · rules · export) ──► Review issues ──► Export
+                    PostgreSQL │ SQLite │ DynamoDB
+```
+
+## Target
+
+| Value | Meaning |
+| --- | --- |
+| absent | Not chosen: neutral checks only; Export asks the user to choose a target |
+| `postgres` | PostgreSQL 15+ (today's behaviour) |
+| `sqlite` | SQLite 3.37+ (`STRICT` tables available) |
+| `dynamodb` | Amazon DynamoDB |
+
+Stored as `app.target` on the canvas root, beside `profile` and `reviewMode`.
+
+Existing canvases are PostgreSQL: a profile migration (Database `profileVersion`
+1 → 2) sets `app.target: "postgres"` on every Database canvas that has no target.
+New canvases start without a target. (Open question 1.)
+
+## Neutral types
+
+A column `type` holds a neutral type, an enum name, or a native type of the
+current target. Native types are allowed so imported DDL loses nothing; Review
+flags them when they do not map to another chosen target.
+
+| Neutral | PostgreSQL | SQLite (STRICT) | DynamoDB attribute |
+| --- | --- | --- | --- |
+| `text` | `text` | `TEXT` | `S` |
+| `varchar(n)` | `character varying(n)` | `TEXT` + `CHECK (length(x) <= n)` | `S` (length rule in Review only) |
+| `integer` | `integer` | `INTEGER` | `N` |
+| `bigint` | `bigint` | `INTEGER` | `N` |
+| `decimal(p,s)` | `numeric(p,s)` | `TEXT` (exact) or `REAL` (warning) | `N` |
+| `boolean` | `boolean` | `INTEGER` + `CHECK (x IN (0,1))` | `BOOL` |
+| `uuid` | `uuid` | `TEXT` | `S` |
+| `date` | `date` | `TEXT` (ISO 8601) | `S` (ISO 8601) |
+| `timestamp` | `timestamp with time zone` | `TEXT` (ISO 8601) | `S` (ISO 8601) or `N` (epoch) |
+| `json` | `jsonb` | `TEXT` + `CHECK (json_valid(x))` | `M` / `L` |
+| `binary` | `bytea` | `BLOB` | `B` |
+| enum | `CREATE TYPE … AS ENUM` | `TEXT` + `CHECK (x IN (…))` | `S` (values in Review only) |
+
+Today's Postgres type strings map to neutral types on read (`timestamp with time
+zone` → `timestamp`); others (`inet`, `macaddr`) stay native Postgres.
+
+## Features per target
+
+| Feature | PostgreSQL | SQLite | DynamoDB |
+| --- | --- | --- | --- |
+| Schemas (namespaces, lanes) | Yes | No: Review warns; export flattens with a `<schema>_` prefix | No |
+| Identity / auto id | Identity | `INTEGER PRIMARY KEY` | No: app-generated ids |
+| Foreign keys | Enforced | Enforced with `PRAGMA foreign_keys = ON` | Not enforced: item collections or denormalised copies |
+| CHECK, generated columns | Yes | Yes | No: Review lists them as not enforced |
+| Partial / expression indexes | Yes | Yes | No: GSIs on attributes only |
+| Joins | Yes | Yes | No: access patterns must be served by keys |
+
+## DynamoDB needs access patterns
+
+A relational model does not say how DynamoDB keys should look. With target
+`dynamodb`, the canvas asks for **access patterns**: named reads and writes the app
+performs, e.g. "Get order by id", "List orders for customer, newest first".
+
+| Field | Example |
+| --- | --- |
+| Name | List orders for customer |
+| Entity | `orders` |
+| Key condition | `customer_id = ?`, sorted by `created_at` desc |
+| Frequency | High / Medium / Low |
+
+Key design per table (or per entity in a single table): partition key and sort key
+as attribute templates (`CUSTOMER#<customer_id>`, `ORDER#<created_at>`), plus GSIs.
+Table layout: one table per entity, or single-table (Open question 3).
+
+Review rules for DynamoDB: every access pattern is served by the table key or a
+GSI; no pattern needs a join; hot-partition warning when a high-frequency pattern
+uses a low-cardinality key; estimated item size from sample rows under 400 KB;
+CHECK, enum, and FK rules are listed as not enforced.
+
+## Review
+
+| Group | Runs when | Examples |
+| --- | --- | --- |
+| Neutral | Always | Table without primary key, FK target missing, duplicate column, FK type mismatch, sample row invalid |
+| PostgreSQL | target `postgres` | Reserved identifier, FK without index, `timestamp` without time zone (today's Phase 2 list) |
+| SQLite | target `sqlite` | Namespaces flattened, `decimal` stored as REAL, ALTER limits on later migration |
+| DynamoDB | target `dynamodb` | Access pattern not served, join needed, hot partition, item too large |
+
+Codes carry a prefix per group (`pg_`, `sqlite_`, `ddb_`). Mode tiers as today:
+Publish blocks export.
+
+## Sample rows
+
+The Rows preview (planned in the table work order) validates against neutral
+types first (required, type, key uniqueness, FK presence among sample rows), then
+the target's limits (integer ranges, `varchar(n)`, DynamoDB item size).
+
+## UI
+
+- **Database settings** gets a **Target** select: Not chosen, PostgreSQL, SQLite,
+  DynamoDB, with one line on what each changes.
+- The empty-canvas heading reads "Design a database"; the hint says a target can
+  be chosen later.
+- Type pickers list neutral types first, then the target's native types.
+- **Export** shows the target's format; without a target it is disabled with
+  "Choose a target in Database settings".
+- DynamoDB adds **Access patterns** (Open question 2) and key fields per table.
+
+## Phases
+
+| Phase | Work | Gate |
+| --- | --- | --- |
+| 1 | `app.target`, migration to `postgres`, neutral type map, Postgres moved behind an adapter (no behaviour change), Target select, export gating | Existing Postgres canvases export byte-identical DDL |
+| 2 | Rows preview with neutral validation | Table-driven validation test |
+| 3 | SQLite adapter: types, rules, DDL export | Exported DDL runs in `sqlite3` |
+| 4 | DynamoDB: access patterns, key design, rules, export | Exported template passes `cfn-lint`; every example pattern served |
+| 5 | Imports: SQLite DDL, DynamoDB CloudFormation | Round trip |
+
+## Open questions
+
+1. Existing canvases: migrate to `target: "postgres"` (proposed) or treat absent as Postgres forever.
+2. Access patterns as cards on the canvas (visible, linkable to tables) or a list in Database settings (proposed: cards, so Review can point at them).
+3. DynamoDB layout default: one table per entity (simpler, proposed) or single-table design.
+4. DynamoDB export format: CloudFormation YAML (proposed), CDK, or NoSQL Workbench JSON.

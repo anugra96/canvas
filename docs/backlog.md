@@ -20,6 +20,14 @@ change as the Review rule, planner law, or rendering that reads it.
 | 2 | Manifests (`schemaRef` on cross-district routes), pins, `stage` | `city-model.md`, `urban-planner.md` Step 2 | — | `stage` open question: here or `deployment-platform.md` |
 | 3 | Other city forms, then the Map mode experiment | `city-model.md` | 2 | Add a form only when a real canvas needs it |
 
+## Database track
+
+| # | Item | Spec | Note |
+| --- | --- | --- | --- |
+| D1 | Database targets Phase 1: neutral types, `app.target`, Postgres behind an adapter, Target select | `database-targets.md` | Draft; 4 open questions await review |
+| D2 | Rows preview with neutral validation (sample and test rows) | `database-targets.md` Phase 2 | After D1; work order drafted 2026-11-23 |
+| D3 | SQLite target, then DynamoDB target with access patterns | `database-targets.md` Phases 3, 4 | |
+
 ## Beside the main line
 
 Different files from Next 1 and 2, so these can run in parallel.

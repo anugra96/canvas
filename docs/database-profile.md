@@ -4,6 +4,7 @@ Status: Phase 1 built (`aa7b002`, `92d5588`). Phase 4 built (`684bc9b`). Phases 
 Profile ID: `database`
 Version: `1`
 Format: PostgreSQL DDL (Postgres 15+), `pg_dump --schema-only` output
+Targets: a neutral model with PostgreSQL, SQLite, and DynamoDB targets is proposed in `database-targets.md` (draft)
 
 ## Decision
 
