@@ -1,5 +1,5 @@
-import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 
 import {
   emptyTableDefinition,
@@ -141,6 +141,41 @@ export function TableEditor({
   const parsed = parseTableDefinition(fields.definition)
   const definition = parsed ?? emptyTableDefinition()
   const [validationError, setValidationError] = useState('')
+  const [expandedColumns, setExpandedColumns] = useState<ReadonlySet<number>>(new Set())
+  const [focusColumnIndex, setFocusColumnIndex] = useState<number | null>(null)
+  const gridRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (focusColumnIndex === null) return
+    const input = gridRef.current?.querySelector<HTMLInputElement>(
+      `input[aria-label="Column ${focusColumnIndex + 1} name"]`,
+    )
+    if (!input) return
+    input.focus()
+    input.select()
+    setFocusColumnIndex(null)
+  }, [definition.columns.length, focusColumnIndex])
+
+  function addColumn(): void {
+    const nextIndex = definition.columns.length
+    commit({
+      ...definition,
+      columns: [
+        ...definition.columns,
+        { name: uniqueColumnName(definition.columns), type: 'text', nullable: true },
+      ],
+    })
+    setFocusColumnIndex(nextIndex)
+  }
+
+  function toggleColumnMore(index: number): void {
+    setExpandedColumns((current) => {
+      const next = new Set(current)
+      if (next.has(index)) next.delete(index)
+      else next.add(index)
+      return next
+    })
+  }
 
   function commit(next: TableDefinition): void {
     if (next.columns.length === 0) {
@@ -341,128 +376,151 @@ export function TableEditor({
       <section className="database-editor-section">
         <header>
           <h3>Columns</h3>
-          <button
-            type="button"
-            className="button"
-            onClick={() => commit({
-              ...definition,
-              columns: [
-                ...definition.columns,
-                { name: uniqueColumnName(definition.columns), type: 'text', nullable: true },
-              ],
-            })}
-          >
+          <button type="button" className="button" onClick={addColumn}>
             <Plus size={14} /> Add column
           </button>
         </header>
-        <div className="database-column-grid">
+        <div className="database-column-grid" ref={gridRef}>
           <div className="database-grid-head">
             <span>Name</span>
             <span>Type</span>
-            <span>Nullable</span>
+            <span>Not null</span>
             <span>Default</span>
             <span>PK</span>
             <span>UQ</span>
-            <span>Identity</span>
-            <span>Generated</span>
-            <span>Comment</span>
             <span />
           </div>
-          {definition.columns.map((column, index) => (
-            <div className="database-grid-row" key={`${column.name}-${index}`}>
-              <input
-                aria-label={`Column ${index + 1} name`}
-                value={column.name}
-                onChange={(event) => updateColumn(index, { name: event.target.value })}
-              />
-              <input
-                aria-label={`Column ${index + 1} type`}
-                value={column.type}
-                list="database-type-suggestions"
-                onChange={(event) => updateColumn(index, { type: event.target.value })}
-              />
-              <label className="database-check">
-                <input
-                  type="checkbox"
-                  aria-label={`Column ${index + 1} nullable`}
-                  checked={column.nullable}
-                  onChange={(event) => updateColumn(index, { nullable: event.target.checked })}
-                />
-              </label>
-              <input
-                aria-label={`Column ${index + 1} default`}
-                value={column.default ?? ''}
-                onChange={(event) => {
-                  const nextDefault = optionalText(event.target.value)
-                  updateColumn(index, {
-                    default: nextDefault,
-                    ...(nextDefault ? { identity: undefined, generated: undefined } : {}),
-                  })
-                }}
-              />
-              <label className="database-check">
-                <input
-                  type="checkbox"
-                  aria-label={`Column ${index + 1} primary key`}
-                  checked={definition.primaryKey?.columns.includes(column.name) ?? false}
-                  onChange={() => togglePrimary(column)}
-                />
-              </label>
-              <label className="database-check">
-                <input
-                  type="checkbox"
-                  aria-label={`Column ${index + 1} unique`}
-                  checked={definition.uniques.some((unique) => (
-                    unique.columns.length === 1 && unique.columns[0] === column.name
-                  ))}
-                  onChange={() => toggleUnique(column)}
-                />
-              </label>
-              <select
-                aria-label={`Column ${index + 1} identity`}
-                value={column.identity ?? ''}
-                onChange={(event) => updateColumn(index, {
-                  identity: event.target.value ? event.target.value as 'always' | 'by_default' : undefined,
-                  ...(event.target.value ? { default: undefined } : {}),
-                })}
-              >
-                <option value="">None</option>
-                <option value="by_default">By default</option>
-                <option value="always">Always</option>
-              </select>
-              <input
-                aria-label={`Column ${index + 1} generated`}
-                value={column.generated ?? ''}
-                placeholder="expression"
-                onChange={(event) => {
-                  const nextGenerated = optionalText(event.target.value)
-                  updateColumn(index, {
-                    generated: nextGenerated,
-                    ...(nextGenerated ? { default: undefined, identity: undefined } : {}),
-                  })
-                }}
-              />
-              <input
-                aria-label={`Column ${index + 1} comment`}
-                value={column.comment ?? ''}
-                placeholder="comment"
-                onChange={(event) => updateColumn(index, {
-                  comment: optionalText(event.target.value),
-                })}
-              />
-              <span className="database-row-actions">
-                <button type="button" className="icon-button" aria-label={`Move ${column.name} up`} onClick={() => moveColumn(index, -1)}>
-                  <ArrowUp size={13} />
-                </button>
-                <button type="button" className="icon-button" aria-label={`Move ${column.name} down`} onClick={() => moveColumn(index, 1)}>
-                  <ArrowDown size={13} />
-                </button>
-                <button type="button" className="icon-button" aria-label={`Remove ${column.name}`} onClick={() => commit(removeColumnFromDefinition(definition, column.name))}>
-                  <Trash2 size={13} />
-                </button>
-              </span>
-            </div>
-          ))}
+          {definition.columns.map((column, index) => {
+            const expanded = expandedColumns.has(index)
+            const panelId = `database-column-more-${index}`
+            return (
+              <div className="database-column-entry" key={`${column.name}-${index}`}>
+                <div className="database-grid-row">
+                  <input
+                    aria-label={`Column ${index + 1} name`}
+                    value={column.name}
+                    onChange={(event) => updateColumn(index, { name: event.target.value })}
+                  />
+                  <input
+                    aria-label={`Column ${index + 1} type`}
+                    value={column.type}
+                    list="database-type-suggestions"
+                    onChange={(event) => updateColumn(index, { type: event.target.value })}
+                  />
+                  <label className="database-check">
+                    <input
+                      type="checkbox"
+                      aria-label={`Column ${index + 1} not null`}
+                      checked={!column.nullable}
+                      onChange={(event) => updateColumn(index, { nullable: !event.target.checked })}
+                    />
+                  </label>
+                  <input
+                    aria-label={`Column ${index + 1} default`}
+                    value={column.default ?? ''}
+                    onChange={(event) => {
+                      const nextDefault = optionalText(event.target.value)
+                      updateColumn(index, {
+                        default: nextDefault,
+                        ...(nextDefault ? { identity: undefined, generated: undefined } : {}),
+                      })
+                    }}
+                  />
+                  <label className="database-check">
+                    <input
+                      type="checkbox"
+                      aria-label={`Column ${index + 1} primary key`}
+                      checked={definition.primaryKey?.columns.includes(column.name) ?? false}
+                      onChange={() => togglePrimary(column)}
+                    />
+                  </label>
+                  <label className="database-check">
+                    <input
+                      type="checkbox"
+                      aria-label={`Column ${index + 1} unique`}
+                      checked={definition.uniques.some((unique) => (
+                        unique.columns.length === 1 && unique.columns[0] === column.name
+                      ))}
+                      onChange={() => toggleUnique(column)}
+                    />
+                  </label>
+                  <span className="database-row-actions">
+                    <button
+                      type="button"
+                      className="icon-button"
+                      aria-label={`More for ${column.name}`}
+                      aria-expanded={expanded}
+                      aria-controls={panelId}
+                      onClick={() => toggleColumnMore(index)}
+                    >
+                      {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                    </button>
+                    <button type="button" className="icon-button" aria-label={`Move ${column.name} up`} onClick={() => moveColumn(index, -1)}>
+                      <ArrowUp size={13} />
+                    </button>
+                    <button type="button" className="icon-button" aria-label={`Move ${column.name} down`} onClick={() => moveColumn(index, 1)}>
+                      <ArrowDown size={13} />
+                    </button>
+                    <button type="button" className="icon-button" aria-label={`Remove ${column.name}`} onClick={() => commit(removeColumnFromDefinition(definition, column.name))}>
+                      <Trash2 size={13} />
+                    </button>
+                  </span>
+                </div>
+                {expanded && (
+                  <div className="database-column-extra" id={panelId}>
+                    <label className="database-column-extra-field">
+                      <span>Identity</span>
+                      <select
+                        aria-label={`Column ${index + 1} identity`}
+                        value={column.identity ?? ''}
+                        onChange={(event) => updateColumn(index, {
+                          identity: event.target.value ? event.target.value as 'always' | 'by_default' : undefined,
+                          ...(event.target.value ? { default: undefined } : {}),
+                        })}
+                      >
+                        <option value="">None</option>
+                        <option value="by_default">By default</option>
+                        <option value="always">Always</option>
+                      </select>
+                    </label>
+                    <label className="database-column-extra-field">
+                      <span>Generated</span>
+                      <input
+                        aria-label={`Column ${index + 1} generated`}
+                        value={column.generated ?? ''}
+                        placeholder="expression"
+                        onChange={(event) => {
+                          const nextGenerated = optionalText(event.target.value)
+                          updateColumn(index, {
+                            generated: nextGenerated,
+                            ...(nextGenerated ? { default: undefined, identity: undefined } : {}),
+                          })
+                        }}
+                      />
+                    </label>
+                    <label className="database-column-extra-field">
+                      <span>Comment</span>
+                      <input
+                        aria-label={`Column ${index + 1} comment`}
+                        value={column.comment ?? ''}
+                        placeholder="comment"
+                        onChange={(event) => updateColumn(index, {
+                          comment: optionalText(event.target.value),
+                        })}
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+          <button
+            type="button"
+            className="button database-add-column-row"
+            onClick={addColumn}
+          >
+            <Plus size={14} /> Add column
+          </button>
         </div>
         <datalist id="database-type-suggestions">
           {typeOptions.map((type) => <option key={type} value={type} />)}
