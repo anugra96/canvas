@@ -177,6 +177,11 @@ test('guides a first database design from the empty canvas to table editing', as
   expect(addColumnBox.y + addColumnBox.height).toBeLessThanOrEqual(viewport.height)
   await addColumn.click()
   await expect(editor.getByLabel('Column 3 name', { exact: true })).toBeFocused()
+  // Typing a whole name keeps focus: a row must not remount when its name changes (key was the name).
+  await page.keyboard.press(`${process.platform === 'darwin' ? 'Meta' : 'Control'}+a`)
+  await page.keyboard.type('total_cents')
+  await expect(editor.getByLabel('Column 3 name', { exact: true })).toHaveValue('total_cents')
+  await expect(editor.getByLabel('Column 3 name', { exact: true })).toBeFocused()
   await editor.getByLabel('Column 3 name', { exact: true }).fill('status')
   await editor.getByLabel('Column 3 type', { exact: true }).fill('text')
   await editor.getByRole('button', { name: 'Done' }).click()

@@ -394,7 +394,7 @@ export function TableEditor({
             const expanded = expandedColumns.has(index)
             const panelId = `database-column-more-${index}`
             return (
-              <div className="database-column-entry" key={`${column.name}-${index}`}>
+              <div className="database-column-entry" key={`column-${index}`}>
                 <div className="database-grid-row">
                   <input
                     aria-label={`Column ${index + 1} name`}
