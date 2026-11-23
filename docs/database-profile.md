@@ -1,6 +1,6 @@
 # Database Profile Contract
 
-Status: Phase 1 built (`aa7b002`, `92d5588`). Phases 2 to 4 not built
+Status: Phase 1 built (`aa7b002`, `92d5588`). Phase 4 built (`684bc9b`). Phases 2 and 3 not built
 Profile ID: `database`
 Version: `1`
 Format: PostgreSQL DDL (Postgres 15+), `pg_dump --schema-only` output

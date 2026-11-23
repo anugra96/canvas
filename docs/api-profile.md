@@ -1,6 +1,6 @@
 # API Profile Contract
 
-Status: Phases 1 to 3 built (`aa92b9d`, `f1833bb`, `d8a4a94`). Phase 4 next, after districts (`backlog.md`)
+Status: Phases 1 to 3 built (`aa92b9d`, `f1833bb`, `d8a4a94`). Phase 4 built (`dadfc8b`, `684bc9b`)
 Profile ID: `api`
 Version: `1`
 Format: OpenAPI 3.1 (JSON and YAML), JSON Schema 2020-12

@@ -16,10 +16,9 @@ change as the Review rule, planner law, or rendering that reads it.
 
 | # | Item | Spec | After | Note |
 | --- | --- | --- | --- | --- |
-| 1 | API Phase 4 and Database Phase 4: a database System opens its Database canvas; `uses` lines to an API pick an endpoint; `endpoint_stale` | `api-profile.md`, `database-profile.md` | — | In progress (opencode, 2026-11-23). District links move to Levels Step 2 |
-| 2 | Levels Step 2: drill into linked API and Database canvases | `levels.md` | 1 | "Enter a district's own canvas, breadcrumb back" |
-| 3 | Manifests (`schemaRef` on cross-district routes), pins, `stage` | `city-model.md`, `urban-planner.md` Step 2 | — | `stage` open question: here or `deployment-platform.md` |
-| 4 | Other city forms, then the Map mode experiment | `city-model.md` | 3 | Add a form only when a real canvas needs it |
+| 1 | Levels Step 2: drill into linked API and Database canvases | `levels.md` | — | "Enter a district's own canvas, breadcrumb back" |
+| 2 | Manifests (`schemaRef` on cross-district routes), pins, `stage` | `city-model.md`, `urban-planner.md` Step 2 | — | `stage` open question: here or `deployment-platform.md` |
+| 3 | Other city forms, then the Map mode experiment | `city-model.md` | 2 | Add a form only when a real canvas needs it |
 
 ## Beside the main line
 
@@ -45,6 +44,7 @@ Different files from Next 1 and 2, so these can run in parallel.
 
 | Item | Spec | Commits |
 | --- | --- | --- |
+| API and Database Phase 4: Database canvas link, Endpoint picker on `uses` lines, `endpoint_stale` | `api-profile.md`, `database-profile.md` | `dadfc8b`, `684bc9b`, `47ae9ab` |
 | Districts and zoning: district flag and owner, 4 zoning rules, database and queue icons; Views fit to window | `city-model.md` (Districts) | `4e60049`, `6ea5563`, `16f2a6f` |
 | Local CI/CD: pre-push `make verify` hook, `make deploy-local` with rollback and start-up check | `README.md` | `ef2b111` |
 | Urban planner Step 1: `planLayout` place and replan, Replan preview, seeded derived views, prod chunk fix | `urban-planner.md` | `dd6b745`, `d59b203`, `9e21876`, `efb50e2`, `61f5bb7`, `0334aa4`, `7d5063e` |
