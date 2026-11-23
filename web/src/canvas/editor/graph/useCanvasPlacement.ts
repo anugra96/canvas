@@ -170,6 +170,8 @@ export function useCanvasPlacement({
     addEntity,
     handleDoubleClick,
     insertCardFromMenu,
+    centerPosition,
+    insertPlaced,
     placementPosition,
     revealPlacement,
     addAtCenter,

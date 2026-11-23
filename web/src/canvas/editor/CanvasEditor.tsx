@@ -781,6 +781,30 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     return []
   }, [baseCanvas, edges, fitView, markDirty, nodes, setNodes, setNotice])
 
+  const openDatabaseSettings = useCallback(() => {
+    const existing = nodes.find((node) => node.data.entity?.entityType === 'database_definition')
+    if (existing) {
+      openNodeEditor(existing.id)
+      return
+    }
+    const entityType = findEntityType(ontology, 'database_definition')
+    if (!entityType) {
+      setError('The Database card type is unavailable.')
+      return
+    }
+    const raw = makeEntityNode(
+      'database_definition',
+      graph.centerPosition(entityType.defaultSize.width, entityType.defaultSize.height),
+      ontology,
+    )
+    if (!raw) return
+    const fields = { ...(raw.app?.fields ?? {}), name: title.trim() || 'Database' }
+    raw.app = { ...(raw.app ?? {}), fields }
+    raw.text = renderEntityMarkdown(entityType, fields)
+    graph.insertPlaced(raw)
+    window.setTimeout(() => openNodeEditor(raw.id), 0)
+  }, [graph, nodes, ontology, openNodeEditor, setError, title])
+
   const actions = useMemo<CanvasEditorActions>(
     () => ({
       updateText: graph.updateText,
@@ -863,6 +887,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     onCopyOpenApi: (format) => guardExport('OpenAPI copy', () => onCopyOpenApi(format)),
     onExportDatabase: () => guardExport('DDL export', onExportDatabase),
     onCopyDatabase: () => guardExport('DDL copy', onCopyDatabase),
+    onDatabaseSettings: openDatabaseSettings,
     onCompare: openCompare,
     onHelp: () => setHelpOpen(true),
     onDuplicate: graph.duplicateSelection,

@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 import type { CanvasNode, JsonCanvas } from '../jsonCanvas'
-import { addDatabaseTable, type AddDatabaseTableResult } from './addTable'
-import { stringField } from './model'
+import {
+  addDatabaseTable,
+  isStarterTableDefinition,
+  starterTableDefinition,
+  type AddDatabaseTableResult,
+} from './addTable'
+import { stringField, type TableDefinition } from './model'
 
 function apply(canvas: JsonCanvas, result: AddDatabaseTableResult): JsonCanvas {
   const updates = new Map(result.schemaUpdates.map((node) => [node.id, node]))
@@ -26,6 +31,42 @@ function lane(canvas: JsonCanvas): CanvasNode {
   if (!found) throw new Error('Missing schema lane')
   return found
 }
+
+describe('Starter table detection', () => {
+  const importedTwoColumns: TableDefinition = {
+    columns: [
+      { name: 'id', type: 'uuid', nullable: false },
+      { name: 'created_at', type: 'timestamp with time zone', nullable: true },
+    ],
+    primaryKey: { columns: ['id'] },
+    uniques: [],
+    checks: [],
+    foreignKeys: [],
+    indexes: [],
+  }
+  const renamed = starterTableDefinition('uuid')
+  renamed.columns = [
+    renamed.columns[0]!,
+    { ...renamed.columns[1]!, name: 'inserted_at' },
+  ]
+  const extra = starterTableDefinition('bigint')
+  extra.columns = [
+    ...extra.columns,
+    { name: 'email', type: 'text', nullable: true },
+  ]
+
+  const cases: Array<[string, TableDefinition, boolean]> = [
+    ['uuid starter', starterTableDefinition('uuid'), true],
+    ['bigint identity starter', starterTableDefinition('bigint'), true],
+    ['renamed column', renamed, false],
+    ['extra column', extra, false],
+    ['imported two-column table that is not the starter', importedTwoColumns, false],
+  ]
+
+  it.each(cases)('%s', (_name, definition, expected) => {
+    expect(isStarterTableDefinition(definition)).toBe(expected)
+  })
+})
 
 describe('Add table placement', () => {
   it('keeps the new table inside a grown lane without moving existing cards', () => {

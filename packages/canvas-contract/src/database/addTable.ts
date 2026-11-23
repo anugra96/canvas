@@ -1,6 +1,7 @@
 import { createNodeId, type CanvasNode, type JsonCanvas } from '../jsonCanvas'
+import { deepEqual } from '../merge'
 import { DEFAULT_ONTOLOGY, findEntityType } from '../ontology'
-import type { TableDefinition } from './model'
+import type { TableColumn, TableDefinition } from './model'
 import { stringifyTableDefinition } from './model'
 import { placeNewDatabaseCards, estimateDatabaseSizes } from './layout'
 
@@ -10,6 +11,48 @@ export interface AddDatabaseTableInput {
   name: string
   schema: string
   idType: DatabaseTableIdType
+}
+
+export function starterTableColumns(idType: DatabaseTableIdType): TableColumn[] {
+  return [
+    idType === 'uuid'
+      ? {
+        name: 'id',
+        type: 'uuid',
+        nullable: false,
+        default: 'gen_random_uuid()',
+      }
+      : {
+        name: 'id',
+        type: 'bigint',
+        nullable: false,
+        identity: 'by_default',
+      },
+    {
+      name: 'created_at',
+      type: 'timestamp with time zone',
+      nullable: false,
+      default: 'now()',
+    },
+  ]
+}
+
+export function starterTableDefinition(idType: DatabaseTableIdType): TableDefinition {
+  return {
+    columns: starterTableColumns(idType),
+    primaryKey: { columns: ['id'] },
+    uniques: [],
+    checks: [],
+    foreignKeys: [],
+    indexes: [],
+  }
+}
+
+export function isStarterTableDefinition(definition: TableDefinition | undefined): boolean {
+  if (!definition) return false
+  return (['uuid', 'bigint'] as const).some((idType) => (
+    deepEqual(definition.columns, starterTableColumns(idType))
+  ))
 }
 
 export interface AddDatabaseTableResult {
@@ -49,34 +92,7 @@ export function addDatabaseTable(
   if (duplicate) errors.push(`Table "${schema}.${name}" already exists.`)
   if (errors.length > 0) return { nodes: [], schemaUpdates: [], errors }
 
-  const definition: TableDefinition = {
-    columns: [
-      input.idType === 'uuid'
-        ? {
-          name: 'id',
-          type: 'uuid',
-          nullable: false,
-          default: 'gen_random_uuid()',
-        }
-        : {
-          name: 'id',
-          type: 'bigint',
-          nullable: false,
-          identity: 'by_default',
-        },
-      {
-        name: 'created_at',
-        type: 'timestamp with time zone',
-        nullable: false,
-        default: 'now()',
-      },
-    ],
-    primaryKey: { columns: ['id'] },
-    uniques: [],
-    checks: [],
-    foreignKeys: [],
-    indexes: [],
-  }
+  const definition = starterTableDefinition(input.idType)
 
   const additions: CanvasNode[] = []
   const schemaExists = (canvas.nodes ?? []).some((node) => (

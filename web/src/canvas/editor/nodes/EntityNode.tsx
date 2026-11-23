@@ -32,7 +32,7 @@ import { useSchemaCards } from '../../schema/schemaCards'
 import { artifactSchemaChip } from '../../schema/embeddedSchema'
 import { colorFor } from '../../model/adapter'
 import type { CanvasFlowNode } from '../../model/adapter'
-import { useCanvasEditorActions } from '../CanvasEditorContext'
+import { useCanvasEditorActions, useNodeEditRequest } from '../CanvasEditorContext'
 import { useIsMobile } from '../../../useMediaQuery'
 import { MarkdownContent } from '../MarkdownContent'
 import { FocusEditor } from '../FocusEditor'
@@ -89,6 +89,11 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
   const meta = data.entity
   const [editing, setEditing] = useState(false)
   const [propertiesOpen, setPropertiesOpen] = useState(false)
+  const [seenEditToken, setSeenEditToken] = useState(0)
+  const editToken = useNodeEditRequest(id)
+  const requestedEditing = editToken > 0 && editToken !== seenEditToken
+  const editingOpen = editing || requestedEditing
+  const propertiesVisible = propertiesOpen || requestedEditing
   const formRef = useRef<HTMLDivElement>(null)
   const focusedForEdit = useRef(false)
 
@@ -109,8 +114,13 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
     setEditing(true)
   }
 
+  function closeEditor() {
+    setSeenEditToken(editToken)
+    setEditing(false)
+  }
+
   useEffect(() => {
-    if (!editing) {
+    if (!editingOpen) {
       focusedForEdit.current = false
       return
     }
@@ -124,7 +134,7 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
     } else {
       field?.focus()
     }
-  }, [editing, focusKey])
+  }, [editingOpen, focusKey])
 
   if (!meta) {
     return (
@@ -207,14 +217,14 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
           <button
             type="button"
             className="property-drawer-toggle nodrag nopan"
-            aria-expanded={propertiesOpen}
+            aria-expanded={propertiesVisible}
             onClick={() => setPropertiesOpen((open) => !open)}
           >
-            {propertiesOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+            {propertiesVisible ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
             Properties
             <span>{propertyFields.length}</span>
           </button>
-          {propertiesOpen && (
+          {propertiesVisible && (
             <div className="property-drawer-body">
               {propertyFields.map((field) => (
                 <FieldInput
@@ -262,7 +272,7 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
         <div
           className="entity-card api-card"
           onDoubleClick={() => {
-            if (!editing) startEditing()
+            if (!editingOpen) startEditing()
           }}
         >
           <ApiCardPreview entityType={entityType.id} nodeId={id} fields={meta.fields} />
@@ -271,7 +281,7 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
         <div
           className="entity-card"
           onDoubleClick={() => {
-            if (!editing) startEditing()
+            if (!editingOpen) startEditing()
           }}
         >
           <header className="entity-head">
@@ -329,7 +339,7 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
           </div>
         </div>
       )}
-      {editing && (
+      {editingOpen && (
         <FocusEditor
           label={`Edit ${entityType.label}`}
           title={title || `Untitled ${entityType.label.toLowerCase()}`}
@@ -339,7 +349,7 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
           actions={entityType.id === 'endpoint'
             ? <EndpointCopyCurlButton fields={meta.fields} />
             : undefined}
-          onClose={() => setEditing(false)}
+          onClose={closeEditor}
         >
           {entityType.id === 'endpoint' ? (
             <ApiEndpointEditor

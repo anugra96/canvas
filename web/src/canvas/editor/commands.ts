@@ -6,6 +6,7 @@ import {
   Box,
   Camera,
   Copy,
+  Database,
   Download,
   GitCompareArrows,
   Group as GroupIcon,
@@ -80,6 +81,7 @@ interface CanvasCommandInput {
   onCopyOpenApi: (format: 'json' | 'yaml') => void
   onExportDatabase: () => void
   onCopyDatabase: () => void
+  onDatabaseSettings: () => void
   onCompare: () => void
   onHelp: () => void
   onDuplicate: () => void
@@ -116,7 +118,21 @@ function reviewCommand(input: CanvasCommandInput): CanvasCommand {
   }
 }
 
+const DATABASE_ADD_ORDER = ['table', 'db_enum', 'db_schema', 'note']
+
 export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
+  const addEntityTypes = input.availableEntityTypes
+    .filter((entityType) => !(input.profileId === 'database' && entityType.id === 'database_definition'))
+    .filter((entityType) => !(
+      input.isSystems
+      && input.profileId !== 'database'
+      && entityType.id === 'note'
+    ))
+  if (input.profileId === 'database') {
+    addEntityTypes.sort((left, right) => (
+      DATABASE_ADD_ORDER.indexOf(left.id) - DATABASE_ADD_ORDER.indexOf(right.id)
+    ))
+  }
   return [
     {
       id: 'back',
@@ -139,7 +155,7 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       label: 'Note',
       icon: StickyNote,
       surface: 'add',
-      available: input.isSystems,
+      available: input.isSystems && input.profileId !== 'database',
       run: input.onAddNote,
     },
     {
@@ -150,8 +166,7 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       available: !input.isSystems,
       run: input.onAddCard,
     },
-    ...input.availableEntityTypes
-      .filter((entityType) => !(input.isSystems && entityType.id === 'note'))
+    ...addEntityTypes
       .filter((entityType) => !(input.profileId === 'api' && entityType.id === 'resource'))
       .map((entityType) => {
         const needsResource = input.profileId === 'api'
@@ -159,7 +174,9 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
           && input.resourceCount === 0
         return {
           id: `add.entity.${entityType.id}`,
-          label: entityType.label,
+          label: input.profileId === 'database' && entityType.id === 'db_schema'
+            ? 'Schema (namespace)'
+            : entityType.label,
           icon: Box,
           surface: 'add' as const,
           available: true,
@@ -175,6 +192,14 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       surface: 'add',
       available: input.profileId === 'api',
       run: input.onAddResource,
+    },
+    {
+      id: 'database.settings',
+      label: 'Database settings',
+      icon: Database,
+      surface: 'overflow',
+      available: input.profileId === 'database',
+      run: input.onDatabaseSettings,
     },
     {
       id: 'views',
