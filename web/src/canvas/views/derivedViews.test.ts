@@ -140,6 +140,18 @@ describe('derived views', () => {
       '5:defines',
     ])
     expect(deriveSequence(flow.nodes, flow.edges, 'Deploy', DEFAULT_ONTOLOGY)).toEqual(sequence)
+
+    const endpointFlow = toFlowCanvas({
+      ...canvas,
+      edges: (canvas.edges ?? []).map((edge) => (
+        edge.id === 'uses-api'
+          ? { ...edge, app: { ...edge.app, endpoint: 'POST /v1/jobs' } }
+          : edge
+      )),
+    }, DEFAULT_ONTOLOGY)
+    const endpointSequence = deriveSequence(endpointFlow.nodes, endpointFlow.edges, 'Deploy', DEFAULT_ONTOLOGY)
+    expect(endpointSequence.messages.find((message) => message.id === 'uses-api')?.label)
+      .toBe('POST /v1/jobs')
   })
 
   it('returns an empty sequence when no job exists', () => {

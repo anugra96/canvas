@@ -76,6 +76,7 @@ export const PROFILE_ISSUE_CODES = [
   'naming_inconsistent',
   'schema_unused',
   'endpoint_without_resource',
+  'endpoint_stale',
   'level_unassigned',
   'unzoned_card',
   'district_without_owner',

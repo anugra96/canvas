@@ -33,6 +33,7 @@ const CODE_WEIGHT: Record<CanvasProfileIssue['code'], number> = {
   naming_inconsistent: 62,
   schema_unused: 34,
   endpoint_without_resource: 33,
+  endpoint_stale: 67,
   schema_contract: 80,
   missing_required_field: 70,
   relation_not_allowed: 60,

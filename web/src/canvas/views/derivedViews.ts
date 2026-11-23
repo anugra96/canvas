@@ -215,12 +215,13 @@ function relationFor(edge: CanvasFlowEdge, ontology: Ontology): DerivedRelation 
   const relationType = edge.data?.relationType
   const relation = relationType ? findRelationType(ontology, relationType) : undefined
   const customLabel = edge.data?.raw.label?.trim()
+  const endpoint = edge.data?.raw.app?.endpoint
   return {
     id: edge.id,
     from: edge.source,
     to: edge.target,
     relationType,
-    label: customLabel || relation?.label || relationType || 'Unspecified',
+    label: endpoint || customLabel || relation?.label || relationType || 'Unspecified',
   }
 }
 

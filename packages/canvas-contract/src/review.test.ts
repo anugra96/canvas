@@ -39,6 +39,7 @@ const TIER_CODES: Record<IssueTier, ProfileIssueCode[]> = {
     'security_missing',
     'get_with_body',
     'endpoint_without_resource',
+    'endpoint_stale',
     'shared_landmark',
     'route_bypasses_gate',
   ],

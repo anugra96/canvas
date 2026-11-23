@@ -41,6 +41,7 @@ export const ISSUE_TIERS: Record<ProfileIssueCode, IssueTier> = {
   naming_inconsistent: 'publish',
   schema_unused: 'publish',
   endpoint_without_resource: 'design',
+  endpoint_stale: 'design',
   level_unassigned: 'design',
   unzoned_card: 'publish',
   district_without_owner: 'publish',

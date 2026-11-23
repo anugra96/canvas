@@ -174,6 +174,10 @@ const ISSUE_COPY: Record<CanvasProfileIssue['code'], { label: string; why: strin
     label: 'Endpoint without resource',
     why: 'Add a tag to place the endpoint in a Resource.',
   },
+  endpoint_stale: {
+    label: 'Endpoint no longer exists',
+    why: 'Choose an endpoint that exists in the linked API canvas, or clear it.',
+  },
   level_unassigned: {
     label: 'Unassigned at level',
     why: 'Add a uses, produces, or defines line from a System so the card folds into a visible parent.',
@@ -212,6 +216,7 @@ function issueCategory(code: CanvasProfileIssue['code']): string {
   if (code === 'response_success_missing' || code === 'mutation_errors_missing') return 'API'
   if (code === 'security_missing' || code === 'endpoint_without_resource') return 'API'
   if (code === 'list_pagination_missing' || code === 'naming_inconsistent' || code === 'schema_unused') return 'API'
+  if (code === 'endpoint_stale') return 'API'
   if (code.includes('relation')) return 'Relation'
   if (code.includes('without')) return 'Semantics'
   if (code.includes('group')) return 'Group'
