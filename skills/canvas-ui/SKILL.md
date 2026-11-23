@@ -70,6 +70,8 @@ the first accessibility read after load can be empty.
 | `button "Display"` | Edge and label visibility presets |
 | `button "More canvas actions"` | Replan layout for the profile (then `button "Apply"` in `region "Layout preview"`), `Fit cards to content`, `Zoom to fit`, export for the profile (`Export DDL`, `Export OpenAPI YAML`), `Download .canvas`, `Screenshot`, `Keyboard shortcuts` |
 | `button "Connect"` | Shown when one card is selected (Raw, Systems): click it, then the target card |
+| `button "District"` | Shown when one group is selected (Systems): toggles the group between a district and a plain group |
+| `combobox "District owner"` | Shown for a selected district (Systems): picks the owning Actor card, or `No owner` |
 | `button "Review"` | Issues and level readiness; close with `button "Close review"` |
 | `button "Fit View"` | Fit all cards in view. Use it before double-clicking a card that may be off-screen |
 | `button "Undo"`, `button "Redo"` | Undo the last change |

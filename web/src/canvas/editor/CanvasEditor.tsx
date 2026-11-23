@@ -863,6 +863,9 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     onDuplicate: graph.duplicateSelection,
     onSelectAll: graph.selectAll,
     onGroup: graph.groupSelected,
+    districtGroupAvailable: Boolean(graph.singleSelectedGroup),
+    districtGroupIsDistrict: graph.singleSelectedGroupIsDistrict,
+    onToggleDistrict: graph.toggleSelectedDistrict,
     onNudge: graph.nudgeSelection,
     onZoomSelection: graph.zoomSelection,
     onDismiss: () => {

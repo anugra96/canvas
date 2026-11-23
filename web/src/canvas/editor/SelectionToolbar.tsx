@@ -1,4 +1,4 @@
-import { ArrowLeftRight, Copy, Group as GroupIcon, Link2, Scaling, Trash2, X } from 'lucide-react'
+import { ArrowLeftRight, Building2, Copy, Group as GroupIcon, Link2, Scaling, Trash2, X } from 'lucide-react'
 
 import type { EdgeOrigin } from '@canvas/contract'
 
@@ -28,6 +28,12 @@ export function SelectionToolbar({
   allowUnspecified = false,
   onRelationChange,
   onToggleMembership,
+  canEditDistrict = false,
+  districtIsDistrict = false,
+  districtOwnerId,
+  districtOwners = [],
+  onToggleDistrict,
+  onDistrictOwnerChange,
   onDuplicate,
   onDelete,
   onClear,
@@ -58,6 +64,12 @@ export function SelectionToolbar({
   allowUnspecified?: boolean
   onRelationChange?: (value: string) => void
   onToggleMembership: () => void
+  canEditDistrict?: boolean
+  districtIsDistrict?: boolean
+  districtOwnerId?: string
+  districtOwners?: Array<{ id: string; name: string }>
+  onToggleDistrict?: () => void
+  onDistrictOwnerChange?: (ownerId: string | undefined) => void
   onDuplicate: () => void
   onDelete: () => void
   onClear: () => void
@@ -162,6 +174,32 @@ export function SelectionToolbar({
           <GroupIcon size={14} />
           {membershipLabel}
         </button>
+      )}
+      {canEditDistrict && onToggleDistrict && (
+        <button
+          className={`button${districtIsDistrict ? ' primary' : ''}`}
+          onClick={onToggleDistrict}
+          aria-pressed={districtIsDistrict}
+        >
+          <Building2 size={14} />
+          District
+        </button>
+      )}
+      {districtIsDistrict && onDistrictOwnerChange && (
+        <label className="toolbar-field selection-district-owner">
+          <span>District owner</span>
+          <select
+            className="template-select"
+            aria-label="District owner"
+            value={districtOwnerId ?? ''}
+            onChange={(event) => onDistrictOwnerChange(event.target.value || undefined)}
+          >
+            <option value="">No owner</option>
+            {districtOwners.map((owner) => (
+              <option key={owner.id} value={owner.id}>{owner.name}</option>
+            ))}
+          </select>
+        </label>
       )}
       <div className="selection-colors" aria-label="Selection color">
         {CANVAS_COLOR_PRESETS.map((preset) => (

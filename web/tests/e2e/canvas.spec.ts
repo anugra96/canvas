@@ -1121,3 +1121,66 @@ test('replan preview keeps grouped systems inside the group and undo restores po
   await waitForSaved(page)
   expect(savedPositions(await downloadCanvas(page))).toEqual(savedPositions(before))
 })
+
+test('makes a district with an owner and undo returns a plain group', async ({ page }) => {
+  const modifier = process.platform === 'darwin' ? 'Meta' : 'Control'
+  await page.goto('/')
+  await page.getByLabel('Canvas type').selectOption('systems')
+  await createCanvas(page, 'Zoned payments')
+
+  await addCanvasItem(page, 'Actor')
+  await page.locator('.react-flow__node.selected').dblclick()
+  await page.getByLabel('Name', { exact: true }).fill('Finance team')
+  await page.getByRole('button', { name: 'Done' }).click()
+  await addCanvasItem(page, 'System')
+  await page.locator('.react-flow__node.selected').dblclick()
+  await page.getByLabel('Name', { exact: true }).fill('Payments API')
+  await page.getByRole('button', { name: 'Done' }).click()
+  await expect(page.locator('.entity-node')).toHaveCount(2)
+
+  await page.keyboard.press(`${modifier}+a`)
+  await page.locator('.selection-toolbar').getByRole('button', { name: 'Group' }).click()
+  const group = page.locator('.group-node')
+  await expect(group).toHaveCount(1)
+  await page.waitForTimeout(400)
+
+  async function selectGroup() {
+    const box = await group.boundingBox()
+    if (!box) throw new Error('Missing group geometry')
+    await page.mouse.click(box.x + 10, box.y + box.height / 2)
+    await expect(page.locator('.selection-toolbar')).toContainText('1 selected')
+  }
+
+  await selectGroup()
+  const districtButton = page.getByRole('button', { name: 'District', exact: true })
+  await expect(districtButton).toHaveAttribute('aria-pressed', 'false')
+  await districtButton.click()
+  await expect(districtButton).toHaveAttribute('aria-pressed', 'true')
+  await page.waitForTimeout(400)
+
+  await page.getByRole('button', { name: /Review/ }).click()
+  const panel = page.locator('.review-panel')
+  await panel.getByLabel('Review mode').selectOption('Publish')
+  await expect(panel.getByText('District without owner')).toBeVisible()
+  await panel.getByRole('button', { name: 'Close review' }).click()
+
+  await expect(page.getByLabel('District owner', { exact: true })).toBeVisible()
+  await page.getByLabel('District owner', { exact: true }).selectOption({ label: 'Finance team' })
+  await expect(page.locator('.group-label')).toContainText('Finance team')
+  await page.waitForTimeout(400)
+
+  await page.getByRole('button', { name: /Review/ }).click()
+  await expect(panel.getByText('District without owner')).toHaveCount(0)
+  await panel.getByRole('button', { name: 'Close review' }).click()
+
+  await selectGroup()
+  await page.getByRole('button', { name: 'Undo' }).click()
+  await page.waitForTimeout(400)
+  await expect(page.locator('.group-label')).not.toContainText('Finance team')
+  await selectGroup()
+  await page.getByRole('button', { name: 'Undo' }).click()
+  await page.waitForTimeout(400)
+  await selectGroup()
+  await expect(page.getByRole('button', { name: 'District', exact: true })).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.locator('.group-label')).toHaveText('Group')
+})

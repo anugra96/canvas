@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   ArrowLeft,
+  Building2,
   Boxes,
   Box,
   Camera,
@@ -84,6 +85,9 @@ interface CanvasCommandInput {
   onDuplicate: () => void
   onSelectAll: () => void
   onGroup: () => void
+  districtGroupAvailable: boolean
+  districtGroupIsDistrict: boolean
+  onToggleDistrict: () => void
   onNudge: (dx: number, dy: number) => void
   onZoomSelection: () => void
   onDismiss: () => void
@@ -392,6 +396,14 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       bindings: [{ key: 'g', primary: true }],
       available: true,
       run: input.onGroup,
+    },
+    {
+      id: 'selection.district',
+      label: input.districtGroupIsDistrict ? 'Make plain group' : 'Make district',
+      icon: Building2,
+      surface: 'overflow',
+      available: input.profileId === 'systems' && input.districtGroupAvailable,
+      run: input.onToggleDistrict,
     },
     {
       id: 'selection.nudge',

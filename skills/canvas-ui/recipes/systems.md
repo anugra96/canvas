@@ -5,7 +5,8 @@ the meaning, so their direction matters.
 
 ```text
 Create canvas (Systems) → cards (Actor, System, Repository, Artifact, Schema)
-  → lines (Connect + Edge relation) → notes → Replan layout → Apply preview → Review → Download .canvas
+  → lines (Connect + Edge relation) → notes → Zone (group + District + District owner)
+  → Replan layout → Apply preview → Review → Download .canvas
 ```
 
 ## 1. Cards
@@ -36,7 +37,26 @@ Rules:
 - **One fact, one card.** Put decisions and risks in a Note with that kind,
   then link the note to the card it is about.
 
-## 2. Lines
+## 2. Zone
+
+Once the Systems are placed, group them into districts. A district is a group
+with an owner; plain groups stay visual.
+
+1. Select the cards that belong in one district, then `button "Group"` in the
+   selection toolbar.
+2. Click the group's empty edge so the toolbar says `1 selected` (the group
+   only, not its cards).
+3. Click `button "District"`. It stays pressed and the group border marks the
+   district.
+4. Choose `combobox "District owner"` and pick an Actor card, or `No owner`.
+   The group label shows the owner after the label, e.g. `Payments · Finance team`.
+5. Repeat for each district.
+
+Review reports district issues under `Zoning`: `Unzoned system`,
+`District without owner`, `Shared database`, and `Route bypasses gate`.
+`District without owner` is a Publish warning.
+
+## 3. Lines
 
 Draw lines with the toolbar, not by dragging:
 
@@ -56,7 +76,7 @@ Direction rule: **the line points from the actor of the sentence.** "Tasks API
 uses Tasks DB" is a line from Tasks API to Tasks DB. A line that breaks the
 table appears as an issue in `Review`.
 
-## 3. Levels (Context, Containers, Components, Contracts)
+## 4. Levels (Context, Containers, Components, Contracts)
 
 `Views` shows the canvas at four levels. A card folds into the card that
 **leads to it**:
@@ -72,7 +92,7 @@ table appears as an issue in `Review`.
 `Review` shows "Unassigned at level" when a card has no such parent, or when a
 database has two or more users. It is a warning, not an error.
 
-## 4. Finish
+## 5. Finish
 
 1. `More canvas actions` → `Replan layout`, after the lines exist (the layout
    follows them; before that it stacks the cards in one column). The preview

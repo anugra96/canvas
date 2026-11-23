@@ -9,6 +9,7 @@ import {
   Database,
   FolderGit2,
   Layers,
+  ListOrdered,
   Package,
   ShieldCheck,
   StickyNote,
@@ -57,6 +58,7 @@ const ICONS = {
   braces: Braces,
   database: Database,
   layers: Layers,
+  'list-ordered': ListOrdered,
   'table-2': Table2,
   package: Package,
   shield: ShieldCheck,
@@ -144,6 +146,12 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
 
   const title = entityTitle(entityType, meta.fields)
   const iconColor = colorFor(entityType.color)
+  const systemKind = entityType.id === 'system' ? String(meta.fields.kind ?? '') : ''
+  const iconName = systemKind === 'database'
+    ? 'database'
+    : systemKind === 'queue'
+      ? 'list-ordered'
+      : entityType.icon
   const hiddenSummaryKeys = entityType.id === 'endpoint'
     ? new Set(['operation'])
     : entityType.id === 'api_definition' || entityType.id === 'database_definition'
@@ -272,7 +280,7 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
                 }
                 : undefined}
             >
-              <TypeIcon name={entityType.icon} />
+              <TypeIcon name={iconName} />
             </span>
             <div>
               <span className="entity-type">{entityType.label}</span>

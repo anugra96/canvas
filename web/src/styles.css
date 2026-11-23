@@ -1906,6 +1906,10 @@ p {
   box-shadow: 0 0 0 1px var(--ui-group-border);
 }
 
+.canvas-flow .group-node.district-node {
+  border: 1px solid var(--ui-group-border);
+}
+
 .canvas-flow .group-label {
   color: var(--ui-text);
   border-color: var(--ui-group-border);

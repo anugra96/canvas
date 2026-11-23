@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 
-import { createNodeId, getGroupMembers } from '@canvas/contract'
+import { createNodeId, getDistrict, getGroupMembers } from '@canvas/contract'
 import type { CanvasNode, Ontology } from '@canvas/contract'
 
 import { convertNodeType } from '../../model/cardTypes'
@@ -191,9 +191,47 @@ export function useCanvasSelection({
       ? [...selectedRelationTypes][0]
       : 'mixed'
   const singleSelectedNode = selectedNodes.length === 1 ? selectedNodes[0] : undefined
+  const singleSelectedGroup = singleSelectedNode?.type === 'group' ? singleSelectedNode : undefined
+  const singleSelectedGroupId = singleSelectedGroup?.id
+  const singleSelectedDistrict = singleSelectedGroup ? getDistrict(singleSelectedGroup.data.raw) : undefined
+  const singleSelectedGroupIsDistrict = singleSelectedDistrict !== undefined
+  const districtOwners = nodes
+    .filter((node) => node.data.entity?.entityType === 'actor')
+    .map((node) => ({
+      id: node.id,
+      name: String(node.data.entity?.fields.name ?? '').trim() || 'Untitled Actor',
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name) || left.id.localeCompare(right.id))
   const cardTypeValue = singleSelectedNode && singleSelectedNode.type !== 'group'
     ? singleSelectedNode.data.entity?.entityType ?? 'text'
     : undefined
+
+  function toggleSelectedDistrict() {
+    if (!singleSelectedGroupId) return
+    const makeDistrict = !singleSelectedGroupIsDistrict
+    setNodes((current) => current.map((node) => {
+      if (node.id !== singleSelectedGroupId || node.type !== 'group') return node
+      const app = { ...(node.data.raw.app ?? {}) }
+      if (makeDistrict) app.district = {}
+      else delete app.district
+      return { ...node, data: { ...node.data, raw: { ...node.data.raw, app } } }
+    }))
+    markDirty()
+  }
+
+  function setSelectedDistrictOwner(ownerId: string | undefined) {
+    if (!singleSelectedGroupId) return
+    setNodes((current) => current.map((node) => {
+      if (node.id !== singleSelectedGroupId) return node
+      const app = { ...(node.data.raw.app ?? {}) }
+      const district = { ...(getDistrict(node.data.raw) ?? {}) }
+      if (ownerId) district.ownerId = ownerId
+      else delete district.ownerId
+      app.district = district
+      return { ...node, data: { ...node.data, raw: { ...node.data.raw, app } } }
+    }))
+    markDirty()
+  }
 
   function changeCardType(typeId: string) {
     if (!singleSelectedNode) return
@@ -249,11 +287,17 @@ export function useCanvasSelection({
     selectedEdges,
     selectedRelationValue,
     singleSelectedNode,
+    singleSelectedGroup,
+    singleSelectedGroupIsDistrict,
+    singleSelectedDistrictOwnerId: singleSelectedDistrict?.ownerId,
+    districtOwners,
     cardTypeValue,
     canManageMembership,
     allSelectedCardsAreMembers,
     changeCardType,
     toggleGroupMembership,
+    toggleSelectedDistrict,
+    setSelectedDistrictOwner,
   }
 }
 

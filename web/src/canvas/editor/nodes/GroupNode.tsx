@@ -1,12 +1,22 @@
 import type { NodeProps } from '@xyflow/react'
 import { useEffect, useRef, useState } from 'react'
 
+import { getDistrict } from '@canvas/contract'
+
 import type { CanvasFlowNode } from '../../model/adapter'
 import { useCanvasEditorActions } from '../CanvasEditorContext'
+import { useCanvasNodeIndex } from '../CanvasNodeIndexContext'
 import { NodeShell } from './NodeShell'
 
 export function GroupNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
   const actions = useCanvasEditorActions()
+  const nodeIndex = useCanvasNodeIndex()
+  const district = getDistrict(data.raw)
+  const owner = district?.ownerId ? nodeIndex.get(district.ownerId) : undefined
+  const ownerName = owner?.data.entity?.entityType === 'actor'
+    ? String(owner.data.entity.fields.name ?? '').trim() || 'Untitled Actor'
+    : ''
+  const label = data.label || 'Group'
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(data.label ?? '')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -34,7 +44,11 @@ export function GroupNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
   }
 
   return (
-    <NodeShell node={{ id, data, selected } as CanvasFlowNode} selected={Boolean(selected)} className="group-node">
+    <NodeShell
+      node={{ id, data, selected } as CanvasFlowNode}
+      selected={Boolean(selected)}
+      className={`group-node${district ? ' district-node' : ''}`}
+    >
       {editing ? (
         <input
           ref={inputRef}
@@ -55,7 +69,7 @@ export function GroupNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
         />
       ) : (
         <button className="group-label" onDoubleClick={startEditing}>
-          {data.label || 'Group'}
+          {label}{district && ownerName ? ` · ${ownerName}` : ''}
         </button>
       )}
     </NodeShell>

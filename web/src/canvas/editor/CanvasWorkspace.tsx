@@ -30,6 +30,7 @@ import type { Connection, EdgeChange } from '@xyflow/react'
 import { CanvasBackdrop } from '../backdrop/CanvasBackdrop'
 import { nodeDimensions, type CanvasFlowEdge, type CanvasFlowNode } from '../model/adapter'
 import { useCanvasEditorActions } from './CanvasEditorContext'
+import { CanvasNodeIndexContext } from './CanvasNodeIndexContext'
 import { writeViewport } from './viewport'
 import { useApiDesign } from '../apiDesign/ApiDesignContext'
 import { ManagedEdgeChooser } from '../apiDesign/ManagedEdgeChooser'
@@ -118,6 +119,7 @@ export function CanvasWorkspace({
 }: CanvasWorkspaceProps) {
   const apiDesign = useApiDesign()
   const actions = useCanvasEditorActions()
+  const nodeIndex = useMemo(() => new Map(nodes.map((node) => [node.id, node])), [nodes])
   const [managedConnection, setManagedConnection] = useState<{
     sourceId: string
     targetId: string
@@ -312,6 +314,7 @@ export function CanvasWorkspace({
   }
 
   return (
+    <CanvasNodeIndexContext.Provider value={nodeIndex}>
     <div
       className={`canvas-flow${graph.connectNodeId ? ' connect-mode' : ''}`}
       ref={flowRef}
@@ -454,6 +457,12 @@ export function CanvasWorkspace({
           canManageMembership={graph.canManageMembership}
           membershipLabel={graph.allSelectedCardsAreMembers ? 'Remove from group' : 'Add to group'}
           onToggleMembership={graph.toggleGroupMembership}
+          canEditDistrict={isSystems && Boolean(graph.singleSelectedGroup)}
+          districtIsDistrict={graph.singleSelectedGroupIsDistrict}
+          districtOwnerId={graph.singleSelectedDistrictOwnerId}
+          districtOwners={graph.districtOwners}
+          onToggleDistrict={graph.toggleSelectedDistrict}
+          onDistrictOwnerChange={graph.setSelectedDistrictOwner}
           onDuplicate={graph.duplicateSelection}
           onDelete={graph.deleteSelected}
           onClear={graph.clearSelection}
@@ -536,5 +545,6 @@ export function CanvasWorkspace({
         />
       )}
     </div>
+    </CanvasNodeIndexContext.Provider>
   )
 }
