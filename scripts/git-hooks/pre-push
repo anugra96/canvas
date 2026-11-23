@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# Run make verify before every push, so a red build never reaches GitHub.
+# Install once per clone: make hooks. Skip in an emergency: git push --no-verify.
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+head="$(git rev-parse HEAD)"
+zero="0000000000000000000000000000000000000000"
+
+needs_check=0
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue # deleting a remote branch
+  if [ "$local_sha" != "$head" ]; then
+    echo "pre-push: you are pushing $local_sha, but HEAD is $head." >&2
+    echo "pre-push: check out the commit you push, so make verify tests what GitHub gets." >&2
+    exit 1
+  fi
+  needs_check=1
+done
+[ "$needs_check" = 1 ] || exit 0
+
+if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+  echo "pre-push: tracked files have uncommitted changes; make verify would not test the pushed commit." >&2
+  echo "pre-push: commit or stash them first." >&2
+  exit 1
+fi
+
+verified_file="$(git rev-parse --git-dir)/canvas-verified"
+if [ -f "$verified_file" ] && [ "$(cat "$verified_file")" = "$head" ]; then
+  echo "pre-push: $(git rev-parse --short HEAD) already passed make verify"
+  exit 0
+fi
+
+echo "pre-push: running make verify on $(git rev-parse --short HEAD) (git push --no-verify skips this)"
+make verify
+echo "$head" > "$verified_file"

@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: install dev api web test lint typecheck build clean e2e e2e-prod verify stack-up stack-down stack-logs
+.PHONY: install dev api web test lint typecheck build clean e2e e2e-prod verify hooks deploy-local stack-up stack-down stack-logs
 
 install:
 	npm install
@@ -33,6 +33,14 @@ e2e-prod: build
 	cd web && npx playwright test -c playwright.prod.config.ts
 
 verify: typecheck lint test build e2e e2e-prod
+
+# Run make verify before every git push (once per clone).
+hooks:
+	git config core.hooksPath scripts/git-hooks
+
+# Verify, then rebuild and restart api and web on the local Docker stack; rolls back if checks fail.
+deploy-local:
+	scripts/deploy-local.sh
 
 clean:
 	rm -rf api/.data web/dist api/dist mcp/dist

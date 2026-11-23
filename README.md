@@ -69,7 +69,18 @@ npm run typecheck  # all workspace type checks
 npm run build      # build web and type-check API packages
 make verify        # typecheck, lint, unit tests, build, and E2E
 make e2e           # Playwright only
+make hooks         # once per clone: run make verify before every git push
+make deploy-local  # verify, then rebuild and restart api and web on the Docker stack
 ```
+
+`make deploy-local` deploys the committed `HEAD` only and refuses a dirty tree.
+It skips `make verify` when the pre-push hook already passed for that commit.
+It tags the running images as `:rollback-<time>`, rebuilds `api` and `web`,
+restarts them without touching MinIO, and checks API health, every served
+asset, and a headless start-up of the list page. It creates no canvases. If a
+check fails, it restores the previous images; on success it prints the
+rollback command. GitHub Actions still runs `make verify` on each push as a
+clean-checkout backstop.
 
 Install the Playwright browser once per machine before running E2E checks:
 
