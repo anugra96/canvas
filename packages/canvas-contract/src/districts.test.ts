@@ -9,6 +9,7 @@ import {
   groupParents,
   planLayout,
   validateProfileCanvas,
+  withCanvasDistricts,
   type CanvasEdge,
   type CanvasNode,
   type JsonCanvas,
@@ -77,7 +78,7 @@ function uses(id: string, fromNode: string, toNode: string): CanvasEdge {
   } as CanvasEdge
 }
 
-function zoningIssues(canvas: Pick<JsonCanvas, 'nodes' | 'edges'>) {
+function zoningIssues(canvas: Pick<JsonCanvas, 'nodes' | 'edges'> & Partial<Pick<JsonCanvas, 'app'>>) {
   const zoning = new Set<ProfileIssueCode>(ZONING_ISSUE_CODES)
   return validateProfileCanvas(canvas, SYSTEMS_PROFILE)
     .filter((issue) => zoning.has(issue.code))
@@ -162,6 +163,14 @@ describe('zoning rules', () => {
       )),
     }
     expect(zoningIssues(plain)).toEqual([])
+  })
+
+  it('stays quiet when the canvas turns districts off, and reports again when turned back on', () => {
+    const canvas = { ...districtCanvas(), app: { profile: 'systems', profileVersion: 5 } } as JsonCanvas
+    const off = withCanvasDistricts(canvas, false)
+    expect(off.app?.districts).toBe(false)
+    expect(zoningIssues(off)).toEqual([])
+    expect(zoningIssues(withCanvasDistricts(off, true))).toEqual(expected)
   })
 })
 

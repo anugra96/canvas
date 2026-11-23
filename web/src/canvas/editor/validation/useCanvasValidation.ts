@@ -70,6 +70,7 @@ interface UseCanvasValidationInput {
   isSystems: boolean
   isApi: boolean
   isSystemsCanvas: boolean
+  districtsEnabled: boolean
   reviewMode: ReviewMode
   suppressions: ValidationSuppression[]
   setSuppressions: (update: (current: ValidationSuppression[]) => ValidationSuppression[]) => void
@@ -91,6 +92,7 @@ export function useCanvasValidation({
   isSystems,
   isApi,
   isSystemsCanvas,
+  districtsEnabled,
   reviewMode,
   suppressions,
   setSuppressions,
@@ -186,6 +188,7 @@ export function useCanvasValidation({
     isSystems,
     isApi,
     linkedEndpoints,
+    districtsEnabled,
   })
   const suppressionByFingerprint = useMemo(
     () => new Map(suppressions.map((suppression) => [suppression.fingerprint, suppression])),

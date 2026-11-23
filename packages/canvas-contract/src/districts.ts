@@ -33,3 +33,16 @@ export function districtOf(canvas: JsonCanvas, sizes?: Sizes): Map<string, strin
 
   return districts
 }
+
+// Districts are on unless the canvas turns them off with app.districts: false.
+export function canvasDistrictsEnabled(canvas: Partial<Pick<JsonCanvas, 'app'>>): boolean {
+  return canvas.app?.districts !== false
+}
+
+export function withCanvasDistricts(canvas: JsonCanvas, enabled: boolean): JsonCanvas {
+  if (!canvas.app?.profile) return canvas
+  const app = { ...canvas.app }
+  if (enabled) delete app.districts
+  else app.districts = false
+  return { ...canvas, app }
+}

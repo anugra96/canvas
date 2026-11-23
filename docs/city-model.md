@@ -82,6 +82,7 @@ No migration. Old canvases open unchanged.
 | When rules run | Systems canvases with at least one district; no city-form setting yet (Phase 4) | Canvases without districts stay quiet |
 | Landmark look | Database and queue System cards get their own icon | First step toward Map mode; display only |
 | Levels | Unchanged in this run. A database used by one System folds into it at Level 2; a shared database stays at Level 1 | Districts do not take part in Levels yet |
+| Off switch | **Districts** in the Review panel header, saved per canvas as `app.districts: false` (absent means on). Off hides district controls, owner names, the solid outline, and all zoning issues; district data stays saved | Not every canvas is a planned city (the Unplanned form) |
 
 This run builds `unzoned_card`, `district_without_owner`, `shared_landmark`,
 and `route_bypasses_gate`. The other rules below wait for manifests and forms.

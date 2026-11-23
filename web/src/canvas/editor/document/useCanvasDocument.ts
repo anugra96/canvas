@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import {
+  canvasDistrictsEnabled,
   canvasReviewMode,
   mergeCanvas,
+  withCanvasDistricts,
   withCanvasReviewMode,
   type CanvasDocument,
   type JsonCanvas,
@@ -55,6 +57,7 @@ export function useCanvasDocument({
   const [baseCanvas, setBaseCanvas] = useState<JsonCanvas>(document.canvas)
   const [reviewMode, setReviewMode] = useState<ReviewMode>(() => canvasReviewMode(document.canvas))
   const effectiveReviewMode: ReviewMode = reviewModesEnabled ? reviewMode : 'design'
+  const [districtsEnabled, setDistrictsEnabled] = useState(() => canvasDistrictsEnabled(document.canvas))
   const [etag, setEtag] = useState(document.etag)
   const [dirty, setDirty] = useState(false)
   const [status, setStatus] = useState<SaveStatus>('saved')
@@ -72,11 +75,14 @@ export function useCanvasDocument({
 
   const currentCanvas = useCallback(
     (nodeList = nodes, edgeList = edges, base = baseCanvas) =>
-      withCanvasReviewMode(
-        withValidationSuppressions(fromFlowCanvas(nodeList, edgeList, base), suppressions),
-        effectiveReviewMode,
+      withCanvasDistricts(
+        withCanvasReviewMode(
+          withValidationSuppressions(fromFlowCanvas(nodeList, edgeList, base), suppressions),
+          effectiveReviewMode,
+        ),
+        districtsEnabled,
       ),
-    [baseCanvas, edges, effectiveReviewMode, nodes, suppressions],
+    [baseCanvas, districtsEnabled, edges, effectiveReviewMode, nodes, suppressions],
   )
 
   const changeReviewMode = useCallback((mode: ReviewMode) => {
@@ -84,6 +90,11 @@ export function useCanvasDocument({
     setReviewMode(mode)
     markDirty()
   }, [markDirty, reviewModesEnabled])
+
+  const changeDistrictsEnabled = useCallback((enabled: boolean) => {
+    setDistrictsEnabled(enabled)
+    markDirty()
+  }, [markDirty])
 
   const save = useCallback(async (canvasOverride?: JsonCanvas, etagOverride?: string) => {
     const local = canvasOverride ?? currentCanvas()
@@ -94,6 +105,7 @@ export function useCanvasDocument({
       setEtag(saved.etag)
       setBaseCanvas(saved.canvas)
       setReviewMode(canvasReviewMode(saved.canvas))
+      setDistrictsEnabled(canvasDistrictsEnabled(saved.canvas))
       setSuppressions(() => readValidationSuppressions(saved.canvas))
       setDirty(false)
       setStatus('saved')
@@ -112,6 +124,7 @@ export function useCanvasDocument({
         setBaseCanvas(cause.latest.canvas)
         setEtag(cause.latest.etag)
         setReviewMode(canvasReviewMode(merged.canvas))
+        setDistrictsEnabled(canvasDistrictsEnabled(merged.canvas))
         setSuppressions(() => readValidationSuppressions(merged.canvas))
         setPendingLocal(local)
         if (merged.conflicts.length > 0) {
@@ -214,6 +227,7 @@ export function useCanvasDocument({
       setBaseCanvas(latest.canvas)
       setEtag(latest.etag)
       setReviewMode(canvasReviewMode(latest.canvas))
+      setDistrictsEnabled(canvasDistrictsEnabled(latest.canvas))
       setSuppressions(() => readValidationSuppressions(latest.canvas))
       setConflicts([])
       setPendingLocal(null)
@@ -241,6 +255,8 @@ export function useCanvasDocument({
     baseCanvas,
     reviewMode: effectiveReviewMode,
     changeReviewMode,
+    districtsEnabled,
+    changeDistrictsEnabled,
     dirty,
     status,
     error,

@@ -7,6 +7,7 @@ import {
   getEntityMeta,
   type Ontology,
 } from './ontology'
+import { canvasDistrictsEnabled } from './districts'
 import { validateZoning } from './zoning'
 
 export const canvasProfileRelationRuleSchema = z.object({
@@ -37,6 +38,8 @@ export const canvasProfileMetadataSchema = z
     profileVersion: z.number().int().positive(),
     scope: z.string().min(1).optional(),
     reviewMode: z.enum(['sketch', 'design', 'publish']).optional(),
+    // false turns districts off for the canvas: no zoning rules, no district controls. Absent means on.
+    districts: z.boolean().optional(),
   })
   .passthrough()
 
@@ -290,7 +293,7 @@ export function validateProfileRelation(
 }
 
 export function validateProfileCanvas(
-  canvas: Pick<JsonCanvas, 'nodes' | 'edges'>,
+  canvas: Pick<JsonCanvas, 'nodes' | 'edges'> & Partial<Pick<JsonCanvas, 'app'>>,
   profile: CanvasProfile,
   ontology?: Ontology,
 ): CanvasProfileIssue[] {
@@ -347,7 +350,7 @@ export function validateProfileCanvas(
     issues.push(...validateProfileEdge(edge, nodesById, profile))
   }
 
-  if (profile.id === 'systems') {
+  if (profile.id === 'systems' && canvasDistrictsEnabled(canvas)) {
     issues.push(...validateZoning(canvas))
   }
 

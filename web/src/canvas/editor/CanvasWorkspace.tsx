@@ -93,6 +93,8 @@ interface CanvasWorkspaceProps {
   onOpenHelp: () => void
   reviewMode: ReviewMode
   onReviewModeChange: (mode: ReviewMode) => void
+  districtsEnabled: boolean
+  onDistrictsEnabledChange: (enabled: boolean) => void
   onOpenLevel: (level: LevelNumber) => void
 }
 
@@ -119,6 +121,8 @@ export function CanvasWorkspace({
   onOpenHelp,
   reviewMode,
   onReviewModeChange,
+  districtsEnabled,
+  onDistrictsEnabledChange,
   onOpenLevel,
 }: CanvasWorkspaceProps) {
   const apiDesign = useApiDesign()
@@ -333,7 +337,7 @@ export function CanvasWorkspace({
   return (
     <CanvasNodeIndexContext.Provider value={nodeIndex}>
     <div
-      className={`canvas-flow${graph.connectNodeId ? ' connect-mode' : ''}`}
+      className={`canvas-flow${graph.connectNodeId ? ' connect-mode' : ''}${districtsEnabled ? '' : ' districts-off'}`}
       ref={flowRef}
       onDoubleClick={graph.handleDoubleClick}
     >
@@ -474,7 +478,7 @@ export function CanvasWorkspace({
           canManageMembership={graph.canManageMembership}
           membershipLabel={graph.allSelectedCardsAreMembers ? 'Remove from group' : 'Add to group'}
           onToggleMembership={graph.toggleGroupMembership}
-          canEditDistrict={isSystems && Boolean(graph.singleSelectedGroup)}
+          canEditDistrict={isSystems && districtsEnabled && Boolean(graph.singleSelectedGroup)}
           districtIsDistrict={graph.singleSelectedGroupIsDistrict}
           districtOwnerId={graph.singleSelectedDistrictOwnerId}
           districtOwners={graph.districtOwners}
@@ -557,6 +561,8 @@ export function CanvasWorkspace({
           focusRequest={validation.validationFocusRequest}
           onClose={validation.closeReview}
           onReviewModeChange={onReviewModeChange}
+          districtsEnabled={districtsEnabled}
+          onDistrictsEnabledChange={onDistrictsEnabledChange}
           onOpenLevel={onOpenLevel}
           onFocus={validation.focusValidationIssue}
           onIgnore={validation.ignoreValidationIssue}

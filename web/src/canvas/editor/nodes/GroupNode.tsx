@@ -69,7 +69,7 @@ export function GroupNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
         />
       ) : (
         <button className="group-label" onDoubleClick={startEditing}>
-          {label}{district && ownerName ? ` · ${ownerName}` : ''}
+          {label}{district && ownerName ? <span className="group-owner">{` · ${ownerName}`}</span> : null}
         </button>
       )}
     </NodeShell>

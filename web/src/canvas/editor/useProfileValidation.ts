@@ -6,6 +6,7 @@ import {
   validateApiDesign,
   validateEndpointLinks,
   validateProfileCanvas,
+  withCanvasDistricts,
   type CanvasProfile,
   type JsonCanvas,
   type Ontology,
@@ -24,6 +25,7 @@ export function useProfileValidation({
   isSystems,
   isApi,
   linkedEndpoints = new Map(),
+  districtsEnabled = true,
 }: {
   nodes: CanvasFlowNode[]
   edges: CanvasFlowEdge[]
@@ -33,10 +35,12 @@ export function useProfileValidation({
   isSystems: boolean
   isApi: boolean
   linkedEndpoints?: ReadonlyMap<string, readonly string[]>
+  districtsEnabled?: boolean
 }) {
   return useMemo(() => {
     if (!isSystems) return { issues: [], levelReadiness: [] }
-    const canvas = fromFlowCanvas(nodes, edges, baseCanvas)
+    // The saved base canvas may hold an older districts setting; validate with the current one.
+    const canvas = withCanvasDistricts(fromFlowCanvas(nodes, edges, baseCanvas), districtsEnabled)
     const readiness = isApi ? [] : levelReadiness(canvas.nodes ?? [], canvas.edges ?? [])
     return {
       issues: [
@@ -51,5 +55,5 @@ export function useProfileValidation({
       ],
       levelReadiness: readiness,
     }
-  }, [baseCanvas, edges, isApi, isSystems, linkedEndpoints, nodes, ontology, profile])
+  }, [baseCanvas, districtsEnabled, edges, isApi, isSystems, linkedEndpoints, nodes, ontology, profile])
 }

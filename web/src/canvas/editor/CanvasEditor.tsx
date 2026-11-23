@@ -256,6 +256,8 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     baseCanvas,
     reviewMode,
     changeReviewMode,
+    districtsEnabled,
+    changeDistrictsEnabled,
     dirty,
     status,
     error,
@@ -345,6 +347,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     isSystems: isStructured,
     isApi,
     isSystemsCanvas: isSystems,
+    districtsEnabled,
     reviewMode,
     suppressions,
     setSuppressions,
@@ -865,7 +868,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     onDuplicate: graph.duplicateSelection,
     onSelectAll: graph.selectAll,
     onGroup: graph.groupSelected,
-    districtGroupAvailable: Boolean(graph.singleSelectedGroup),
+    districtGroupAvailable: districtsEnabled && Boolean(graph.singleSelectedGroup),
     districtGroupIsDistrict: graph.singleSelectedGroupIsDistrict,
     onToggleDistrict: graph.toggleSelectedDistrict,
     onNudge: graph.nudgeSelection,
@@ -936,6 +939,8 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
               onOpenHelp={() => setHelpOpen(true)}
             reviewMode={reviewMode}
             onReviewModeChange={changeReviewMode}
+            districtsEnabled={districtsEnabled}
+            onDistrictsEnabledChange={changeDistrictsEnabled}
             onOpenLevel={openLevelInViews}
             />
             </NodeEditRequestContext.Provider>

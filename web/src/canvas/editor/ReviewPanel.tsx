@@ -37,6 +37,8 @@ export function ReviewPanel({
   focusRequest,
   onClose,
   onReviewModeChange,
+  districtsEnabled,
+  onDistrictsEnabledChange,
   onOpenLevel,
   onFocus,
   onIgnore,
@@ -60,6 +62,8 @@ export function ReviewPanel({
   focusRequest: { key: string; requestId: number } | null
   onClose: () => void
   onReviewModeChange: (mode: ReviewMode) => void
+  districtsEnabled: boolean
+  onDistrictsEnabledChange: (enabled: boolean) => void
   onOpenLevel: (level: LevelReadiness['level']) => void
   onFocus: (issue: CanvasProfileIssue) => void
   onIgnore: (issue: CanvasProfileIssue, reason: IgnoreReason) => void
@@ -112,6 +116,19 @@ export function ReviewPanel({
                 ))}
               </select>
             </label>
+          )}
+          {profile.id === 'systems' && (
+            <button
+              type="button"
+              className="review-districts"
+              aria-pressed={districtsEnabled}
+              title={districtsEnabled
+                ? 'Turn off districts: hide district controls and zoning checks on this canvas'
+                : 'Turn on districts: district controls and zoning checks'}
+              onClick={() => onDistrictsEnabledChange(!districtsEnabled)}
+            >
+              Districts
+            </button>
           )}
           {hiddenByModeCount > 0 && (
             <span className="review-hidden">

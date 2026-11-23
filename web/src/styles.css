@@ -1926,6 +1926,15 @@ p {
   border-style: solid;
 }
 
+/* Districts off for this canvas: districts look and act like plain groups; their data stays saved. */
+.canvas-flow.districts-off .group-node.district-node {
+  border-style: dashed;
+}
+
+.canvas-flow.districts-off .group-owner {
+  display: none;
+}
+
 .canvas-flow .group-label {
   color: var(--ui-text);
   border-color: var(--ui-group-border);
@@ -9059,6 +9068,26 @@ select {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.review-districts {
+  padding: 4px 9px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--radius);
+  color: var(--ui-muted);
+  background: transparent;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.review-districts[aria-pressed='true'] {
+  border-color: var(--ui-accent);
+  color: var(--ui-text);
+  background: color-mix(in srgb, var(--ui-accent) 14%, transparent);
 }
 
 .review-mode {

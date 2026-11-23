@@ -1122,7 +1122,7 @@ test('replan preview keeps grouped systems inside the group and undo restores po
   expect(savedPositions(await downloadCanvas(page))).toEqual(savedPositions(before))
 })
 
-test('makes a district with an owner and undo returns a plain group', async ({ page }) => {
+test('makes a district with an owner, turns districts off and on, and undo returns a plain group', async ({ page }) => {
   const modifier = process.platform === 'darwin' ? 'Meta' : 'Control'
   await page.goto('/')
   await page.getByLabel('Canvas type').selectOption('systems')
@@ -1162,7 +1162,21 @@ test('makes a district with an owner and undo returns a plain group', async ({ p
   const panel = page.locator('.review-panel')
   await panel.getByLabel('Review mode').selectOption('Publish')
   await expect(panel.getByText('District without owner')).toBeVisible()
+
+  // Turning districts off for the canvas hides zoning checks and the district controls; on brings both back.
+  const districtsSwitch = panel.getByRole('button', { name: 'Districts', exact: true })
+  await districtsSwitch.click()
+  await expect(districtsSwitch).toHaveAttribute('aria-pressed', 'false')
+  await expect(panel.getByText('District without owner')).toHaveCount(0)
   await panel.getByRole('button', { name: 'Close review' }).click()
+  await selectGroup()
+  await expect(page.getByRole('button', { name: 'District', exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: /Review/ }).click()
+  await districtsSwitch.click()
+  await expect(districtsSwitch).toHaveAttribute('aria-pressed', 'true')
+  await expect(panel.getByText('District without owner')).toBeVisible()
+  await panel.getByRole('button', { name: 'Close review' }).click()
+  await selectGroup()
 
   await expect(page.getByLabel('District owner', { exact: true })).toBeVisible()
   await page.getByLabel('District owner', { exact: true }).selectOption({ label: 'Finance team' })
