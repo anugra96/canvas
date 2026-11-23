@@ -1,6 +1,6 @@
 # City Model
 
-Status: Proposed (draft 2026-11-21, not built)
+Status: Proposed (draft 2026-11-21); Districts decided 2026-11-23, in progress
 Applies to: Systems canvases first; API and Database canvases through links
 
 ## Decision
@@ -70,6 +70,21 @@ this file, so Map mode later is a reskin, not a redesign.
 | City form | `app.cityForm` on the canvas root; absent means Unplanned | Selects form-specific rules, beside `app.reviewMode` |
 
 No migration. Old canvases open unchanged.
+
+## Districts (decided 2026-11-23, Phase 3 run 1)
+
+| Decision | Choice | Why |
+| --- | --- | --- |
+| Shape | A group with `app.district: { ownerId?: string }`; `ownerId` is an Actor card id. No new card type, no migration | Districts are land, not buildings; edges to groups are already an integrity error |
+| Membership | The planner's rule, one shared function: explicit `app.groupMembers`, else the smallest raw group holding the card's centre. A card's district is its nearest district ancestor | Zoning and Replan must agree on who lives where |
+| Gates | System kinds `api` and `queue` | A queue used by several districts is a normal entrance, not a shared landmark |
+| Landmarks for `shared_landmark` | System kind `database` only | Distributed: services own their data |
+| When rules run | Systems canvases with at least one district; no city-form setting yet (Phase 4) | Canvases without districts stay quiet |
+| Landmark look | Database and queue System cards get their own icon | First step toward Map mode; display only |
+| Levels | Unchanged in this run. A database used by one System folds into it at Level 2; a shared database stays at Level 1 | Districts do not take part in Levels yet |
+
+This run builds `unzoned_card`, `district_without_owner`, `shared_landmark`,
+and `route_bypasses_gate`. The other rules below wait for manifests and forms.
 
 ## Rules (proposed)
 
