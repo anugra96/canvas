@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { JsonCanvas } from '@canvas/contract'
 
-import { cardBackgroundFor, fromFlowCanvas, groupBackgroundFor, toFlowCanvas, toFlowNode } from './adapter'
+import { cardBackgroundFor, fromFlowCanvas, toFlowCanvas, toFlowNode } from './adapter'
 
 const source: JsonCanvas = {
   nodes: [
@@ -191,10 +191,8 @@ describe('canvas flow adapter', () => {
 
 
 describe('card color backgrounds', () => {
-  it('uses opaque card fills and translucent group fills', () => {
+  it('uses opaque card fills', () => {
     expect(cardBackgroundFor('1')).toBe('color-mix(in srgb, #fb464c 14%, var(--ui-panel-solid))')
-    expect(groupBackgroundFor('1')).toBe('color-mix(in srgb, #fb464c 26%, transparent)')
-    expect(groupBackgroundFor(undefined)).toBeUndefined()
   })
 })
 

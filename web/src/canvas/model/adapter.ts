@@ -53,12 +53,6 @@ export function cardBackgroundFor(value: string | undefined): string | undefined
   return `color-mix(in srgb, ${accent} 14%, var(--ui-panel-solid))`
 }
 
-export function groupBackgroundFor(value: string | undefined): string | undefined {
-  const accent = colorFor(value)
-  if (!accent) return undefined
-  return `color-mix(in srgb, ${accent} 26%, transparent)`
-}
-
 export function colorFor(value: string | undefined): string | undefined {
   if (!value) return undefined
   return PRESET_COLORS[value] ?? (value.startsWith('#') ? value : undefined)

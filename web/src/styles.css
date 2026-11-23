@@ -669,7 +669,7 @@ p {
 .group-node {
   border-style: dashed;
   border-color: color-mix(in srgb, var(--ui-accent) 48%, transparent);
-  background: var(--ui-group-bg);
+  background: transparent;
 }
 
 .group-label {
@@ -1900,19 +1900,30 @@ p {
   box-shadow: var(--ui-node-shadow-selected);
 }
 
-.canvas-flow .group-node {
-  border: 0;
-  background: var(--ui-group-bg);
+/* Groups are outlines only, selected or not: a fill competes with the cards inside.
+   React Flow gives group nodes a grey fill and a selection shadow by default; remove both. */
+.canvas-flow .react-flow__node-group,
+.canvas-flow .react-flow__node-group.selectable.selected,
+.canvas-flow .react-flow__node-group.selectable:focus,
+.canvas-flow .react-flow__node-group.selectable:focus-visible {
+  background: transparent;
   box-shadow: none;
 }
 
+.canvas-flow .group-node {
+  border: 1px dashed var(--ui-group-border);
+  background: transparent;
+  box-shadow: none;
+}
+
+/* A colored group draws its color on the outline (set inline as border-color). */
 .canvas-flow .group-node.selected {
-  background: var(--ui-group-bg-selected);
-  box-shadow: 0 0 0 1px var(--ui-group-border);
+  background: transparent;
+  box-shadow: 0 0 0 1px var(--ui-accent);
 }
 
 .canvas-flow .group-node.district-node {
-  border: 1px solid var(--ui-group-border);
+  border-style: solid;
 }
 
 .canvas-flow .group-label {

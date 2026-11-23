@@ -4,7 +4,7 @@ import { useEffect, type CSSProperties, type ReactNode } from 'react'
 
 import { entityTitle, findEntityType, getCanvasLinks } from '@canvas/contract'
 
-import { colorFor, groupBackgroundFor, type CanvasFlowNode } from '../../model/adapter'
+import { colorFor, type CanvasFlowNode } from '../../model/adapter'
 import { useCanvasEditorActions } from '../CanvasEditorContext'
 import { useCanvasValidation } from '../CanvasValidationContext'
 import { useOntology } from '../../../ontology/OntologyContext'
@@ -52,10 +52,9 @@ export function NodeShell({ node, selected, className, children, onEdit }: NodeS
   const isGroup = node.data.raw.type === 'group'
   const isLane = node.data.entity?.entityType === 'resource' || node.data.entity?.entityType === 'db_schema'
   const isTable = node.data.entity?.entityType === 'table'
-  const background = isGroup ? groupBackgroundFor(node.data.raw.color) : undefined
   const style: CSSProperties = {}
   if (accent) (style as Record<string, string>)['--card-accent'] = accent
-  if (background) style.background = background
+  if (accent && isGroup) style.borderColor = accent
   const hasCardColor = Boolean(accent && !isGroup)
 
   useEffect(() => {
