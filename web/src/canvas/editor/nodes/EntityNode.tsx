@@ -265,7 +265,10 @@ export function EntityNode({ id, data, selected }: NodeProps<CanvasFlowNode>) {
       {entityType.id === 'table' ? (
         <TableCardPreview fields={meta.fields} />
       ) : entityType.id === 'db_schema' ? (
-        <DatabaseSchemaCardPreview fields={meta.fields} />
+        <DatabaseSchemaCardPreview
+          fields={meta.fields}
+          onAddTable={() => actions.openAddTable(String(meta.fields.name ?? '').trim() || undefined)}
+        />
       ) : entityType.id === 'db_enum' ? (
         <DatabaseEnumCardPreview fields={meta.fields} />
       ) : ['api_definition', 'resource', 'endpoint', 'security_scheme'].includes(entityType.id) ? (

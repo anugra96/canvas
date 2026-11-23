@@ -9550,6 +9550,79 @@ select {
   line-height: 1.4;
 }
 
+.db-schema-add-table {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border: 1px solid var(--ui-line);
+  border-radius: var(--radius);
+  color: var(--ui-muted);
+  background: var(--ui-input-bg);
+  font-size: 9px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.db-schema-add-table:hover {
+  color: var(--ui-accent);
+  border-color: var(--ui-line-strong);
+}
+
+.db-empty-panel {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 6;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: min(460px, calc(100% - 40px));
+  padding: 22px 24px;
+  border: 1px solid var(--ui-line);
+  border-radius: calc(var(--radius) * 1.5);
+  background: color-mix(in srgb, var(--ui-panel-solid) 94%, transparent);
+  box-shadow: var(--ui-shadow);
+  text-align: center;
+  transform: translate(-50%, -50%);
+}
+
+.db-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid color-mix(in srgb, var(--ui-accent) 40%, transparent);
+  border-radius: 50%;
+  color: var(--ui-accent);
+  background: var(--ui-input-bg);
+}
+
+.db-empty-panel h2 {
+  margin: 0;
+  color: var(--ui-strong);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.db-empty-panel p {
+  margin: 0;
+  max-width: 340px;
+  color: var(--ui-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.db-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 .db-table-card {
   padding: 0;
 }
@@ -9645,6 +9718,14 @@ select {
   color: var(--ui-faint);
   font-size: 9px;
   font-weight: 700;
+}
+
+.db-table-hint {
+  padding: 6px 11px;
+  border-top: 1px solid color-mix(in srgb, var(--ui-line) 65%, transparent);
+  color: var(--ui-faint);
+  font-size: 9px;
+  font-weight: 750;
 }
 
 .db-column-handle.react-flow__handle {

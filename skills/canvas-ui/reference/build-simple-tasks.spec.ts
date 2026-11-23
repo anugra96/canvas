@@ -71,8 +71,8 @@ test('build simple_tasks by hand', async ({ page }) => {
   await expect(page).toHaveURL(/\/canvas\//)
 
   // 2. Database card
-  await addFromMenu(page, 'Database')
-  await openCard(page, card(page, 'Database Database'))
+  await page.getByRole('button', { name: 'More canvas actions', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Database settings', exact: true }).click()
   await page.getByLabel('Name', { exact: true }).fill('simple_tasks')
   await page.getByLabel('Server version', { exact: true }).fill('16')
   await page.getByLabel('Extensions', { exact: true }).fill('pgcrypto public')

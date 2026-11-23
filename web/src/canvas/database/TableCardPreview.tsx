@@ -3,6 +3,7 @@ import { KeyRound, Table2 } from 'lucide-react'
 
 import {
   databaseColumnHandleId,
+  isStarterTableDefinition,
   parseTableDefinition,
   type TableColumn,
   type TableDefinition,
@@ -31,6 +32,7 @@ export function TableCardPreview({
   const columns = definition?.columns ?? []
   const visible = columns.slice(0, VISIBLE_COLUMNS)
   const hidden = Math.max(0, columns.length - visible.length)
+  const starter = isStarterTableDefinition(definition)
 
   return (
     <div className="entity-card db-table-card">
@@ -88,6 +90,7 @@ export function TableCardPreview({
         ))}
         {hidden > 0 && <div className="db-column-more">+{hidden} more</div>}
       </div>
+      {starter && <div className="db-table-hint">Double-click to edit columns</div>}
     </div>
   )
 }

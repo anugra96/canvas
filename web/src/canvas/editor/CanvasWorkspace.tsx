@@ -30,6 +30,7 @@ import type { Connection, EdgeChange } from '@xyflow/react'
 
 import type { CanvasClient } from '../../api/client'
 import { CanvasBackdrop } from '../backdrop/CanvasBackdrop'
+import { DatabaseEmptyPanel } from '../database/DatabaseEmptyPanel'
 import { nodeDimensions, type CanvasFlowEdge, type CanvasFlowNode } from '../model/adapter'
 import { useCanvasEditorActions } from './CanvasEditorContext'
 import { CanvasNodeIndexContext } from './CanvasNodeIndexContext'
@@ -96,6 +97,10 @@ interface CanvasWorkspaceProps {
   districtsEnabled: boolean
   onDistrictsEnabledChange: (enabled: boolean) => void
   onOpenLevel: (level: LevelNumber) => void
+  showDatabaseEmptyPanel: boolean
+  onAddTableFromEmpty: () => void
+  onAddEnumFromEmpty: () => void
+  onImportDdlFromEmpty: () => void
 }
 
 export function CanvasWorkspace({
@@ -124,6 +129,10 @@ export function CanvasWorkspace({
   districtsEnabled,
   onDistrictsEnabledChange,
   onOpenLevel,
+  showDatabaseEmptyPanel,
+  onAddTableFromEmpty,
+  onAddEnumFromEmpty,
+  onImportDdlFromEmpty,
 }: CanvasWorkspaceProps) {
   const apiDesign = useApiDesign()
   const actions = useCanvasEditorActions()
@@ -412,6 +421,13 @@ export function CanvasWorkspace({
           {graph.layoutPreview && <LayoutPreviewGhosts preview={graph.layoutPreview} />}
         </ViewportPortal>
       </ReactFlow>
+      {showDatabaseEmptyPanel && (
+        <DatabaseEmptyPanel
+          onAddTable={onAddTableFromEmpty}
+          onAddEnum={onAddEnumFromEmpty}
+          onImportDdl={onImportDdlFromEmpty}
+        />
+      )}
       {graph.layoutPreview && (
         <LayoutPreviewBar
           preview={graph.layoutPreview}

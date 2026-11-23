@@ -5,15 +5,17 @@ import type { AddDatabaseTableInput, DatabaseTableIdType } from '@canvas/contrac
 
 export function AddTableDialog({
   schemas,
+  initialSchema,
   onSubmit,
   onClose,
 }: {
   schemas: string[]
+  initialSchema?: string
   onSubmit: (input: AddDatabaseTableInput) => string[]
   onClose: () => void
 }) {
   const [name, setName] = useState('')
-  const [schema, setSchema] = useState('public')
+  const [schema, setSchema] = useState(initialSchema?.trim() || 'public')
   const [idType, setIdType] = useState<DatabaseTableIdType>('uuid')
   const [errors, setErrors] = useState<string[]>([])
   const inputRef = useRef<HTMLInputElement>(null)

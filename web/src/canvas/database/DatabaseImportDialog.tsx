@@ -5,10 +5,14 @@ import type { DatabaseImportResult } from '@canvas/contract/database-import'
 
 export function DatabaseImportDialog({
   open,
+  confirmLabel = 'Create database canvas',
+  busyLabel = 'Creating canvas',
   onClose,
   onCreate,
 }: {
   open: boolean
+  confirmLabel?: string
+  busyLabel?: string
   onClose: () => void
   onCreate: (result: DatabaseImportResult) => Promise<void>
 }) {
@@ -148,7 +152,7 @@ export function DatabaseImportDialog({
                   </ul>
                 )}
                 <button className="button primary" onClick={() => void create()} disabled={busy}>
-                  {busy ? 'Creating canvas' : 'Create database canvas'}
+                  {busy ? busyLabel : confirmLabel}
                 </button>
               </>
             ) : (

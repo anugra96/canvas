@@ -67,6 +67,8 @@ import { useApiManagedRelations } from '../apiDesign/useApiManagedRelations'
 import { useDatabaseManagedRelations } from '../database/useDatabaseManagedRelations'
 import { AddTableDialog } from '../database/AddTableDialog'
 import { DatabaseDesignProvider } from '../database/DatabaseDesignProvider'
+import { DatabaseImportDialog } from '../database/DatabaseImportDialog'
+import type { DatabaseImportResult } from '@canvas/contract/database-import'
 import { insertNodes } from '../model/insertNodes'
 import {
   computeDisplay,
@@ -177,7 +179,8 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const [blockedExport, setBlockedExport] = useState<{ label: string; run: () => void } | null>(null)
   const [addResourceOpen, setAddResourceOpen] = useState(false)
   const [addEndpointOpen, setAddEndpointOpen] = useState(false)
-  const [addTableOpen, setAddTableOpen] = useState(false)
+  const [addTableRequest, setAddTableRequest] = useState<{ schema?: string } | null>(null)
+  const [databaseImportOpen, setDatabaseImportOpen] = useState(false)
   const [compareHead, setCompareHead] = useState<JsonObject | null>(null)
   const [suppressions, setSuppressions] = useState<ValidationSuppression[]>(() => (
     readValidationSuppressions(document.canvas)
@@ -781,6 +784,23 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     return []
   }, [baseCanvas, edges, fitView, markDirty, nodes, setNodes, setNotice])
 
+  const openAddTable = useCallback((schema?: string) => {
+    setAddTableRequest(schema === undefined ? {} : { schema })
+  }, [])
+
+  const importDatabaseIntoCanvas = useCallback(async (result: DatabaseImportResult) => {
+    const importedNodes = result.canvas.nodes ?? []
+    const importedEdges = result.canvas.edges ?? []
+    setNodes(importedNodes.map((node) => ({ ...toFlowNode(node), selected: false })))
+    setEdges(importedEdges.map((edge) => toFlowEdge(edge, ontology)))
+    setDatabaseImportOpen(false)
+    markDirty()
+    setNotice(`Imported ${importedNodes.filter((node) => node.app?.entityType === 'table').length} tables into this canvas.`)
+    window.setTimeout(() => {
+      void fitView({ padding: 0.25, maxZoom: 1.2, duration: 300 })
+    }, 0)
+  }, [fitView, markDirty, ontology, setEdges, setNodes, setNotice])
+
   const openDatabaseSettings = useCallback(() => {
     const existing = nodes.find((node) => node.data.entity?.entityType === 'database_definition')
     if (existing) {
@@ -819,6 +839,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       openNodeEditor,
       addDatabaseReference,
       removeDatabaseReference,
+      openAddTable,
       extractSchemaCard,
       inlineSchemaCard,
     }),
@@ -834,6 +855,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
       inlineSchemaCard,
       links.createOrOpenProfileCanvas,
       links.openCanvasLinks,
+      openAddTable,
       openNodeEditor,
       removeDatabaseReference,
       updateEntityField,
@@ -856,7 +878,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     onAddCard: graph.addAtCenter,
     onAddEntity: (entityTypeId) => {
       if (isDatabase && entityTypeId === 'table') {
-        setAddTableOpen(true)
+        setAddTableRequest({})
         return
       }
       if (isApi && entityTypeId === 'endpoint') {
@@ -967,6 +989,10 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
             districtsEnabled={districtsEnabled}
             onDistrictsEnabledChange={changeDistrictsEnabled}
             onOpenLevel={openLevelInViews}
+            showDatabaseEmptyPanel={isDatabase && nodes.length === 0}
+            onAddTableFromEmpty={() => setAddTableRequest({})}
+            onAddEnumFromEmpty={() => graph.addEntityAtCenter('db_enum')}
+            onImportDdlFromEmpty={() => setDatabaseImportOpen(true)}
             />
             </NodeEditRequestContext.Provider>
           </ApiDesignProvider>
@@ -1016,8 +1042,9 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
               onClose={() => setAddEndpointOpen(false)}
             />
           )}
-          {addTableOpen && (
+          {addTableRequest && (
             <AddTableDialog
+              initialSchema={addTableRequest.schema}
               schemas={Array.from(new Set([
                 'public',
                 ...nodes.flatMap((node) => {
@@ -1031,9 +1058,16 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
                 }),
               ])).filter(Boolean)}
               onSubmit={addTable}
-              onClose={() => setAddTableOpen(false)}
+              onClose={() => setAddTableRequest(null)}
             />
           )}
+          <DatabaseImportDialog
+            open={databaseImportOpen}
+            confirmLabel="Import into canvas"
+            busyLabel="Importing DDL"
+            onCreate={importDatabaseIntoCanvas}
+            onClose={() => setDatabaseImportOpen(false)}
+          />
           {blockedExport && (
             <PublishBlockedDialog
               label={blockedExport.label}

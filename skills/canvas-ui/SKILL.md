@@ -69,6 +69,8 @@ the first accessibility read after load can be empty.
 | `button "Add"` | Menu of card types for this profile (`menuitem` per type) |
 | `button "Display"` | Edge and label visibility presets |
 | `button "More canvas actions"` | Replan layout for the profile (then `button "Apply"` in `region "Layout preview"`), `Fit cards to content`, `Zoom to fit`, export for the profile (`Export DDL`, `Export OpenAPI YAML`), `Download .canvas`, `Screenshot`, `Keyboard shortcuts` |
+| `menuitem "Database settings"` | Database canvases: open the database card editor, creating the card named after the canvas when missing |
+| `button "Add table here"` | In a Schema lane header: open Add table with that lane's schema filled in |
 | `button "Connect"` | Shown when one card is selected (Raw, Systems): click it, then the target card |
 | `button "District"` | Shown when one group is selected (Systems): toggles the group between a district and a plain group |
 | `combobox "District owner"` | Shown for a selected district (Systems): picks the owning Actor card, or `No owner` |

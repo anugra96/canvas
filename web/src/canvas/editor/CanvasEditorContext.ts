@@ -23,6 +23,7 @@ export interface CanvasEditorActions {
   openNodeEditor: (id: string) => void
   addDatabaseReference: (connection: DatabaseReferenceConnection) => boolean
   removeDatabaseReference: (edgeId: string) => void
+  openAddTable: (schema?: string) => void
   extractSchemaCard: (id: string) => CanvasSchemaResult
   inlineSchemaCard: (id: string) => CanvasSchemaResult
 }
