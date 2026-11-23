@@ -16,11 +16,10 @@ change as the Review rule, planner law, or rendering that reads it.
 
 | # | Item | Spec | After | Note |
 | --- | --- | --- | --- | --- |
-| 1 | Districts and zoning: `app.district` with an owner Actor; `unzoned_card`, `district_without_owner`, `shared_landmark`, `route_bypasses_gate`; Distributed rules only; database and queue icons | `city-model.md` (Districts) | — | In progress (opencode, 2026-11-23). Levels unchanged: a shared database already sits at Level 1; only the stale `level_unassigned` help text is fixed |
-| 2 | API Phase 4 and Database Phase 4: Systems and districts link to API and Database canvases | `api-profile.md`, `database-profile.md` | 1 | "Neighbouring map" in the city glossary |
-| 3 | Levels Step 2: drill into linked API and Database canvases | `levels.md` | 2 | "Enter a district's own canvas, breadcrumb back" |
-| 4 | Manifests (`schemaRef` on cross-district routes), pins, `stage` | `city-model.md`, `urban-planner.md` Step 2 | 1 | `stage` open question: here or `deployment-platform.md` |
-| 5 | Other city forms, then the Map mode experiment | `city-model.md` | 4 | Add a form only when a real canvas needs it |
+| 1 | API Phase 4 and Database Phase 4: a database System opens its Database canvas; `uses` lines to an API pick an endpoint; `endpoint_stale` | `api-profile.md`, `database-profile.md` | — | In progress (opencode, 2026-11-23). District links move to Levels Step 2 |
+| 2 | Levels Step 2: drill into linked API and Database canvases | `levels.md` | 1 | "Enter a district's own canvas, breadcrumb back" |
+| 3 | Manifests (`schemaRef` on cross-district routes), pins, `stage` | `city-model.md`, `urban-planner.md` Step 2 | — | `stage` open question: here or `deployment-platform.md` |
+| 4 | Other city forms, then the Map mode experiment | `city-model.md` | 3 | Add a form only when a real canvas needs it |
 
 ## Beside the main line
 
@@ -46,6 +45,7 @@ Different files from Next 1 and 2, so these can run in parallel.
 
 | Item | Spec | Commits |
 | --- | --- | --- |
+| Districts and zoning: district flag and owner, 4 zoning rules, database and queue icons; Views fit to window | `city-model.md` (Districts) | `4e60049`, `6ea5563`, `16f2a6f` |
 | Local CI/CD: pre-push `make verify` hook, `make deploy-local` with rollback and start-up check | `README.md` | `ef2b111` |
 | Urban planner Step 1: `planLayout` place and replan, Replan preview, seeded derived views, prod chunk fix | `urban-planner.md` | `dd6b745`, `d59b203`, `9e21876`, `efb50e2`, `61f5bb7`, `0334aa4`, `7d5063e` |
 | Systems v5: five cards, note kinds, four lines; schema v3 migration | `ontology-audit.md`, `systems-profile.md` | `c3c3202`, `c5c3fdb` |

@@ -173,7 +173,9 @@ SQL against any database.
 ### Phase 4: tie into Systems and API
 
 - A Systems Database card gets an optional link to a Database canvas, like a
-  System of kind `api` links to an API canvas.
+  System of kind `api` links to an API canvas. Decided 2026-11-23: a System of
+  kind `database` shows **Create or open Database canvas**, on the same code
+  path as the API button; the link label is "Database canvas".
 - Later, not in v1: a check that an API Schema card's properties match a
   table's columns when they are linked.
 

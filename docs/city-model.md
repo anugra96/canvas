@@ -1,6 +1,6 @@
 # City Model
 
-Status: Proposed (draft 2026-11-21); Districts decided 2026-11-23, in progress
+Status: Proposed (draft 2026-11-21); Districts built 2026-11-23 (`4e60049`, `6ea5563`)
 Applies to: Systems canvases first; API and Database canvases through links
 
 ## Decision

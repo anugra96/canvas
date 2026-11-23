@@ -339,6 +339,15 @@ Proof for Phase 2 (at most six new tests): export ordering and refusal on invali
 15. The Review panel warns when a stored endpoint no longer exists in the linked
     API canvas.
 
+Decided 2026-11-23 for Phase 4:
+
+| Decision | Choice |
+| --- | --- |
+| Field | Reuse edge `app.endpoint` (in the schema since `8e101b7`, unused until now); no migration |
+| Picker source | The first canvas link on the target System whose profile is `api`, loaded on demand |
+| Stale check | `endpoint_stale`, tier design; linked canvases load when the Systems canvas opens and when Review opens; a canvas that cannot load raises nothing (Unknown is not stale) |
+| District links | Not in Phase 4; entering a district's canvas is Levels Step 2 |
+
 ### Later, not in this spec
 
 | Tool | Why later |
