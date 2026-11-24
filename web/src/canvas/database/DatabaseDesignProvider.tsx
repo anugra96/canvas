@@ -1,6 +1,11 @@
 import { useMemo, type ReactNode } from 'react'
 
-import { getEntityMeta, nodeTableDefinition, type CanvasNode } from '@canvas/contract'
+import {
+  getEntityMeta,
+  nodeTableDefinition,
+  type CanvasNode,
+  type DatabaseTarget,
+} from '@canvas/contract'
 
 import { DatabaseDesignContext, type DatabaseDesign } from './DatabaseDesignContext'
 
@@ -12,10 +17,12 @@ function stringField(node: CanvasNode, key: string): string {
 export function DatabaseDesignProvider({
   nodes,
   enabled,
+  target,
   children,
 }: {
   nodes: CanvasNode[]
   enabled: boolean
+  target?: DatabaseTarget
   children: ReactNode
 }) {
   const value = useMemo<DatabaseDesign | null>(() => {
@@ -47,12 +54,13 @@ export function DatabaseDesignProvider({
       }
     }
     return {
+      target,
       schemas: [...schemas].filter(Boolean).sort((left, right) => left.localeCompare(right)),
       enums: enums.sort((left, right) =>
         `${left.schema}.${left.name}`.localeCompare(`${right.schema}.${right.name}`)),
       tables: tables.sort((left, right) =>
         `${left.schema}.${left.name}`.localeCompare(`${right.schema}.${right.name}`)),
     }
-  }, [enabled, nodes])
+  }, [enabled, nodes, target])
   return <DatabaseDesignContext.Provider value={value}>{children}</DatabaseDesignContext.Provider>
 }

@@ -1,22 +1,30 @@
 import { Database, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
-import type { EntityFields, EntityTypeDefinition } from '@canvas/contract'
+import {
+  deepEqual,
+  type DatabaseTarget,
+  type EntityFields,
+  type EntityTypeDefinition,
+} from '@canvas/contract'
 
 import { FieldInput } from '../editor/nodes/FieldInput'
 
 export function DatabaseSettingsDialog({
   entityType,
   initialFields,
+  initialTarget,
   onSave,
   onClose,
 }: {
   entityType: EntityTypeDefinition
   initialFields: EntityFields
-  onSave: (fields: EntityFields) => void
+  initialTarget: DatabaseTarget | undefined
+  onSave: (fields: EntityFields, target: DatabaseTarget | undefined, fieldsChanged: boolean) => void
   onClose: () => void
 }) {
   const [fields, setFields] = useState<EntityFields>(initialFields)
+  const [target, setTarget] = useState<DatabaseTarget | undefined>(initialTarget)
   const formRef = useRef<HTMLFormElement | null>(null)
 
   useEffect(() => {
@@ -56,7 +64,7 @@ export function DatabaseSettingsDialog({
         aria-label="Database settings"
         onSubmit={(event) => {
           event.preventDefault()
-          onSave(fields)
+          onSave(fields, target, !deepEqual(fields, initialFields))
         }}
       >
         <header className="name-dialog-head">
@@ -70,6 +78,19 @@ export function DatabaseSettingsDialog({
         </header>
 
         <div className="database-settings-fields">
+          <label className="name-dialog-field">
+            Target
+            <select
+              value={target ?? ''}
+              onChange={(event) => setTarget((event.target.value || undefined) as DatabaseTarget | undefined)}
+            >
+              <option value="">Not chosen</option>
+              <option value="postgres">PostgreSQL</option>
+              <option value="sqlite" disabled>SQLite (Coming later)</option>
+              <option value="dynamodb" disabled>DynamoDB (Coming later)</option>
+            </select>
+          </label>
+          <p className="database-editor-hint">The target sets column types and the export format.</p>
           {entityType.fields.map((field) => (
             <FieldInput
               key={field.key}

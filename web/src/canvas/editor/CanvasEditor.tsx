@@ -5,6 +5,7 @@ import {
   addApiEndpoint,
   addApiResource,
   addDatabaseTable,
+  canvasDatabaseTarget,
   addReferenceToCanvas,
   applyStandardErrors,
   buildApiReferenceDocument,
@@ -26,6 +27,7 @@ import {
   type CanvasEdge,
   type CanvasNode,
   type DatabaseReferenceConnection,
+  type DatabaseTarget,
   type EntityFields,
   type JsonCanvas,
   type Ontology,
@@ -162,11 +164,12 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     profileRelationTypes,
   } = useCanvasProfile(ontology, document)
   const initial = useMemo(() => toFlowCanvas(document.canvas, ontology), [document, ontology])
+  const initialDatabaseTarget = useMemo(() => canvasDatabaseTarget(document.canvas), [document])
   const viewportLayout = isMobile ? 'mobile' as const : 'desktop' as const
   const savedViewport = useMemo(() => readViewport(document.id, viewportLayout), [document.id, viewportLayout])
   const shouldFitInitial = useMemo(() => !savedViewport && (document.canvas.nodes?.length ?? 0) > 0,
     [document.canvas.nodes?.length, savedViewport])
-  const history = useCanvasHistory(initial)
+  const history = useCanvasHistory({ ...initial, databaseTarget: initialDatabaseTarget })
   const {
     observe: observeHistory,
     redo: redoHistory,
@@ -272,6 +275,8 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     changeReviewMode,
     districtsEnabled,
     changeDistrictsEnabled,
+    databaseTarget,
+    changeDatabaseTarget,
     dirty,
     status,
     error,
@@ -314,6 +319,8 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     flowRef,
     canUndo: history.canUndo,
     canRedo: history.canRedo,
+    databaseTarget,
+    onRestoreDatabaseTarget: changeDatabaseTarget,
     undoHistory,
     redoHistory,
   })
@@ -383,7 +390,10 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     },
   })
 
-  useEffect(() => observeHistory({ nodes, edges }), [edges, nodes, observeHistory])
+  useEffect(
+    () => observeHistory({ nodes, edges, databaseTarget }),
+    [databaseTarget, edges, nodes, observeHistory],
+  )
 
   const guardExport = useCallback((label: string, run: () => void) => {
     if (validation.publishBlockingIssues.length > 0) setBlockedExport({ label, run })
@@ -807,38 +817,46 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     const importedEdges = result.canvas.edges ?? []
     setNodes(importedNodes.map((node) => ({ ...toFlowNode(node), selected: false })))
     setEdges(importedEdges.map((edge) => toFlowEdge(edge, ontology)))
+    if (!databaseTarget) changeDatabaseTarget('postgres')
     setDatabaseImportOpen(false)
     markDirty()
     setNotice(`Imported ${importedNodes.filter((node) => node.app?.entityType === 'table').length} tables into this canvas.`)
     window.setTimeout(() => {
       void fitView({ padding: 0.25, maxZoom: 1.2, duration: 300 })
     }, 0)
-  }, [fitView, markDirty, ontology, setEdges, setNodes, setNotice])
+  }, [changeDatabaseTarget, databaseTarget, fitView, markDirty, ontology, setEdges, setNodes, setNotice])
 
-  const saveDatabaseSettings = useCallback((fields: EntityFields) => {
+  const saveDatabaseSettings = useCallback((
+    fields: EntityFields,
+    target: DatabaseTarget | undefined,
+    fieldsChanged: boolean,
+  ) => {
     const entityType = findEntityType(ontology, 'database_definition')
     if (!entityType) {
       setError('The Database card type is unavailable.')
       return
     }
-    setNodes((current) => {
-      const existing = current.find((node) => (
+    if (target !== databaseTarget) changeDatabaseTarget(target)
+    if (fieldsChanged) {
+      const existing = nodes.find((node) => (
         node.data.entity?.entityType === 'database_definition'
       ))
-      if (existing) {
-        return current.map((node) => (
-          node.id === existing.id ? withEntityFields(node, fields, ontology) : node
-        ))
-      }
-      const raw = makeEntityNode('database_definition', { x: 0, y: 0 }, ontology)
-      if (!raw) return current
-      raw.app = { ...(raw.app ?? {}), entityType: 'database_definition', fields }
-      raw.text = renderEntityMarkdown(entityType, fields)
-      return [...current, { ...toFlowNode(raw), selected: false }]
-    })
+      setNodes((current) => {
+        if (existing) {
+          return current.map((node) => (
+            node.id === existing.id ? withEntityFields(node, fields, ontology) : node
+          ))
+        }
+        const raw = makeEntityNode('database_definition', { x: 0, y: 0 }, ontology)
+        if (!raw) return current
+        raw.app = { ...(raw.app ?? {}), entityType: 'database_definition', fields }
+        raw.text = renderEntityMarkdown(entityType, fields)
+        return [...current, { ...toFlowNode(raw), selected: false }]
+      })
+      markDirty()
+    }
     setDatabaseSettingsOpen(false)
-    markDirty()
-  }, [markDirty, ontology, setError, setNodes])
+  }, [changeDatabaseTarget, databaseTarget, markDirty, nodes, ontology, setError, setNodes])
 
   const actions = useMemo<CanvasEditorActions>(
     () => ({
@@ -881,6 +899,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     backLabel: trail.length > 1 ? 'Back' : 'All canvases',
     isSystems: isStructured,
     profileId: profile.id,
+    databaseTarget,
     issueCount: validation.validationIssues.length,
     errorCount: validation.validationIssues.filter((issue) => issue.severity === 'error').length,
     canUndo: graph.canUndo,
@@ -977,7 +996,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
             onDismissNotice={dismissNotice}
             error={error}
           />
-          <DatabaseDesignProvider nodes={rawNodes} enabled={isDatabase}>
+          <DatabaseDesignProvider nodes={rawNodes} enabled={isDatabase} target={databaseTarget}>
           <ApiDesignProvider nodes={nodes} enabled={isApi}>
             <NodeEditRequestContext.Provider value={nodeEditRequest}>
             <CanvasWorkspace
@@ -1092,6 +1111,7 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
                 ...emptyEntityFields(databaseDefinitionType),
                 name: title.trim() || 'Database',
               }}
+              initialTarget={databaseTarget}
               onSave={saveDatabaseSettings}
               onClose={() => setDatabaseSettingsOpen(false)}
             />

@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 
 import { createNodeId, getDistrict, getGroupMembers } from '@canvas/contract'
-import type { CanvasNode, Ontology } from '@canvas/contract'
+import type { CanvasNode, DatabaseTarget, Ontology } from '@canvas/contract'
 
 import { convertNodeType } from '../../model/cardTypes'
 import { applyColorToFlowEdge } from '../../model/edgeRelations'
@@ -18,8 +18,10 @@ interface UseCanvasSelectionInput {
   ontology: Ontology
   canUndo: boolean
   canRedo: boolean
-  undoHistory: (snapshot: { nodes: CanvasFlowNode[]; edges: CanvasFlowEdge[] }) => { nodes: CanvasFlowNode[]; edges: CanvasFlowEdge[] } | null
-  redoHistory: (snapshot: { nodes: CanvasFlowNode[]; edges: CanvasFlowEdge[] }) => { nodes: CanvasFlowNode[]; edges: CanvasFlowEdge[] } | null
+  databaseTarget?: DatabaseTarget
+  onRestoreDatabaseTarget?: (target: DatabaseTarget | undefined) => void
+  undoHistory: (snapshot: { nodes: CanvasFlowNode[]; edges: CanvasFlowEdge[]; databaseTarget?: DatabaseTarget }) => { nodes: CanvasFlowNode[]; edges: CanvasFlowEdge[]; databaseTarget?: DatabaseTarget } | null
+  redoHistory: (snapshot: { nodes: CanvasFlowNode[]; edges: CanvasFlowEdge[]; databaseTarget?: DatabaseTarget }) => { nodes: CanvasFlowNode[]; edges: CanvasFlowEdge[]; databaseTarget?: DatabaseTarget } | null
 }
 
 export function useCanvasSelection({
@@ -31,6 +33,8 @@ export function useCanvasSelection({
   ontology,
   canUndo,
   canRedo,
+  databaseTarget,
+  onRestoreDatabaseTarget,
   undoHistory,
   redoHistory,
 }: UseCanvasSelectionInput) {
@@ -104,20 +108,22 @@ export function useCanvasSelection({
   }, [markDirty, setEdges, setNodes])
 
   const undo = useCallback(() => {
-    const snapshot = undoHistory({ nodes, edges })
+    const snapshot = undoHistory({ nodes, edges, databaseTarget })
     if (!snapshot) return
     setNodes(() => snapshot.nodes)
     setEdges(() => snapshot.edges)
+    onRestoreDatabaseTarget?.(snapshot.databaseTarget)
     markDirty()
-  }, [edges, markDirty, nodes, setEdges, setNodes, undoHistory])
+  }, [databaseTarget, edges, markDirty, nodes, onRestoreDatabaseTarget, setEdges, setNodes, undoHistory])
 
   const redo = useCallback(() => {
-    const snapshot = redoHistory({ nodes, edges })
+    const snapshot = redoHistory({ nodes, edges, databaseTarget })
     if (!snapshot) return
     setNodes(() => snapshot.nodes)
     setEdges(() => snapshot.edges)
+    onRestoreDatabaseTarget?.(snapshot.databaseTarget)
     markDirty()
-  }, [edges, markDirty, nodes, redoHistory, setEdges, setNodes])
+  }, [databaseTarget, edges, markDirty, nodes, onRestoreDatabaseTarget, redoHistory, setEdges, setNodes])
 
   const selectAll = useCallback(() => {
     setNodes((current) => current.map((node) => ({

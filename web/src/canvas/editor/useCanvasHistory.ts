@@ -1,12 +1,13 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 
-import { deepEqual } from '@canvas/contract'
+import { deepEqual, type DatabaseTarget } from '@canvas/contract'
 
 import type { CanvasFlowEdge, CanvasFlowNode } from '../model/adapter'
 
 export interface CanvasSnapshot {
   nodes: CanvasFlowNode[]
   edges: CanvasFlowEdge[]
+  databaseTarget?: DatabaseTarget
 }
 
 function cloneSnapshot(snapshot: CanvasSnapshot): CanvasSnapshot {
@@ -28,6 +29,7 @@ function stableSnapshot(snapshot: CanvasSnapshot): CanvasSnapshot {
       delete (copy as Partial<CanvasFlowEdge>).selected
       return copy
     }),
+    databaseTarget: snapshot.databaseTarget,
   }
 }
 

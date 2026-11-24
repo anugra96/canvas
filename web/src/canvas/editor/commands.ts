@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 
 import type { ShortcutBinding } from './commandShortcuts'
+import type { DatabaseTarget } from '@canvas/contract'
 
 type CommandSurface = 'bar' | 'add' | 'overflow' | 'shortcut'
 
@@ -50,6 +51,7 @@ interface CanvasCommandInput {
   backLabel: string
   isSystems: boolean
   profileId: string
+  databaseTarget: DatabaseTarget | undefined
   issueCount: number
   errorCount: number
   canUndo: boolean
@@ -348,6 +350,10 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       surface: 'overflow',
       section: 'export',
       available: input.profileId === 'database',
+      disabled: input.databaseTarget !== 'postgres',
+      description: input.databaseTarget !== 'postgres'
+        ? 'Choose a target in Database settings'
+        : undefined,
       run: input.onExportDatabase,
     },
     {
@@ -357,6 +363,10 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       surface: 'overflow',
       section: 'export',
       available: input.profileId === 'database',
+      disabled: input.databaseTarget !== 'postgres',
+      description: input.databaseTarget !== 'postgres'
+        ? 'Choose a target in Database settings'
+        : undefined,
       run: input.onCopyDatabase,
     },
     {

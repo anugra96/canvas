@@ -15,25 +15,35 @@ import {
 
 import { useDatabaseDesign, type DatabaseTableOption } from './DatabaseDesignContext'
 
-const COMMON_TYPES = [
-  'uuid',
+const NEUTRAL_TYPE_OPTIONS = [
   'text',
-  'character varying(255)',
+  'varchar(255)',
   'integer',
   'bigint',
-  'smallint',
-  'numeric(10,2)',
+  'decimal(10,2)',
   'boolean',
-  'timestamp with time zone',
-  'timestamp without time zone',
+  'uuid',
   'date',
-  'time with time zone',
-  'jsonb',
+  'timestamp',
   'json',
-  'bytea',
+  'binary',
+]
+
+const POSTGRES_NATIVE_TYPES = [
+  'timestamp without time zone',
+  'time with time zone',
+  'time without time zone',
+  'smallint',
+  'jsonb',
   'inet',
   'cidr',
   'macaddr',
+  'real',
+  'double precision',
+  'money',
+  'interval',
+  'xml',
+  'tsvector',
 ]
 
 const ACTIONS: ForeignKeyAction[] = ['no_action', 'restrict', 'cascade', 'set_null', 'set_default']
@@ -313,8 +323,9 @@ export function TableEditor({
   }
 
   const typeOptions = [
-    ...COMMON_TYPES,
+    ...NEUTRAL_TYPE_OPTIONS,
     ...design.enums.map((item) => item.schema === 'public' ? item.name : `${item.schema}.${item.name}`),
+    ...(design.target === 'postgres' ? POSTGRES_NATIVE_TYPES : []),
   ]
 
   return (

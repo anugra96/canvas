@@ -76,6 +76,7 @@ test('build simple_tasks by hand', async ({ page }) => {
   await page.getByLabel('Name', { exact: true }).fill('simple_tasks')
   await page.getByLabel('Server version', { exact: true }).fill('16')
   await page.getByLabel('Extensions', { exact: true }).fill('pgcrypto public')
+  await page.getByRole('combobox', { name: 'Target', exact: true }).selectOption('postgres')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
 
   // 3. Enums (a new card is selected; open it before anything else changes selection)

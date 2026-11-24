@@ -1,5 +1,7 @@
 import { createContext, useContext } from 'react'
 
+import type { DatabaseTarget } from '@canvas/contract'
+
 export interface DatabaseEnumOption {
   schema: string
   name: string
@@ -14,6 +16,7 @@ export interface DatabaseTableOption {
 }
 
 export interface DatabaseDesign {
+  target?: DatabaseTarget
   enums: DatabaseEnumOption[]
   schemas: string[]
   tables: DatabaseTableOption[]

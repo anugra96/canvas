@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import {
+  canvasDatabaseTarget,
   canvasDistrictsEnabled,
   canvasReviewMode,
   mergeCanvas,
+  withCanvasDatabaseTarget,
   withCanvasDistricts,
   withCanvasReviewMode,
   type CanvasDocument,
+  type DatabaseTarget,
   type JsonCanvas,
   type MergeConflict,
   type Ontology,
@@ -31,7 +34,11 @@ interface UseCanvasDocumentInput {
   setNodes: (update: (current: CanvasFlowNode[]) => CanvasFlowNode[]) => void
   setEdges: (update: (current: CanvasFlowEdge[]) => CanvasFlowEdge[]) => void
   setSuppressions: (update: (current: ValidationSuppression[]) => ValidationSuppression[]) => void
-  resetHistory: (snapshot: { nodes: CanvasFlowNode[]; edges: CanvasFlowEdge[] }) => void
+  resetHistory: (snapshot: {
+    nodes: CanvasFlowNode[]
+    edges: CanvasFlowEdge[]
+    databaseTarget?: DatabaseTarget
+  }) => void
   onBack: () => void
   onReloaded?: () => void
 }
@@ -58,6 +65,9 @@ export function useCanvasDocument({
   const [reviewMode, setReviewMode] = useState<ReviewMode>(() => canvasReviewMode(document.canvas))
   const effectiveReviewMode: ReviewMode = reviewModesEnabled ? reviewMode : 'design'
   const [districtsEnabled, setDistrictsEnabled] = useState(() => canvasDistrictsEnabled(document.canvas))
+  const [databaseTarget, setDatabaseTarget] = useState<DatabaseTarget | undefined>(
+    () => canvasDatabaseTarget(document.canvas),
+  )
   const [etag, setEtag] = useState(document.etag)
   const [dirty, setDirty] = useState(false)
   const [status, setStatus] = useState<SaveStatus>('saved')
@@ -75,14 +85,17 @@ export function useCanvasDocument({
 
   const currentCanvas = useCallback(
     (nodeList = nodes, edgeList = edges, base = baseCanvas) =>
-      withCanvasDistricts(
-        withCanvasReviewMode(
-          withValidationSuppressions(fromFlowCanvas(nodeList, edgeList, base), suppressions),
-          effectiveReviewMode,
+      withCanvasDatabaseTarget(
+        withCanvasDistricts(
+          withCanvasReviewMode(
+            withValidationSuppressions(fromFlowCanvas(nodeList, edgeList, base), suppressions),
+            effectiveReviewMode,
+          ),
+          districtsEnabled,
         ),
-        districtsEnabled,
+        databaseTarget,
       ),
-    [baseCanvas, districtsEnabled, edges, effectiveReviewMode, nodes, suppressions],
+    [baseCanvas, databaseTarget, districtsEnabled, edges, effectiveReviewMode, nodes, suppressions],
   )
 
   const changeReviewMode = useCallback((mode: ReviewMode) => {
@@ -96,6 +109,11 @@ export function useCanvasDocument({
     markDirty()
   }, [markDirty])
 
+  const changeDatabaseTarget = useCallback((target: DatabaseTarget | undefined) => {
+    setDatabaseTarget(target)
+    markDirty()
+  }, [markDirty])
+
   const save = useCallback(async (canvasOverride?: JsonCanvas, etagOverride?: string) => {
     const local = canvasOverride ?? currentCanvas()
     setStatus('saving')
@@ -106,6 +124,7 @@ export function useCanvasDocument({
       setBaseCanvas(saved.canvas)
       setReviewMode(canvasReviewMode(saved.canvas))
       setDistrictsEnabled(canvasDistrictsEnabled(saved.canvas))
+      setDatabaseTarget(canvasDatabaseTarget(saved.canvas))
       setSuppressions(() => readValidationSuppressions(saved.canvas))
       setDirty(false)
       setStatus('saved')
@@ -120,11 +139,12 @@ export function useCanvasDocument({
         const flow = toFlowCanvas(merged.canvas, ontology)
         setNodes(() => flow.nodes)
         setEdges(() => flow.edges)
-        resetHistory(flow)
+        resetHistory({ ...flow, databaseTarget: canvasDatabaseTarget(merged.canvas) })
         setBaseCanvas(cause.latest.canvas)
         setEtag(cause.latest.etag)
         setReviewMode(canvasReviewMode(merged.canvas))
         setDistrictsEnabled(canvasDistrictsEnabled(merged.canvas))
+        setDatabaseTarget(canvasDatabaseTarget(merged.canvas))
         setSuppressions(() => readValidationSuppressions(merged.canvas))
         setPendingLocal(local)
         if (merged.conflicts.length > 0) {
@@ -223,11 +243,12 @@ export function useCanvasDocument({
       const flow = toFlowCanvas(latest.canvas, ontology)
       setNodes(() => flow.nodes)
       setEdges(() => flow.edges)
-      resetHistory(flow)
+      resetHistory({ ...flow, databaseTarget: canvasDatabaseTarget(latest.canvas) })
       setBaseCanvas(latest.canvas)
       setEtag(latest.etag)
       setReviewMode(canvasReviewMode(latest.canvas))
       setDistrictsEnabled(canvasDistrictsEnabled(latest.canvas))
+      setDatabaseTarget(canvasDatabaseTarget(latest.canvas))
       setSuppressions(() => readValidationSuppressions(latest.canvas))
       setConflicts([])
       setPendingLocal(null)
@@ -257,6 +278,8 @@ export function useCanvasDocument({
     changeReviewMode,
     districtsEnabled,
     changeDistrictsEnabled,
+    databaseTarget,
+    changeDatabaseTarget,
     dirty,
     status,
     error,

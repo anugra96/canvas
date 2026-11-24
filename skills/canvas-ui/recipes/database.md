@@ -1,12 +1,16 @@
-# Recipe: design a PostgreSQL database by hand
+# Recipe: design a database by hand with a PostgreSQL target
 
 Profile: Database. Order matters: enums and tables first, foreign keys after
 both tables exist.
 
 ```text
-Create canvas (Database) → Database settings → Enums → Tables (columns, PK, checks, indexes)
-  → Foreign keys → Schema descriptions → Tidy database layout → Export DDL → compare
+Create canvas (Database) → Database settings (Target: PostgreSQL) → Enums
+  → Tables (columns, PK, checks, indexes) → Foreign keys → Schema descriptions
+  → Tidy database layout → Export DDL → compare
 ```
+
+New canvases have no target. Tables and enums can be designed first; choose
+PostgreSQL in Database settings when the model is ready to export.
 
 ## 1. Database settings
 
@@ -14,10 +18,15 @@ Create canvas (Database) → Database settings → Enums → Tables (columns, PK
    `dialog "Database settings"`. No Database card is drawn on the canvas; the
    settings update the stored definition behind the scenes. `Save` creates it
    when it is missing. Use the same command to open the dialog again later.
-2. Fill `Name` (required), and as needed `Server version` (e.g. `16`), `Owner`,
+2. `combobox "Target"` sits above the fields: `Not chosen`, `PostgreSQL`,
+   `SQLite (Coming later)` (disabled), `DynamoDB (Coming later)` (disabled).
+   New canvases start at `Not chosen`. Choose `PostgreSQL` to export DDL; the
+   target is saved with the fields in one Save even when no Database card exists.
+3. Fill `Name` (required), and as needed `Server version` (e.g. `16`), `Owner`,
    `Extensions` (one per line: `pgcrypto public` = extension and schema), then
-   click `button "Save"`. `Cancel` and `Escape` discard the draft.
-3. `Extra DDL` is read-only. It holds statements from `Import DDL` only.
+   click `button "Save"`. `Cancel` and `Escape` discard the draft, including the
+   target.
+4. `Extra DDL` is read-only. It holds statements from `Import DDL` only.
 
 ## 2. Enum
 
@@ -30,7 +39,7 @@ Create canvas (Database) → Database settings → Enums → Tables (columns, PK
 ## 3. Table
 
 1. On an empty canvas, `button "Add table"` in the centre panel
-   "Design a PostgreSQL database" opens `dialog "Add table"`. On an existing
+   "Design a database" opens `dialog "Add table"`. On an existing
    canvas, `Add` → `menuitem "Table"`. A Schema lane header also has
    `button "Add table here"`, which opens the same dialog with `Schema` set to
    that lane.
@@ -100,7 +109,9 @@ Fill `Description`, `Done`.
 ## 6. Finish
 
 1. `More canvas actions` → `Tidy database layout`.
-2. `More canvas actions` → `Export DDL` (download) or `Copy DDL`.
+2. `More canvas actions` → `Export DDL` (download) or `Copy DDL`. Both are
+   disabled with "Choose a target in Database settings" until `Target` is
+   `PostgreSQL`.
 3. Compare by meaning, not text. Export writes foreign keys as trailing
    `ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY`, puts `DEFAULT` before
    `NOT NULL`, and may spell casts differently. The safe check: the DDL contains every table, `PRIMARY KEY`, `FOREIGN KEY ... ON DELETE`,
@@ -110,6 +121,7 @@ Fill `Description`, `Done`.
 
 | Sign | Meaning |
 | --- | --- |
+| `Export DDL` is disabled | Choose `PostgreSQL` under `combobox "Target"` in Database settings |
 | Card shows "Double-click to add columns." after an edit | The edit did not save. Reopen and read the alert |
 | `getByLabel('Column N ...')` not found | Row N does not exist yet: click `Add column`. For `identity`, `generated`, or `comment`, first click `More for <col>` |
 | Double-click opens nothing | The card is off-screen or under a dialog. Press `Escape`, click `Fit View`, retry |

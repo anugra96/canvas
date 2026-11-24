@@ -1,6 +1,6 @@
 ---
 name: canvas-ui
-description: Drive the Canvas web app by hand, like a person, to create and edit canvases from scratch. Use when an agent must build or change a canvas through the real UI with Playwright or a browser tool, instead of importing a file or calling the API. Covers Systems (architecture cards and typed lines), API (OpenAPI resources, endpoints, schemas, security; export YAML), and Database (PostgreSQL tables, keys, indexes, enums; export DDL).
+description: Drive the Canvas web app by hand, like a person, to create and edit canvases from scratch. Use when an agent must build or change a canvas through the real UI with Playwright or a browser tool, instead of importing a file or calling the API. Covers Systems (architecture cards and typed lines), API (OpenAPI resources, endpoints, schemas, security; export YAML), and Database (tables, keys, indexes, enums with a PostgreSQL target; export DDL).
 ---
 
 # Canvas UI: build by hand
@@ -69,8 +69,8 @@ the first accessibility read after load can be empty.
 | --- | --- |
 | `button "Add"` | Menu of card types for this profile (`menuitem` per type) |
 | `button "Display"` | Edge and label visibility presets |
-| `button "More canvas actions"` | Replan layout for the profile (then `button "Apply"` in `region "Layout preview"`), `Fit cards to content`, `Zoom to fit`, export for the profile (`Export DDL`, `Export OpenAPI YAML`), `Download .canvas`, `Screenshot`, `Keyboard shortcuts` |
-| `menuitem "Database settings"` | Database canvases: open `dialog "Database settings"`; `Save` updates the stored Database definition, creating it when missing. No Database card is drawn |
+| `button "More canvas actions"` | Replan layout for the profile (then `button "Apply"` in `region "Layout preview"`), `Fit cards to content`, `Zoom to fit`, export for the profile (`Export DDL`, `Export OpenAPI YAML`), `Download .canvas`, `Screenshot`, `Keyboard shortcuts`. Database `Export DDL` and `Copy DDL` need `Target: PostgreSQL` in Database settings |
+| `menuitem "Database settings"` | Database canvases: open `dialog "Database settings"`; `combobox "Target"` chooses `PostgreSQL` (only selectable target today); `Save` updates the target and stored Database definition, creating the definition only when fields change. No Database card is drawn |
 | `button "Add table here"` | In a Schema lane header: open Add table with that lane's schema filled in |
 | `button "Connect"` | Shown when one card is selected (Raw, Systems): click it, then the target card |
 | `combobox "Group owner"` | Shown when one group is selected (Systems, Ownership checks on): picks the owning Actor card; `No owner` makes it a plain group |

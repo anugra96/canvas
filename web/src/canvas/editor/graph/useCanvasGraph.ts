@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 
-import type { Ontology } from '@canvas/contract'
+import type { DatabaseTarget, Ontology } from '@canvas/contract'
 
 import type { CanvasFlowEdge, CanvasFlowNode } from '../../model/adapter'
 import { useCanvasConnections } from './useCanvasConnections'
@@ -23,8 +23,10 @@ interface UseCanvasGraphInput {
   flowRef: React.RefObject<HTMLDivElement | null>
   canUndo: boolean
   canRedo: boolean
-  undoHistory: (snapshot: { nodes: CanvasFlowNode[]; edges: CanvasFlowEdge[] }) => { nodes: CanvasFlowNode[]; edges: CanvasFlowEdge[] } | null
-  redoHistory: (snapshot: { nodes: CanvasFlowNode[]; edges: CanvasFlowEdge[] }) => { nodes: CanvasFlowNode[]; edges: CanvasFlowEdge[] } | null
+  databaseTarget?: DatabaseTarget
+  onRestoreDatabaseTarget?: (target: DatabaseTarget | undefined) => void
+  undoHistory: (snapshot: { nodes: CanvasFlowNode[]; edges: CanvasFlowEdge[]; databaseTarget?: DatabaseTarget }) => { nodes: CanvasFlowNode[]; edges: CanvasFlowEdge[]; databaseTarget?: DatabaseTarget } | null
+  redoHistory: (snapshot: { nodes: CanvasFlowNode[]; edges: CanvasFlowEdge[]; databaseTarget?: DatabaseTarget }) => { nodes: CanvasFlowNode[]; edges: CanvasFlowEdge[]; databaseTarget?: DatabaseTarget } | null
 }
 
 export function useCanvasGraph({
@@ -39,6 +41,8 @@ export function useCanvasGraph({
   flowRef,
   canUndo,
   canRedo,
+  databaseTarget,
+  onRestoreDatabaseTarget,
   undoHistory,
   redoHistory,
 }: UseCanvasGraphInput) {
@@ -62,6 +66,8 @@ export function useCanvasGraph({
     ontology,
     canUndo,
     canRedo,
+    databaseTarget,
+    onRestoreDatabaseTarget,
     undoHistory,
     redoHistory,
   })
