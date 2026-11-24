@@ -7,8 +7,9 @@ import {
   renderEntityMarkdown,
   type EntityFields,
 } from './ontology'
+import { parseTableDefinition, stringifyTableDefinition } from './database/model'
 
-export const CURRENT_CANVAS_DOCUMENT_SCHEMA_VERSION = 3
+export const CURRENT_CANVAS_DOCUMENT_SCHEMA_VERSION = 4
 
 type UnstampedCanvasDocument = Omit<CanvasDocument, 'schemaVersion'> & {
   schemaVersion?: number
@@ -372,6 +373,43 @@ function migrateSchemaKinds(nodes: CanvasNode[], edges: CanvasEdge[]): CanvasNod
   })
 }
 
+function migrateDatabaseTargets(canvas: JsonCanvas): JsonCanvas {
+  if (canvas.app?.profile !== 'database' || canvas.app.target != null) return canvas
+
+  const nodes = (canvas.nodes ?? []).map((node) => {
+    if (node.app?.entityType !== 'table') return node
+    const definition = parseTableDefinition(node.app.fields?.definition)
+    if (!definition) return node
+    let changed = false
+    const columns = definition.columns.map((column) => {
+      if (column.type.trim().toLowerCase() !== 'timestamp') return column
+      changed = true
+      return { ...column, type: 'timestamp without time zone' }
+    })
+    if (!changed) return node
+    return {
+      ...node,
+      app: {
+        ...node.app,
+        fields: {
+          ...(node.app.fields ?? {}),
+          definition: stringifyTableDefinition({ ...definition, columns }),
+        },
+      },
+    }
+  })
+
+  return {
+    ...canvas,
+    nodes,
+    app: {
+      ...canvas.app,
+      target: 'postgres',
+      profileVersion: 2,
+    },
+  }
+}
+
 export const canvasDocumentMigrations: Record<number, CanvasDocumentMigration> = {
   0: (document) => ({ ...document, schemaVersion: 1 }),
   1: (document) => ({
@@ -383,6 +421,11 @@ export const canvasDocumentMigrations: Record<number, CanvasDocumentMigration> =
     ...document,
     schemaVersion: 3,
     canvas: migrateOntologyCanvas(document.canvas),
+  }),
+  3: (document) => ({
+    ...document,
+    schemaVersion: 4,
+    canvas: migrateDatabaseTargets(document.canvas),
   }),
 }
 

@@ -196,8 +196,8 @@ export const API_PROFILE: CanvasProfile = {
 export const DATABASE_PROFILE: CanvasProfile = {
   id: 'database',
   label: 'Database',
-  version: 1,
-  description: 'One PostgreSQL database at table and column level.',
+  version: 2,
+  description: 'One database at table and column level; choose PostgreSQL, SQLite, or DynamoDB as the target.',
   scope: 'container',
   allowUntypedText: false,
   allowUnlistedEntityTypes: false,

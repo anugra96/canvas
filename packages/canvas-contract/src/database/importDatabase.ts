@@ -654,7 +654,7 @@ export function importDatabaseSchema(
   const canvas: JsonCanvas = {
     nodes,
     edges: [],
-    app: profileMetadata(DATABASE_PROFILE),
+    app: { ...profileMetadata(DATABASE_PROFILE), target: 'postgres' },
   }
   const laidOut = layoutDatabaseCanvas(canvas, estimateDatabaseSizes(canvas))
   return {

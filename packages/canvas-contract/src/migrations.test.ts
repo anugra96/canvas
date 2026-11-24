@@ -7,6 +7,8 @@ import {
 } from './migrations'
 import { DEFAULT_ONTOLOGY } from './ontology'
 import { SYSTEMS_PROFILE, validateProfileCanvas } from './profile'
+import { canvasDatabaseTarget } from './databaseTarget'
+import { parseTableDefinition, stringifyTableDefinition } from './database/model'
 
 function legacyDocument(): Omit<CanvasDocument, 'schemaVersion'> {
   return {
@@ -344,7 +346,7 @@ describe('migrateCanvasDocument', () => {
     }
 
     const migrated = migrateCanvasDocument(document)
-    expect(migrated.schemaVersion).toBe(3)
+    expect(migrated.schemaVersion).toBe(CURRENT_CANVAS_DOCUMENT_SCHEMA_VERSION)
     expect(migrated.canvas.app).toMatchObject({ profileVersion: 5 })
 
     const byId = new Map((migrated.canvas.nodes ?? []).map((node) => [node.id, node]))
@@ -416,5 +418,99 @@ describe('migrateCanvasDocument', () => {
       fields: { name: 'Raw service', kind: 'service' },
     })
     expect(migrated.canvas.edges?.[0]?.app).toMatchObject({ relationType: 'depends_on' })
+  })
+
+  it('gives stored Database canvases the Postgres target only when none is set', () => {
+    const cases: Array<{
+      name: string
+      profile: 'database' | 'systems'
+      target?: 'sqlite'
+      profileVersion: number
+      types: string[]
+      expectedTarget: 'postgres' | 'sqlite' | undefined
+      expectedProfileVersion: number
+      expectedTypes: string[]
+    }> = [
+      {
+        name: 'Database canvas without a target',
+        profile: 'database',
+        profileVersion: 1,
+        types: ['timestamp', 'timestamp with time zone', 'jsonb'],
+        expectedTarget: 'postgres',
+        expectedProfileVersion: 2,
+        expectedTypes: ['timestamp without time zone', 'timestamp with time zone', 'jsonb'],
+      },
+      {
+        name: 'Systems canvas',
+        profile: 'systems',
+        profileVersion: 5,
+        types: [],
+        expectedTarget: undefined,
+        expectedProfileVersion: 5,
+        expectedTypes: [],
+      },
+      {
+        name: 'Database canvas with a target',
+        profile: 'database',
+        target: 'sqlite',
+        profileVersion: 1,
+        types: ['timestamp', 'jsonb'],
+        expectedTarget: 'sqlite',
+        expectedProfileVersion: 1,
+        expectedTypes: ['timestamp', 'jsonb'],
+      },
+    ]
+
+    for (const testCase of cases) {
+      const nodes: CanvasNode[] = testCase.types.length === 0 ? [] : [{
+        id: 'table-1',
+        type: 'text',
+        x: 0,
+        y: 0,
+        width: 320,
+        height: 220,
+        text: '',
+        app: {
+          entityType: 'table',
+          fields: {
+            name: 'sample',
+            schema: 'public',
+            definition: stringifyTableDefinition({
+              columns: testCase.types.map((type, index) => ({
+                name: `column_${index}`,
+                type,
+                nullable: true,
+              })),
+              uniques: [],
+              checks: [],
+              foreignKeys: [],
+              indexes: [],
+            }),
+          },
+        },
+      }]
+      const document: CanvasDocument = {
+        ...legacyDocument(),
+        schemaVersion: 3,
+        canvas: {
+          nodes,
+          app: {
+            profile: testCase.profile,
+            profileVersion: testCase.profileVersion,
+            ...(testCase.target ? { target: testCase.target } : {}),
+          },
+        },
+      }
+
+      const migrated = migrateCanvasDocument(document)
+      expect(migrated.schemaVersion, testCase.name).toBe(4)
+      expect(canvasDatabaseTarget(migrated.canvas), testCase.name).toBe(testCase.expectedTarget)
+      expect(migrated.canvas.app?.profileVersion, testCase.name).toBe(testCase.expectedProfileVersion)
+
+      const table = migrated.canvas.nodes?.find((node) => node.app?.entityType === 'table')
+      const definition = table ? parseTableDefinition(table.app?.fields?.definition) : undefined
+      expect(definition?.columns.map((column) => column.type) ?? [], testCase.name)
+        .toEqual(testCase.expectedTypes)
+    }
   })
 })
