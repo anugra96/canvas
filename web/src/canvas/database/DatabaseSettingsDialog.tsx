@@ -78,8 +78,8 @@ export function DatabaseSettingsDialog({
         </header>
 
         <div className="database-settings-fields">
-          <label className="name-dialog-field">
-            Target
+          <label className="entity-field">
+            <span>Target</span>
             <select
               value={target ?? ''}
               onChange={(event) => setTarget((event.target.value || undefined) as DatabaseTarget | undefined)}

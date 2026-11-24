@@ -6126,6 +6126,7 @@ select {
 .command-menu-item span,
 .command-sheet-item span {
   flex: 1;
+  white-space: nowrap;
 }
 
 .command-menu-description {
