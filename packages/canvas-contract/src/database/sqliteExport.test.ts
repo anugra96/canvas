@@ -10,6 +10,7 @@ import { DATABASE_PROFILE, validateProfileCanvas } from '../profile'
 import { exportDatabaseDdl } from './exportDatabase'
 import { importDatabaseSql } from './importDatabase'
 import {
+  nodeTableDefinition,
   stringifyTableDefinition,
   type TableDefinition,
 } from './model'
@@ -227,6 +228,22 @@ describe('SQLite DDL export', () => {
     const canvas = withCanvasDatabaseTarget(imported.canvas, 'sqlite')
     const db = new DatabaseSync(':memory:')
     expect(() => db.exec(exportDatabaseDdl(canvas))).not.toThrow()
+    // Every table keeps its primary key, uniques, and foreign keys: SQLite rejects writes to a
+    // child table whose parent columns are not a primary key or unique.
+    for (const node of canvas.nodes ?? []) {
+      if (node.app?.entityType !== 'table') continue
+      const definition = nodeTableDefinition(node)
+      if (!definition) continue
+      const schema = String(node.app.fields?.schema ?? 'public')
+      const table = schema === 'public' ? String(node.app.fields?.name) : `${schema}_${String(node.app.fields?.name)}`
+      const primaryKey = (db.prepare('SELECT name FROM pragma_table_info(?) WHERE pk > 0 ORDER BY pk').all(table) as Array<{ name: string }>)
+        .map((row) => row.name)
+      expect(primaryKey, `${table} primary key`).toEqual(definition.primaryKey?.columns ?? [])
+      const uniques = (db.prepare("SELECT count(*) AS n FROM pragma_index_list(?) WHERE origin = 'u'").get(table) as { n: number }).n
+      expect(uniques, `${table} uniques`).toBe(definition.uniques.length)
+      const foreignKeys = (db.prepare('SELECT count(DISTINCT id) AS n FROM pragma_foreign_key_list(?)').get(table) as { n: number }).n
+      expect(foreignKeys, `${table} foreign keys`).toBe(definition.foreignKeys.length)
+    }
     db.close()
   })
 
@@ -304,6 +321,24 @@ describe('SQLite DDL export', () => {
   })
 })
 
+
+describe('SQLite defaults from pg_dump', () => {
+  // pg_dump writes enum and json defaults as casts of a string literal; the literal is the default.
+  it('keeps a cast string-literal default as the literal', async () => {
+    const imported = await importDatabaseSql(fixture('pg-dump-synthetic.sql'), { wasm })
+    const canvas = withCanvasDatabaseTarget(imported.canvas, 'sqlite')
+    const db = new DatabaseSync(':memory:')
+    db.exec(exportDatabaseDdl(canvas))
+    const defaultOf = (table: string, column: string) => (
+      db.prepare('SELECT dflt_value AS value FROM pragma_table_info(?) WHERE name = ?').get(table, column) as { value: string | null }
+    ).value
+    expect(defaultOf('app_member', 'role')).toBe("'viewer'")
+    expect(defaultOf('app_event', 'payload')).toBe("'{}'")
+    const codes = validateProfileCanvas(canvas, DATABASE_PROFILE).map((issue) => issue.code)
+    expect(codes).not.toContain('sqlite_default_unsupported')
+    db.close()
+  })
+})
 
 describe('SQLite Review', () => {
   function sqliteIssues() {

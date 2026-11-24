@@ -1084,6 +1084,8 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
           {addTableRequest && (
             <AddTableDialog
               initialSchema={addTableRequest.schema}
+              // SQLite cannot generate a uuid; a bigint identity key exports as INTEGER PRIMARY KEY.
+              initialIdType={databaseTarget === 'sqlite' ? 'bigint' : 'uuid'}
               schemas={Array.from(new Set([
                 'public',
                 ...nodes.flatMap((node) => {

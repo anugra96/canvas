@@ -272,6 +272,10 @@ function sqliteDefault(value: string): { supported: boolean; sql?: string } {
   if (lower === 'false') return { supported: true, sql: '0' }
   if (lower === 'null') return { supported: true, sql: 'NULL' }
   if (/^'(?:[^']|'')*'$/.test(text)) return { supported: true, sql: text }
+  // pg_dump writes enum and json defaults as a cast of a string literal: keep the literal.
+  const castLiteral = /^('(?:[^']|'')*')::[A-Za-z_"][\w."\s]*(?:\[\])?$/.exec(text)
+    ?? /^CAST\s*\(\s*('(?:[^']|'')*')\s+AS\s+[A-Za-z_"][\w."\s]*(?:\[\])?\s*\)$/i.exec(text)
+  if (castLiteral) return { supported: true, sql: castLiteral[1] }
   if (/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/.test(text)) {
     return { supported: true, sql: text }
   }
@@ -498,7 +502,11 @@ export function planSqliteExport(canvas: Pick<JsonCanvas, 'nodes'>): SqliteExpor
       table,
       exportName,
       columns: columnPlans,
-      ...(rowidName ? {} : { primaryKeyColumns: pkColumns, primaryKeyName: definition.primaryKey?.name }),
+      // Only an identity integer key becomes the column-level INTEGER PRIMARY KEY; every other
+      // primary key (text, uuid, composite) stays a table constraint.
+      ...(columnPlans.some((plan) => plan.rowid)
+        ? {}
+        : { primaryKeyColumns: pkColumns, primaryKeyName: definition.primaryKey?.name }),
       checks,
       indexes,
       issues: tableIssues,

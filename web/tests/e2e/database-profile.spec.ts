@@ -109,6 +109,11 @@ test('imports DDL, adds a column, and exports it in the DDL', async ({ page }) =
 
   await addTable(page, 'audit_log', 'app')
   await chooseTarget(page, 'sqlite')
+  // Under SQLite a new table starts with a bigint identity key (INTEGER PRIMARY KEY), not a uuid SQLite cannot fill.
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Table', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Add table' }).getByLabel('Id column')).toHaveValue('bigint')
+  await page.getByRole('dialog', { name: 'Add table' }).getByRole('button', { name: 'Cancel', exact: true }).click()
   const sqliteDdl = await exportDdl(page)
   expect(sqliteDdl).toContain('PRAGMA foreign_keys = ON;')
   expect(sqliteDdl).toContain('STRICT')
