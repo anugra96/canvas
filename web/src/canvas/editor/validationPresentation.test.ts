@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  DATABASE_PROFILE,
   DEFAULT_ONTOLOGY,
   SYSTEMS_PROFILE,
   type CanvasProfileIssue,
@@ -103,5 +104,34 @@ describe('validation presentation', () => {
     expect(groups).toHaveLength(1)
     expect(groups[0]?.issues).toHaveLength(2)
     expect(groups[0]?.safeFixes).toHaveLength(2)
+  })
+})
+
+
+describe('SQLite review presentation', () => {
+  const SQLITE_CODES: Array<[CanvasProfileIssue['code'], string]> = [
+    ['sqlite_namespace_flattened', 'Schema flattened in SQLite'],
+    ['sqlite_name_collision', 'SQLite table name collision'],
+    ['sqlite_decimal_text', 'Decimal stored as text in SQLite'],
+    ['sqlite_type_any', 'Type not available in SQLite'],
+    ['sqlite_identity_dropped', 'Identity removed in SQLite'],
+    ['sqlite_default_unsupported', 'Default removed in SQLite'],
+    ['sqlite_expression_unsupported', 'Expression removed in SQLite'],
+    ['sqlite_index_method', 'Index method removed in SQLite'],
+    ['sqlite_postgres_only', 'PostgreSQL-only statement removed in SQLite'],
+  ]
+
+  it.each(SQLITE_CODES)('presents %s under the SQLite category', (code, label) => {
+    const groups = buildValidationGroups([
+      {
+        issue: { code, severity: 'warning', message: 'SQLite target rule.' },
+        connections: 0,
+        score: 0,
+      },
+    ], [], [], DATABASE_PROFILE, DEFAULT_ONTOLOGY)
+
+    expect(groups).toHaveLength(1)
+    expect(groups[0]).toMatchObject({ label, category: 'SQLite' })
+    expect(groups[0]?.why.trim()).not.toBe('')
   })
 })

@@ -7,7 +7,8 @@ import {
   getEntityMeta,
   type Ontology,
 } from './ontology'
-import { DATABASE_TARGETS } from './databaseTarget'
+import { DATABASE_TARGETS, canvasDatabaseTarget } from './databaseTarget'
+import { validateSqliteTarget } from './database/targets/sqlite'
 import { canvasDistrictsEnabled } from './districts'
 import { validateZoning } from './zoning'
 
@@ -87,6 +88,15 @@ export const PROFILE_ISSUE_CODES = [
   'district_without_owner',
   'shared_landmark',
   'route_bypasses_gate',
+  'sqlite_namespace_flattened',
+  'sqlite_name_collision',
+  'sqlite_decimal_text',
+  'sqlite_type_any',
+  'sqlite_identity_dropped',
+  'sqlite_default_unsupported',
+  'sqlite_expression_unsupported',
+  'sqlite_index_method',
+  'sqlite_postgres_only',
 ] as const
 
 export type ProfileIssueCode = (typeof PROFILE_ISSUE_CODES)[number]
@@ -354,6 +364,10 @@ export function validateProfileCanvas(
 
   if (profile.id === 'systems' && canvasDistrictsEnabled(canvas)) {
     issues.push(...validateZoning(canvas))
+  }
+
+  if (profile.id === 'database' && canvasDatabaseTarget(canvas) === 'sqlite') {
+    issues.push(...validateSqliteTarget(canvas))
   }
 
   return issues

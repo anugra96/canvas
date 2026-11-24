@@ -47,6 +47,15 @@ export const ISSUE_TIERS: Record<ProfileIssueCode, IssueTier> = {
   district_without_owner: 'publish',
   shared_landmark: 'design',
   route_bypasses_gate: 'design',
+  sqlite_namespace_flattened: 'design',
+  sqlite_name_collision: 'integrity',
+  sqlite_decimal_text: 'design',
+  sqlite_type_any: 'design',
+  sqlite_identity_dropped: 'design',
+  sqlite_default_unsupported: 'design',
+  sqlite_expression_unsupported: 'design',
+  sqlite_index_method: 'design',
+  sqlite_postgres_only: 'design',
 }
 
 export const MODE_TIERS: Record<ReviewMode, ReadonlySet<IssueTier>> = {

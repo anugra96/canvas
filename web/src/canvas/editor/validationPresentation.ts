@@ -198,6 +198,42 @@ const ISSUE_COPY: Record<CanvasProfileIssue['code'], { label: string; why: strin
     label: "Call skips the other team's API",
     why: "Call the other team's API or queue, not its database or internal services.",
   },
+  sqlite_namespace_flattened: {
+    label: 'Schema flattened in SQLite',
+    why: 'Rename the table or keep the <schema>_ prefix in the SQLite export.',
+  },
+  sqlite_name_collision: {
+    label: 'SQLite table name collision',
+    why: 'Rename one table so their flattened names differ.',
+  },
+  sqlite_decimal_text: {
+    label: 'Decimal stored as text in SQLite',
+    why: 'Use REAL or accept text values in SQLite.',
+  },
+  sqlite_type_any: {
+    label: 'Type not available in SQLite',
+    why: 'Choose a neutral type or accept ANY in the SQLite export.',
+  },
+  sqlite_identity_dropped: {
+    label: 'Identity removed in SQLite',
+    why: 'Keep identity on the integer primary key or set the value yourself.',
+  },
+  sqlite_default_unsupported: {
+    label: 'Default removed in SQLite',
+    why: 'Replace the default with a literal, now(), or CURRENT_TIMESTAMP.',
+  },
+  sqlite_expression_unsupported: {
+    label: 'Expression removed in SQLite',
+    why: 'Rewrite the expression without PostgreSQL-only syntax.',
+  },
+  sqlite_index_method: {
+    label: 'Index method removed in SQLite',
+    why: 'Use a btree index for SQLite.',
+  },
+  sqlite_postgres_only: {
+    label: 'PostgreSQL-only statement removed in SQLite',
+    why: 'Keep extensions and Extra DDL on PostgreSQL canvases.',
+  },
 }
 
 function isZoningCode(code: CanvasProfileIssue['code']): boolean {
@@ -208,6 +244,7 @@ function isZoningCode(code: CanvasProfileIssue['code']): boolean {
 }
 
 function issueCategory(code: CanvasProfileIssue['code']): string {
+  if (code.startsWith('sqlite_')) return 'SQLite'
   if (isZoningCode(code)) return 'Ownership'
   if (code.startsWith('schema_')) return 'Schema'
   if (code.startsWith('example_')) return 'Examples'

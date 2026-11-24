@@ -1,4 +1,5 @@
 import type { CanvasNode, JsonCanvas } from '../../jsonCanvas'
+import type { CanvasProfileIssue } from '../../profile'
 import type { ColumnTypeClassification } from '../columnTypes'
 import { classifyColumnType } from '../columnTypes'
 import {
@@ -491,6 +492,7 @@ export function planSqliteExport(canvas: Pick<JsonCanvas, 'nodes'>): SqliteExpor
       }
       return { index, keep: true }
     })
+    const indexIssues = indexes.flatMap((index) => index.issue ? [index.issue] : [])
 
     tablePlans.push({
       table,
@@ -501,7 +503,7 @@ export function planSqliteExport(canvas: Pick<JsonCanvas, 'nodes'>): SqliteExpor
       indexes,
       issues: tableIssues,
     })
-    issues.push(...tableIssues)
+    issues.push(...tableIssues, ...indexIssues)
   }
 
   let extraIssue: SqliteTargetIssue | undefined
@@ -648,6 +650,17 @@ export function exportSqliteDdl(canvas: JsonCanvas): string {
   }
 
   return `${blocks.join('\n\n')}\n`
+}
+
+export function validateSqliteTarget(
+  canvas: Pick<JsonCanvas, 'nodes'>,
+): CanvasProfileIssue[] {
+  return planSqliteExport(canvas).issues.map((issue) => ({
+    code: issue.code,
+    severity: issue.severity,
+    message: issue.message,
+    nodeId: issue.nodeId,
+  }))
 }
 
 export const SQLITE_TARGET: DatabaseTargetAdapter = {

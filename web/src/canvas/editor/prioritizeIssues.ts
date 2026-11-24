@@ -51,6 +51,15 @@ const CODE_WEIGHT: Record<CanvasProfileIssue['code'], number> = {
   district_without_owner: 57,
   shared_landmark: 46,
   route_bypasses_gate: 47,
+  sqlite_name_collision: 89,
+  sqlite_namespace_flattened: 44,
+  sqlite_decimal_text: 38,
+  sqlite_type_any: 42,
+  sqlite_identity_dropped: 36,
+  sqlite_default_unsupported: 41,
+  sqlite_expression_unsupported: 43,
+  sqlite_index_method: 32,
+  sqlite_postgres_only: 31,
 }
 
 function nodeType(node: CanvasFlowNode | undefined): string {

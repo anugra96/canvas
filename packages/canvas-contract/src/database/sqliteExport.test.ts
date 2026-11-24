@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { CanvasNode, JsonCanvas } from '../jsonCanvas'
 import { withCanvasDatabaseTarget } from '../databaseTarget'
+import { DATABASE_PROFILE, validateProfileCanvas } from '../profile'
 import { exportDatabaseDdl } from './exportDatabase'
 import { importDatabaseSql } from './importDatabase'
 import {
@@ -91,6 +92,8 @@ function smallCanvas(): JsonCanvas {
       { name: 'token', type: 'text', nullable: true, default: 'gen_random_uuid()' },
       { name: 'import_ref', type: 'integer', nullable: true, identity: 'by_default' },
       { name: 'email_upper', type: 'text', nullable: true, generated: 'lower(email)' },
+      { name: 'budget', type: 'decimal(10,2)', nullable: true },
+      { name: 'search', type: 'tsvector', nullable: true },
     ],
     primaryKey: { name: 'users_pkey', columns: ['id'] },
     uniques: [],
@@ -158,6 +161,26 @@ function smallCanvas(): JsonCanvas {
 
 function sqliteScript(): string {
   return exportDatabaseDdl(smallCanvas())
+}
+
+function collisionCanvas(): JsonCanvas {
+  const definition = (name: string): TableDefinition => ({
+    columns: [{ name: 'id', type: 'integer', nullable: false }],
+    primaryKey: { name: `${name}_pkey`, columns: ['id'] },
+    uniques: [],
+    checks: [],
+    foreignKeys: [],
+    indexes: [],
+  })
+  return {
+    nodes: [
+      databaseNode('database'),
+      tableNode('public_table', 'app_users', 'public', definition('app_users')),
+      tableNode('app_table', 'users', 'app', definition('users')),
+    ],
+    edges: [],
+    app: { profile: 'database', profileVersion: 2, target: 'sqlite' },
+  }
 }
 
 const TYPE_CASES: Array<[string, string, string[]]> = [
@@ -278,5 +301,78 @@ describe('SQLite DDL export', () => {
     expect(ddl).toContain('-- SQLite: Extra DDL has no SQLite equivalent')
     expect(ddl).not.toContain('CREATE INDEX users_email_idx')
     expect(ddl).not.toContain('CREATE INDEX notes_code_idx')
+  })
+})
+
+
+describe('SQLite Review', () => {
+  function sqliteIssues() {
+    return validateProfileCanvas(smallCanvas(), DATABASE_PROFILE)
+      .filter((issue) => issue.code.startsWith('sqlite_'))
+  }
+
+  it('only runs SQLite rules for the sqlite target', () => {
+    expect(sqliteIssues().length).toBeGreaterThan(0)
+    const postgres = validateProfileCanvas(
+      withCanvasDatabaseTarget(smallCanvas(), 'postgres'),
+      DATABASE_PROFILE,
+    )
+    expect(postgres.filter((issue) => issue.code.startsWith('sqlite_'))).toEqual([])
+  })
+
+  const ISSUE_EXPECTATIONS: Array<{
+    code: string
+    nodeId: string
+    fragment: string
+  }> = [
+    { code: 'sqlite_namespace_flattened', nodeId: 'notes', fragment: 'app.notes' },
+    { code: 'sqlite_decimal_text', nodeId: 'users', fragment: '"budget"' },
+    { code: 'sqlite_type_any', nodeId: 'users', fragment: '"search"' },
+    { code: 'sqlite_identity_dropped', nodeId: 'users', fragment: '"import_ref"' },
+    { code: 'sqlite_default_unsupported', nodeId: 'users', fragment: 'gen_random_uuid()' },
+    { code: 'sqlite_expression_unsupported', nodeId: 'users', fragment: 'users_created_cast' },
+    { code: 'sqlite_index_method', nodeId: 'users', fragment: 'users_email_idx' },
+  ]
+
+  it.each(ISSUE_EXPECTATIONS)('points $code at $nodeId and names the item', ({ code, nodeId, fragment }) => {
+    const issue = sqliteIssues().find((candidate) => (
+      candidate.code === code && candidate.message.includes(fragment)
+    ))
+    expect(issue).toMatchObject({ nodeId, severity: 'warning' })
+  })
+
+  it('matches every commented-out script item with exactly one SQLite issue', () => {
+    const comments = sqliteScript()
+      .split('\n')
+      .filter((line) => line.startsWith('-- SQLite: '))
+      .map((line) => line.slice('-- SQLite: '.length))
+    const issues = sqliteIssues()
+
+    expect(comments.length).toBeGreaterThan(0)
+    for (const message of comments) {
+      expect(issues.filter((issue) => issue.message === message)).toHaveLength(1)
+    }
+    expect(issues.filter((issue) => comments.includes(issue.message))).toHaveLength(comments.length)
+  })
+
+  const KEPT_ITEMS = [
+    'length(email) > 0',
+    'lower(email)',
+    'notes_active_idx',
+    'CURRENT_TIMESTAMP',
+    "DEFAULT 'active'",
+  ]
+
+  it.each(KEPT_ITEMS)('reports no SQLite issue for kept %s', (kept) => {
+    expect(sqliteIssues().filter((issue) => issue.message.includes(kept))).toEqual([])
+  })
+
+  it('reports a flattened name collision as an error', () => {
+    const issues = validateProfileCanvas(collisionCanvas(), DATABASE_PROFILE)
+      .filter((issue) => issue.code === 'sqlite_name_collision')
+    expect(issues).toHaveLength(2)
+    expect(issues.map((issue) => issue.nodeId).sort()).toEqual(['app_table', 'public_table'])
+    expect(issues.every((issue) => issue.severity === 'error')).toBe(true)
+    expect(issues.every((issue) => issue.message.includes('app_users'))).toBe(true)
   })
 })

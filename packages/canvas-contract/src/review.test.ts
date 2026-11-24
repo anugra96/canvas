@@ -24,6 +24,7 @@ const TIER_CODES: Record<IssueTier, ProfileIssueCode[]> = {
     'ref_unresolved',
     'operation_duplicate',
     'path_parameter_mismatch',
+    'sqlite_name_collision',
   ],
   design: [
     'missing_relation_type',
@@ -42,6 +43,14 @@ const TIER_CODES: Record<IssueTier, ProfileIssueCode[]> = {
     'endpoint_stale',
     'shared_landmark',
     'route_bypasses_gate',
+    'sqlite_namespace_flattened',
+    'sqlite_decimal_text',
+    'sqlite_type_any',
+    'sqlite_identity_dropped',
+    'sqlite_default_unsupported',
+    'sqlite_expression_unsupported',
+    'sqlite_index_method',
+    'sqlite_postgres_only',
   ],
   publish: [
     'missing_required_field',
