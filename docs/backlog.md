@@ -24,9 +24,10 @@ change as the Review rule, planner law, or rendering that reads it.
 
 | # | Item | Spec | Note |
 | --- | --- | --- | --- |
-| D1 | Database targets Phase 1: neutral types, `app.target`, Postgres behind an adapter, Target select | `database-targets.md` | Draft; 4 open questions await review |
-| D2 | Rows preview with neutral validation (sample and test rows) | `database-targets.md` Phase 2 | After D1; work order drafted 2026-11-23 |
-| D3 | SQLite target, then DynamoDB target with access patterns | `database-targets.md` Phases 3, 4 | |
+| D1 | Database targets Phase 1: neutral types, `app.target`, Postgres behind an adapter, Target select | `database-targets.md` | Built 2026-11-24 (`9ca0c18`..`7331ff9`) |
+| D2 | Rows preview: sample and test rows typed like a markdown table, validated against neutral types and keys | `database-targets.md` Phase 2 | Built 2026-11-24 (`a9a3422`..`5cc4b6f`) |
+| D3 | SQLite target: types, rules, DDL export | `database-targets.md` Phase 3 | Work order drafted 2026-11-24 |
+| D4 | DynamoDB target with access pattern cards | `database-targets.md` Phase 4 | After D3 |
 
 ## Beside the main line
 

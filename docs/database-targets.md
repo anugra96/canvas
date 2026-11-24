@@ -1,6 +1,6 @@
 # Database Targets
 
-Status: Accepted (2026-11-23), not built
+Status: Accepted (2026-11-23). Phase 1 built (`9ca0c18`..`7331ff9`), Phase 2 built (`a9a3422`..`5cc4b6f`); Phases 3–5 not built
 Applies to: Database canvases. Extends `database-profile.md`; replaces its "PostgreSQL only" decision.
 
 ## Decision
@@ -119,9 +119,37 @@ Publish blocks export.
 
 ## Sample rows
 
-The Rows preview (planned in the table work order) validates against neutral
+The Rows preview (Edit Table > Rows) validates against neutral
 types first (required, type, key uniqueness, FK presence among sample rows), then
 the target's limits (integer ranges, `varchar(n)`, DynamoDB item size).
+
+Built (2026-11-24): two row sets, Sample rows (saved on the table's `samples`
+field, 20) and Test data (session only, 1,000). Cells are plain text typed like a
+markdown table: Tab and Enter move between cells and add a row at the end; an
+all-empty row is a draft and is not counted or saved. Paste accepts a markdown
+table, CSV with a header row, or a JSON array.
+
+## SQLite (Phase 3)
+
+Export writes one script that runs in `sqlite3` as is. What PostgreSQL has and
+SQLite does not becomes a Review issue and, in the script, a `--` comment, never
+a failing statement.
+
+| Model | SQLite export | Review (`sqlite_` codes) |
+| --- | --- | --- |
+| Script header | `PRAGMA foreign_keys = ON;` | — |
+| Table | `CREATE TABLE … STRICT`; foreign keys inline (SQLite has no `ALTER TABLE ADD CONSTRAINT`) | — |
+| Schema other than `public` | Name flattened to `<schema>_<table>` | Warning: namespace flattened; error when two names collide |
+| Neutral types | As the Neutral types table (`varchar(n)`, `boolean`, `json`, enum become `TEXT`/`INTEGER` plus a `CHECK`) | — |
+| `decimal(p,s)` | `TEXT` (exact) | Warning: stored as text |
+| Postgres native types | `smallint` → `INTEGER`; `real`, `double precision` → `REAL`; `jsonb` → `TEXT` + `json_valid`; time, interval, inet, cidr, macaddr → `TEXT`; others → `ANY` | Warning on `ANY` |
+| Single-column integer primary key with identity | `INTEGER PRIMARY KEY` | — |
+| Identity elsewhere | Omitted | Warning |
+| Defaults | Literals kept (`true`/`false` → `1`/`0`); `now()`, `CURRENT_TIMESTAMP` → `CURRENT_TIMESTAMP`; other function defaults (`gen_random_uuid()`) commented out | Warning per unsupported default |
+| CHECK, generated, partial index `WHERE` | Copied; an expression with Postgres-only syntax (`::`, `~`, `ILIKE`, `SIMILAR TO`, unknown functions) is commented out | Warning per commented-out expression |
+| Index method other than btree | Commented out | Warning |
+| Comments | `--` lines | — |
+| Extensions, Extra DDL | Commented out | Warning when present |
 
 ## UI
 
