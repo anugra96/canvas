@@ -17,6 +17,7 @@ export interface RowGridRow {
   key: string | number
   index: number
   valid: boolean
+  draft?: boolean
   cells: Record<string, RowGridCell>
   messages?: string[]
 }
@@ -57,9 +58,12 @@ export function RowGrid({
         <tbody>
           {rows.map((row) => (
             <Fragment key={row.key}>
-              <tr className={row.valid ? 'valid' : 'invalid'}>
-                <td className="schema-row-status" title={row.valid ? 'Valid' : 'Invalid'}>
-                  {row.valid ? '✓' : '✗'} {row.index + 1}
+              <tr className={row.draft ? 'draft' : row.valid ? 'valid' : 'invalid'}>
+                <td
+                  className="schema-row-status"
+                  title={row.draft ? 'Draft row' : row.valid ? 'Valid' : 'Invalid'}
+                >
+                  {row.draft ? row.index + 1 : `${row.valid ? '✓' : '✗'} ${row.index + 1}`}
                 </td>
                 {columns.map((column) => {
                   const cell = row.cells[column.key]

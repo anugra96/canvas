@@ -510,6 +510,7 @@ test('previews sample rows and validates pasted test rows in the table editor', 
   await expect(editor.getByText('1 of 1 rows valid', { exact: true })).toBeVisible()
   await expect(editor.getByLabel('Sample row 1 name', { exact: true })).toHaveValue('sample')
 
+  await editor.getByLabel('Sample row 1 id', { exact: true }).fill('1')
   await editor.getByLabel('Sample row 1 name', { exact: true }).fill('')
   await expect(editor.getByText('Required', { exact: true })).toBeVisible()
   await expect(editor.getByText('0 of 1 rows valid', { exact: true })).toBeVisible()

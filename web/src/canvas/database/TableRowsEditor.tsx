@@ -1,5 +1,5 @@
 import { Plus } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 import {
   classifyColumnType,
@@ -16,8 +16,10 @@ import {
 
 import { RowGrid, type RowGridCell, type RowGridColumn, type RowGridRow } from '../rows/RowGrid'
 import { parseCsv } from '../rows/parseCsv'
+import { isMarkdownTable, parseMarkdownTable } from '../rows/parseMarkdownTable'
 import { dateTimeInputValue, rfc3339FromLocalDateTime } from '../schema/rowValues'
 import { useDatabaseDesign } from './DatabaseDesignContext'
+import { savedTableRows, tableRowsSummary } from './tableRowDrafts'
 
 const SAMPLE_LIMIT = 20
 const TEST_LIMIT = 1000
@@ -61,17 +63,24 @@ function parsePastedRows(text: string, columns: TableColumn[]): {
     return { rows, ignored: [...ignored] }
   }
 
-  const table = parseCsv(text)
-  const header = (table.shift() ?? []).map((name) => name.trim())
+  const table = isMarkdownTable(text)
+    ? markdownRows(text)
+    : parseCsv(text).map((values) => values.map((value) => value === '' ? null : value))
+  const header = (table.shift() ?? []).map((name) => (name ?? '').trim())
   const indexes = header.flatMap((name, index) => (
     known.has(name) ? [[index, name] as const] : []
   ))
   const ignored = [...new Set(header.filter((name) => name && !known.has(name)))]
   const rows = table.map((values) => Object.fromEntries(indexes.map(([index, name]) => {
-    const value = values[index] ?? ''
-    return [name, value === '' ? null : value]
+    const value = values[index] ?? null
+    return [name, value]
   })))
   return { rows, ignored }
+}
+
+function markdownRows(text: string): Array<Array<string | null>> {
+  const { header, rows } = parseMarkdownTable(text)
+  return [header, ...rows]
 }
 
 export function TableRowsEditor({
@@ -89,7 +98,16 @@ export function TableRowsEditor({
 }) {
   const design = useDatabaseDesign()
   const parsedSamples = useMemo(() => parseTableSamplesValue(samplesSource), [samplesSource])
-  const samples = parsedSamples.rows
+  const sourceSamples = parsedSamples.rows
+  const sourceSignature = useMemo(() => JSON.stringify(sourceSamples), [sourceSamples])
+  const [localSamples, setLocalSamples] = useState<TableRow[] | null>(null)
+  const lastSentSamples = useRef<string | null>(null)
+  useEffect(() => {
+    if (lastSentSamples.current === sourceSignature) return
+    lastSentSamples.current = sourceSignature
+    setLocalSamples(null)
+  }, [sourceSignature])
+  const samples = localSamples ?? sourceSamples
   const [showInvalidOnly, setShowInvalidOnly] = useState(false)
   const [pasteOpen, setPasteOpen] = useState(false)
   const [pasteText, setPasteText] = useState('')
@@ -121,6 +139,14 @@ export function TableRowsEditor({
     () => validateTableRows(definition, testRows, context),
     [context, definition, testRows],
   )
+  const sampleSummary = useMemo(
+    () => tableRowsSummary(samples, definition.columns, sampleValidation),
+    [definition.columns, sampleValidation, samples],
+  )
+  const testSummary = useMemo(
+    () => tableRowsSummary(testRows, definition.columns, testValidation),
+    [definition.columns, testValidation, testRows],
+  )
 
   const columnConfig = useMemo(() => new Map(definition.columns.map((column) => {
     const classification = classifyColumnType(column.type, enumNames)
@@ -142,8 +168,15 @@ export function TableRowsEditor({
     }
   })
 
+  function commitSamples(next: TableRow[]): void {
+    setLocalSamples(next)
+    const saved = savedTableRows(next, definition.columns)
+    lastSentSamples.current = JSON.stringify(saved)
+    onChangeSamples(saved)
+  }
+
   function setSampleCell(index: number, column: string, value: string | null): void {
-    onChangeSamples(samples.map((row, at) => (
+    commitSamples(samples.map((row, at) => (
       at === index ? { ...row, [column]: value } : row
     )))
   }
@@ -155,16 +188,21 @@ export function TableRowsEditor({
   }
 
   function gridRows(
-    entries: Array<{ row: TableRow; index: number; result: TableRowValidation['rows'][number] }>,
+    entries: Array<{
+      row: TableRow
+      index: number
+      result: TableRowValidation['rows'][number]
+      draft: boolean
+    }>,
     kind: 'sample' | 'test',
   ): RowGridRow[] {
     const prefix = kind === 'sample' ? 'Sample' : 'Test'
-    return entries.map(({ row, index, result }) => {
+    return entries.map(({ row, index, result, draft }) => {
       const cells: Record<string, RowGridCell> = {}
       for (const column of definition.columns) {
         const label = `${prefix} row ${index + 1} ${column.name}`
         const config = columnConfig.get(column.name)
-        const message = result.cells[column.name]
+        const message = draft ? undefined : result.cells[column.name]
         cells[column.name] = {
           content: (
             <TableRowCell
@@ -191,7 +229,8 @@ export function TableRowsEditor({
       return {
         key: `${kind}-${index}`,
         index,
-        valid: result.valid,
+        valid: !draft && result.valid,
+        draft,
         cells,
       }
     })
@@ -199,12 +238,12 @@ export function TableRowsEditor({
 
   function addSampleRow(): void {
     if (samples.length >= SAMPLE_LIMIT) return
-    onChangeSamples([...samples, {}])
+    commitSamples([...samples, {}])
   }
 
   function generateSampleRow(): void {
     if (samples.length >= SAMPLE_LIMIT || definition.columns.length === 0) return
-    onChangeSamples([...samples, generateTableRow(definition, context, samples)])
+    commitSamples([...samples, generateTableRow(definition, context, samples)])
   }
 
   function importRows(): void {
@@ -224,8 +263,9 @@ export function TableRowsEditor({
 
   const visibleTestRows = testRows.flatMap((row, index) => {
     const result = testValidation.rows[index]!
-    if (showInvalidOnly && result.valid) return []
-    return [{ row, index, result }]
+    const draft = testSummary.drafts[index] ?? false
+    if (showInvalidOnly && !draft && result.valid) return []
+    return [{ row, index, result, draft }]
   })
 
   return (
@@ -234,7 +274,7 @@ export function TableRowsEditor({
         <header className="schema-row-set-head">
           <div>
             <h3>Sample rows</h3>
-            <span>{sampleValidation.validCount} of {samples.length} rows valid</span>
+            <span>{sampleSummary.validCount} of {sampleSummary.countedRows} rows valid</span>
           </div>
           <div className="schema-row-actions">
             <span className="database-row-limit">{samples.length} of {SAMPLE_LIMIT} rows</span>
@@ -261,10 +301,15 @@ export function TableRowsEditor({
         <RowGrid
           columns={gridColumns}
           rows={gridRows(
-            samples.map((row, index) => ({ row, index, result: sampleValidation.rows[index]! })),
+            samples.map((row, index) => ({
+              row,
+              index,
+              result: sampleValidation.rows[index]!,
+              draft: sampleSummary.drafts[index] ?? false,
+            })),
             'sample',
           )}
-          onDelete={(index) => onChangeSamples(samples.filter((_, at) => at !== index))}
+          onDelete={(index) => commitSamples(samples.filter((_, at) => at !== index))}
           deleteLabel={(index) => `Delete sample row ${index + 1}`}
           emptyText="Add a column in Columns first."
           minWidth={Math.max(760, definition.columns.length * 160)}
@@ -275,7 +320,7 @@ export function TableRowsEditor({
         <header className="schema-row-set-head">
           <div>
             <h3>Test data</h3>
-            <span>{testValidation.validCount} of {testRows.length} rows valid</span>
+            <span>{testSummary.validCount} of {testSummary.countedRows} rows valid</span>
           </div>
           <div className="schema-row-actions">
             <button
@@ -313,7 +358,7 @@ export function TableRowsEditor({
               aria-label="Rows to paste"
               value={pasteText}
               onChange={(event) => setPasteText(event.target.value)}
-              placeholder="JSON array, or CSV with a header row of column names."
+              placeholder="Markdown table, CSV with a header row, or a JSON array."
             />
             <div className="schema-row-paste-actions">
               <button
@@ -342,6 +387,7 @@ export function TableRowsEditor({
               row: entry.row,
               index: entry.index,
               result: entry.result,
+              draft: entry.draft,
             })),
             'test',
           )}
