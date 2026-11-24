@@ -89,10 +89,11 @@ export function classifyColumnType(
     })
   }
 
-  // Only `timestamp` and `timestamp with time zone` are neutral; a bare Postgres
-  // `timestamp` means "without time zone", so imported canvases migrate it.
-  const timestamp = /^timestamp(?:\s*\(\s*\d+\s*\))?(?:\s+with time zone)?$/.exec(normalized)
-  if (timestamp) return neutral('timestamp')
+  // Neutral `timestamp` is an instant: bare `timestamp`, `timestamptz`, or
+  // `timestamp[(p)] with time zone`. In Postgres `timestamp(p)` means "without
+  // time zone", so it stays native; stored bare `timestamp` was migrated away.
+  if (normalized === 'timestamp' || normalized === 'timestamptz') return neutral('timestamp')
+  if (/^timestamp(?:\s*\(\s*\d+\s*\))?\s+with time zone$/.test(normalized)) return neutral('timestamp')
 
   for (const name of enumNames) {
     if (name.trim() === value) return { kind: 'enum', name: name.trim() }

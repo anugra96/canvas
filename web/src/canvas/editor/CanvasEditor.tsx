@@ -6,6 +6,7 @@ import {
   addApiResource,
   addDatabaseTable,
   canvasDatabaseTarget,
+  withCanvasDatabaseTarget,
   addReferenceToCanvas,
   applyStandardErrors,
   buildApiReferenceDocument,
@@ -591,10 +592,11 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
     }
   }, [exportDocument, reportExportFailure, setError, setNotice])
 
+  // Export uses the live target, not the last loaded canvas: the target may have changed in this session.
   const exportDatabase = useCallback(() => ({
-    text: exportDatabaseDdl(fromFlowCanvas(nodes, edges, baseCanvas)),
+    text: exportDatabaseDdl(withCanvasDatabaseTarget(fromFlowCanvas(nodes, edges, baseCanvas), databaseTarget)),
     filename: `${titleSlug(title)}.sql`,
-  }), [baseCanvas, edges, nodes, title])
+  }), [baseCanvas, databaseTarget, edges, nodes, title])
 
   const onExportDatabase = useCallback(() => {
     try {

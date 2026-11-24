@@ -278,12 +278,17 @@ test('clears a starter column default without exporting an empty DEFAULT', async
   const editor = page.getByRole('dialog', { name: 'Edit Table' })
   await expect(editor.getByLabel('Column 1 default')).toHaveValue('gen_random_uuid()')
   await editor.getByLabel('Column 1 default').fill('')
+  await editor.getByRole('button', { name: 'Add column', exact: true }).last().click()
+  await page.keyboard.type('seen_at')
+  await editor.getByLabel(/^Column \d+ type$/).last().fill('timestamp')
   await editor.getByRole('button', { name: 'Done' }).click()
 
   await choosePostgresTarget(page)
   const ddl = await exportDdl(page)
   expect(ddl).toContain('id uuid NOT NULL')
   expect(ddl).not.toContain('DEFAULT  ')
+  // The target chosen in this session (no reload) maps neutral timestamp for PostgreSQL.
+  expect(ddl).toContain('seen_at timestamp with time zone')
 })
 
 test('adds a named composite unique constraint from the table form', async ({ page }) => {
