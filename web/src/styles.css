@@ -8625,6 +8625,12 @@ select {
   letter-spacing: 0;
 }
 
+/* Database rows: the type and format hint wraps so it is never cut off. */
+.database-rows-panel .schema-rows-table th small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .schema-row-status {
   width: 54px;
   color: var(--ui-muted);
