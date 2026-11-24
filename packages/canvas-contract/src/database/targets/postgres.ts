@@ -1,10 +1,6 @@
-import type { DatabaseTarget } from '../../databaseTarget'
+import type { DatabaseTargetAdapter } from './types'
 
-export interface DatabaseTargetAdapter {
-  typeFor: (columnType: string) => string
-}
-
-const POSTGRES_TARGET: DatabaseTargetAdapter = {
+export const POSTGRES_TARGET: DatabaseTargetAdapter = {
   typeFor(columnType) {
     switch (columnType.trim().toLowerCase()) {
       case 'timestamp':
@@ -15,14 +11,4 @@ const POSTGRES_TARGET: DatabaseTargetAdapter = {
         return columnType
     }
   },
-}
-
-const TARGET_ADAPTERS: Partial<Record<DatabaseTarget, DatabaseTargetAdapter>> = {
-  postgres: POSTGRES_TARGET,
-}
-
-export function databaseTargetAdapter(
-  target: DatabaseTarget | undefined,
-): DatabaseTargetAdapter | undefined {
-  return target ? TARGET_ADAPTERS[target] : undefined
 }

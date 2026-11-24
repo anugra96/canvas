@@ -1,9 +1,16 @@
-import type { CanvasNode, JsonCanvas } from '../jsonCanvas'
-import { getEntityMeta } from '../ontology'
+import type { JsonCanvas } from '../jsonCanvas'
 import { canvasDatabaseTarget } from '../databaseTarget'
 import type { ForeignKeyAction, TableColumn, TableDefinition } from './model'
-import { nodeTableDefinition, schemaName, stringField } from './model'
-import { databaseTargetAdapter, type DatabaseTargetAdapter } from './targets/postgres'
+import { schemaName, stringField } from './model'
+import {
+  databaseDefinition,
+  databaseEnums,
+  databaseSchemas,
+  databaseTableDefinitions,
+  quoteLiteral,
+} from './exportShared'
+import { exportSqliteDdl } from './targets/sqlite'
+import { databaseTargetAdapter, type DatabaseTargetAdapter } from './targets'
 
 const RESERVED = new Set([
   'all', 'analyse', 'analyze', 'and', 'any', 'array', 'as', 'asc', 'asymmetric',
@@ -26,51 +33,10 @@ export function quoteIdentifier(value: string): string {
   return `"${value.replaceAll('"', '""')}"`
 }
 
-export function quoteLiteral(value: string): string {
-  return `'${value.replaceAll("'", "''")}'`
-}
+export { quoteLiteral }
 
 function qualified(schema: string, name: string): string {
   return `${quoteIdentifier(schema)}.${quoteIdentifier(name)}`
-}
-
-function nodeType(node: CanvasNode): string {
-  return getEntityMeta(node)?.entityType ?? ''
-}
-
-function tables(canvas: JsonCanvas): CanvasNode[] {
-  return (canvas.nodes ?? [])
-    .filter((node) => nodeType(node) === 'table')
-    .sort((left, right) =>
-      schemaName(left).localeCompare(schemaName(right))
-      || stringField(left, 'name').localeCompare(stringField(right, 'name')))
-}
-
-function enums(canvas: JsonCanvas): CanvasNode[] {
-  return (canvas.nodes ?? [])
-    .filter((node) => nodeType(node) === 'db_enum')
-    .sort((left, right) =>
-      schemaName(left).localeCompare(schemaName(right))
-      || stringField(left, 'name').localeCompare(stringField(right, 'name')))
-}
-
-function schemas(canvas: JsonCanvas): Array<{ name: string; description: string }> {
-  const names = new Map<string, string>()
-  for (const node of canvas.nodes ?? []) {
-    if (nodeType(node) === 'db_schema') {
-      names.set(stringField(node, 'name'), stringField(node, 'description'))
-    }
-  }
-  for (const node of canvas.nodes ?? []) {
-    if (nodeType(node) === 'table' || nodeType(node) === 'db_enum') {
-      const name = schemaName(node)
-      if (!names.has(name)) names.set(name, '')
-    }
-  }
-  return [...names.entries()]
-    .filter(([name]) => name.trim() !== '')
-    .map(([name, description]) => ({ name, description }))
-    .sort((left, right) => left.name.localeCompare(right.name))
 }
 
 function columnSql(column: TableColumn, adapter: DatabaseTargetAdapter | undefined): string {
@@ -146,7 +112,7 @@ function indexSql(schema: string, name: string, definition: TableDefinition): st
 }
 
 function extensionStatements(canvas: JsonCanvas): string[] {
-  const database = (canvas.nodes ?? []).find((node) => nodeType(node) === 'database_definition')
+  const database = databaseDefinition(canvas)
   if (!database) return []
   return stringField(database, 'extensions')
     .split(/\r?\n/)
@@ -162,16 +128,18 @@ function extensionStatements(canvas: JsonCanvas): string[] {
 }
 
 export function exportDatabaseDdl(canvas: JsonCanvas): string {
-  const database = (canvas.nodes ?? []).find((node) => nodeType(node) === 'database_definition')
+  if (canvasDatabaseTarget(canvas) === 'sqlite') return exportSqliteDdl(canvas)
+  const database = databaseDefinition(canvas)
   const adapter = databaseTargetAdapter(canvasDatabaseTarget(canvas))
+  const tableItems = databaseTableDefinitions(canvas)
   const statements: string[] = []
   statements.push(...extensionStatements(canvas))
 
-  for (const schema of schemas(canvas)) {
+  for (const schema of databaseSchemas(canvas)) {
     statements.push(`CREATE SCHEMA ${quoteIdentifier(schema.name)};`)
   }
 
-  for (const item of enums(canvas)) {
+  for (const item of databaseEnums(canvas)) {
     const name = stringField(item, 'name')
     if (!name) continue
     const values = stringField(item, 'values')
@@ -183,38 +151,24 @@ export function exportDatabaseDdl(canvas: JsonCanvas): string {
     )
   }
 
-  const definitions = new Map<string, TableDefinition>()
-  for (const node of tables(canvas)) {
-    const name = stringField(node, 'name')
-    if (!name) continue
-    const definition = nodeTableDefinition(node)
-    if (!definition) {
-      throw new Error(`Table "${schemaName(node)}.${name}" has an invalid Definition.`)
-    }
-    definitions.set(node.id, definition)
-    statements.push(tableSql(schemaName(node), name, definition, adapter))
+  for (const { schema, name, definition } of tableItems) {
+    statements.push(tableSql(schema, name, definition, adapter))
   }
 
-  for (const node of tables(canvas)) {
-    const name = stringField(node, 'name')
-    const definition = definitions.get(node.id)
-    if (!name || !definition) continue
-    statements.push(...foreignKeySql(schemaName(node), name, definition))
+  for (const { schema, name, definition } of tableItems) {
+    statements.push(...foreignKeySql(schema, name, definition))
   }
 
-  for (const node of tables(canvas)) {
-    const name = stringField(node, 'name')
-    const definition = definitions.get(node.id)
-    if (!name || !definition) continue
-    statements.push(...indexSql(schemaName(node), name, definition))
+  for (const { schema, name, definition } of tableItems) {
+    statements.push(...indexSql(schema, name, definition))
   }
 
-  for (const schema of schemas(canvas)) {
+  for (const schema of databaseSchemas(canvas)) {
     if (schema.description.trim()) {
       statements.push(`COMMENT ON SCHEMA ${quoteIdentifier(schema.name)} IS ${quoteLiteral(schema.description)};`)
     }
   }
-  for (const item of enums(canvas)) {
+  for (const item of databaseEnums(canvas)) {
     const name = stringField(item, 'name')
     if (!name) continue
     const description = stringField(item, 'description')
@@ -222,18 +176,15 @@ export function exportDatabaseDdl(canvas: JsonCanvas): string {
       statements.push(`COMMENT ON TYPE ${qualified(schemaName(item), name)} IS ${quoteLiteral(description)};`)
     }
   }
-  for (const node of tables(canvas)) {
-    const name = stringField(node, 'name')
-    const definition = definitions.get(node.id)
-    if (!name || !definition) continue
+  for (const { node, schema, name, definition } of tableItems) {
     const description = stringField(node, 'description')
     if (description.trim()) {
-      statements.push(`COMMENT ON TABLE ${qualified(schemaName(node), name)} IS ${quoteLiteral(description)};`)
+      statements.push(`COMMENT ON TABLE ${qualified(schema, name)} IS ${quoteLiteral(description)};`)
     }
     for (const column of definition.columns) {
       if (!column.comment?.trim()) continue
       statements.push(
-        `COMMENT ON COLUMN ${qualified(schemaName(node), name)}.${quoteIdentifier(column.name)} IS ${quoteLiteral(column.comment)};`,
+        `COMMENT ON COLUMN ${qualified(schema, name)}.${quoteIdentifier(column.name)} IS ${quoteLiteral(column.comment)};`,
       )
     }
   }

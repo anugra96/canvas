@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { classifyColumnType, type ColumnTypeClassification } from './columnTypes'
-import { databaseTargetAdapter } from './targets/postgres'
+import { databaseTargetAdapter } from './targets'
 
 describe('classifyColumnType', () => {
   const cases: Array<[string, ColumnTypeClassification]> = [
@@ -62,7 +62,7 @@ describe('PostgreSQL target adapter', () => {
 
   it('leaves the type unchanged when no target is chosen', () => {
     expect(databaseTargetAdapter(undefined)).toBeUndefined()
-    expect(databaseTargetAdapter('sqlite')).toBeUndefined()
+    expect(databaseTargetAdapter('sqlite')?.typeFor('varchar(3)')).toBe('TEXT')
     expect(databaseTargetAdapter('dynamodb')).toBeUndefined()
   })
 })
