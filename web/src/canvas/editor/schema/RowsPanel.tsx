@@ -1,5 +1,5 @@
-import { Plus, Trash2 } from 'lucide-react'
-import { Fragment, useMemo, useState } from 'react'
+import { Plus } from 'lucide-react'
+import { useMemo, useState } from 'react'
 
 import {
   buildSchemaColumns,
@@ -8,6 +8,8 @@ import {
   type SchemaColumn,
 } from '@canvas/contract'
 
+import { RowGrid, type RowGridColumn, type RowGridRow } from '../../rows/RowGrid'
+import { parseCsv } from '../../rows/parseCsv'
 import { validateSchemaRow } from '../../schema/jsonSchema'
 import type { SchemaCardSource } from '../../schema/schemaCards'
 import {
@@ -45,41 +47,6 @@ function compact(value: unknown): string {
   if (value && typeof value === 'object') return `{${Object.keys(value).length} field${Object.keys(value).length === 1 ? '' : 's'}}`
   if (value === null) return 'null'
   return value === undefined ? '' : String(value)
-}
-
-function parseCsv(text: string): string[][] {
-  const rows: string[][] = []
-  let row: string[] = []
-  let cell = ''
-  let quoted = false
-  for (let index = 0; index < text.length; index += 1) {
-    const character = text[index]!
-    if (quoted) {
-      if (character === '"' && text[index + 1] === '"') {
-        cell += '"'
-        index += 1
-      } else if (character === '"') {
-        quoted = false
-      } else {
-        cell += character
-      }
-    } else if (character === '"') {
-      quoted = true
-    } else if (character === ',') {
-      row.push(cell)
-      cell = ''
-    } else if (character === '\n') {
-      row.push(cell.replace(/\r$/, ''))
-      rows.push(row)
-      row = []
-      cell = ''
-    } else {
-      cell += character
-    }
-  }
-  row.push(cell.replace(/\r$/, ''))
-  if (row.some((value) => value !== '')) rows.push(row)
-  return rows
 }
 
 function csvValue(text: string, column: SchemaColumn): unknown {
@@ -258,52 +225,37 @@ function RowsTable({
   onSet: (index: number, column: SchemaColumn, value: unknown) => void
   onDelete?: (index: number) => void
 }) {
-  if (columns.length === 0) return <p className="schema-table-empty">The schema has no object properties.</p>
+  const gridColumns: RowGridColumn[] = columns.map((column) => ({
+    key: column.key,
+    header: <>{column.label}{column.required ? ' *' : ''}</>,
+    detail: <>{column.kind}{column.format ? ` · ${column.format}` : ''}</>,
+  }))
+  const gridRows: RowGridRow[] = rows.map(({ row, index, validation }) => ({
+    key: index,
+    index,
+    valid: validation.valid,
+    messages: validation.messages,
+    cells: Object.fromEntries(columns.map((column) => [
+      column.key,
+      {
+        content: (
+          <RowCell
+            column={column}
+            value={valueAt(row, column.path)}
+            onChange={(value) => onSet(index, column, value)}
+          />
+        ),
+        message: validation.cells[column.key]?.join('\n'),
+      },
+    ])),
+  }))
   return (
-    <div className="schema-rows-scroll">
-      <table className="schema-rows-table">
-        <thead>
-          <tr>
-            <th className="schema-row-status">Row</th>
-            {columns.map((column) => (
-              <th key={column.key}>
-                <span>{column.label}{column.required ? ' *' : ''}</span>
-                <small>{column.kind}{column.format ? ` · ${column.format}` : ''}</small>
-              </th>
-            ))}
-            {onDelete && <th />}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(({ row, index, validation }) => (
-            <Fragment key={index}>
-              <tr className={validation.valid ? 'valid' : 'invalid'}>
-                <td className="schema-row-status" title={validation.valid ? 'Valid' : 'Invalid'}>{validation.valid ? '✓' : '✗'} {index + 1}</td>
-                {columns.map((column) => (
-                  <td key={column.key} className={validation.cells[column.key] ? 'invalid' : ''} title={validation.cells[column.key]?.join('\n')}>
-                    <RowCell
-                      column={column}
-                      value={valueAt(row, column.path)}
-                      onChange={(value) => onSet(index, column, value)}
-                    />
-                  </td>
-                ))}
-                {onDelete && (
-                  <td>
-                    <button type="button" className="icon-button" aria-label={`Delete row ${index + 1}`} onClick={() => onDelete(index)}><Trash2 size={12} /></button>
-                  </td>
-                )}
-              </tr>
-              {!validation.valid && validation.messages.length > 0 && (
-                <tr className="schema-row-errors">
-                  <td colSpan={columns.length + (onDelete ? 2 : 1)}>{validation.messages.join(' · ')}</td>
-                </tr>
-              )}
-            </Fragment>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <RowGrid
+      columns={gridColumns}
+      rows={gridRows}
+      onDelete={onDelete}
+      emptyText="The schema has no object properties."
+    />
   )
 }
 
