@@ -6,7 +6,7 @@ import {
   parseTableDefinition,
   parseTableSamplesValue,
   removeTableSampleColumn,
-  renameTableSampleColumn,
+  renameTableColumn,
   stringifyTableDefinition,
   stringifyTableSamples,
   tableDefinitionError,
@@ -64,33 +64,6 @@ function columnNames(value: string): string[] {
 
 function optionalText(value: string): string | undefined {
   return value.trim() ? value : undefined
-}
-
-function renameReferences(definition: TableDefinition, oldName: string, newName: string): TableDefinition {
-  if (!newName || oldName === newName) return definition
-  return {
-    ...definition,
-    ...(definition.primaryKey
-      ? {
-        primaryKey: {
-          ...definition.primaryKey,
-          columns: definition.primaryKey.columns.map((name) => name === oldName ? newName : name),
-        },
-      }
-      : {}),
-    uniques: definition.uniques.map((unique) => ({
-      ...unique,
-      columns: unique.columns.map((name) => name === oldName ? newName : name),
-    })),
-    foreignKeys: definition.foreignKeys.map((foreignKey) => ({
-      ...foreignKey,
-      columns: foreignKey.columns.map((name) => name === oldName ? newName : name),
-    })),
-    indexes: definition.indexes.map((index) => ({
-      ...index,
-      columns: index.columns.map((name) => name === oldName ? newName : name),
-    })),
-  }
 }
 
 function removeColumnFromDefinition(definition: TableDefinition, columnName: string): TableDefinition {
@@ -165,6 +138,9 @@ export function TableEditor({
   const [expandedColumns, setExpandedColumns] = useState<ReadonlySet<number>>(new Set())
   const [focusColumnIndex, setFocusColumnIndex] = useState<number | null>(null)
   const gridRef = useRef<HTMLDivElement>(null)
+  // The table as it was when a column name field got focus: renames are computed from it, so a
+  // name typed on the way (e.g. "id" while typing "id_email") never captures another column's keys.
+  const nameEditRef = useRef<{ index: number; definition: TableDefinition; samples: TableRow[] } | null>(null)
 
   useEffect(() => {
     if (focusColumnIndex === null) return
@@ -266,13 +242,17 @@ export function TableEditor({
           : column
       )),
     }
-    if (patch.name !== undefined) next = renameReferences(next, current.name, patch.name)
-    const nextSamples = patch.name !== undefined
-      && patch.name !== current.name
-      && samplesPresent
-      && !samples.error
-      ? renameTableSampleColumn(samples.rows, current.name, patch.name)
-      : undefined
+    let nextSamples: TableRow[] | undefined
+    if (patch.name !== undefined) {
+      const snapshot = nameEditRef.current?.index === index ? nameEditRef.current : undefined
+      const renamed = renameTableColumn(
+        snapshot ?? { definition, samples: samples.rows },
+        index,
+        patch.name,
+      )
+      next = renamed.definition
+      if (samplesPresent && !samples.error) nextSamples = renamed.samples
+    }
     commit(next, nextSamples)
   }
 
@@ -467,6 +447,12 @@ export function TableEditor({
                   <input
                     aria-label={`Column ${index + 1} name`}
                     value={column.name}
+                    onFocus={() => {
+                      nameEditRef.current = { index, definition, samples: samples.rows }
+                    }}
+                    onBlur={() => {
+                      nameEditRef.current = null
+                    }}
                     onChange={(event) => updateColumn(index, { name: event.target.value })}
                   />
                   <input

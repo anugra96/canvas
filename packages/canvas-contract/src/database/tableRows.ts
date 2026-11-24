@@ -81,6 +81,54 @@ export function renameTableSampleColumn(
   ))))
 }
 
+function renameReferences(definition: TableDefinition, oldName: string, newName: string): TableDefinition {
+  const rename = (columns: string[]) => columns.map((name) => name === oldName ? newName : name)
+  return {
+    ...definition,
+    ...(definition.primaryKey
+      ? { primaryKey: { ...definition.primaryKey, columns: rename(definition.primaryKey.columns) } }
+      : {}),
+    uniques: definition.uniques.map((unique) => ({ ...unique, columns: rename(unique.columns) })),
+    foreignKeys: definition.foreignKeys.map((foreignKey) => ({
+      ...foreignKey,
+      columns: rename(foreignKey.columns),
+    })),
+    indexes: definition.indexes.map((index) => ({ ...index, columns: rename(index.columns) })),
+  }
+}
+
+/**
+ * Renames the column at `index` in `base`, moving its keys, indexes, and sample values with it.
+ * Pass the table as it was before the rename began (e.g. when the name field got focus), so a
+ * name typed on the way (e.g. "id" while typing "id_email") never captures another column's keys.
+ * While the new name equals another column's name, keys and samples stay where they were.
+ */
+export function renameTableColumn(
+  base: { definition: TableDefinition; samples: TableRow[] },
+  index: number,
+  newName: string,
+): { definition: TableDefinition; samples: TableRow[] } {
+  const current = base.definition.columns[index]
+  if (!current) return base
+  const oldName = current.name
+  const definition = {
+    ...base.definition,
+    columns: base.definition.columns.map((column, position) => (
+      position === index ? { ...column, name: newName } : column
+    )),
+  }
+  const usedByOther = (name: string) => base.definition.columns.some((column, position) => (
+    position !== index && column.name === name
+  ))
+  if (!newName || newName === oldName || usedByOther(oldName) || usedByOther(newName)) {
+    return { definition, samples: base.samples }
+  }
+  return {
+    definition: renameReferences(definition, oldName, newName),
+    samples: renameTableSampleColumn(base.samples, oldName, newName),
+  }
+}
+
 export function removeTableSampleColumn(rows: TableRow[], columnName: string): TableRow[] {
   return rows.map((row) => Object.fromEntries(
     Object.entries(row).filter(([key]) => key !== columnName),
@@ -311,6 +359,16 @@ function nextIntegerKey(rows: TableRow[], columnName: string): string {
   return candidate.toString()
 }
 
+function nextTextKey(rows: TableRow[], columnName: string, length: number | undefined): string {
+  const used = new Set(rows.map((row) => valueAt(row, columnName)))
+  for (let counter = 1; ; counter += 1) {
+    const suffix = String(counter)
+    const prefix = 'sample'.slice(0, Math.max(0, (length ?? Infinity) - suffix.length))
+    const candidate = `${prefix}${suffix}`
+    if (!used.has(candidate)) return candidate
+  }
+}
+
 function sampleValue(type: NeutralColumnType): string {
   switch (type.type) {
     case 'text':
@@ -389,6 +447,10 @@ export function generateTableRow(
       }
       if (classification.type === 'uuid') {
         row[column.name] = newUuid()
+        continue
+      }
+      if (classification.type === 'text' || classification.type === 'varchar') {
+        row[column.name] = nextTextKey(existingRows, column.name, classification.length)
         continue
       }
     }

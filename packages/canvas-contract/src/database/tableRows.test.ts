@@ -6,6 +6,7 @@ import {
   generateTableRow,
   parseTableSamples,
   removeTableSampleColumn,
+  renameTableColumn,
   renameTableSampleColumn,
   stringifyTableSamples,
   validateTableRows,
@@ -286,6 +287,7 @@ describe('generateTableRow', () => {
       ],
       {
         primaryKey: { columns: ['id'] },
+        uniques: [{ columns: ['label'] }, { columns: ['code'] }],
         foreignKeys: [{
           columns: ['parent_id'],
           references: { schema: 'public', table: 'parent', columns: ['id'] },
@@ -312,6 +314,31 @@ describe('generateTableRow', () => {
     const second = generateTableRow(table, context, [first])
     expect(second.id).not.toBe(first.id)
     expect(validateTableRows(table, [first, second], context).validCount).toBe(2)
+  })
+})
+
+describe('renameTableColumn', () => {
+  // Typing "id_email" over "email" passes through "id", the primary key column's name.
+  const base = {
+    definition: definition(
+      [column('id', 'integer', { nullable: false }), column('email', 'text')],
+      { primaryKey: { columns: ['id'] }, uniques: [{ columns: ['email'] }] },
+    ),
+    samples: [{ id: '1', email: 'a@x.com' }] as TableRow[],
+  }
+  const cases: Array<[string, string[], string[], TableRow]> = [
+    ['i', ['id'], ['i'], { id: '1', i: 'a@x.com' }],
+    ['id', ['id'], ['email'], { id: '1', email: 'a@x.com' }],
+    ['id_', ['id'], ['id_'], { id: '1', id_: 'a@x.com' }],
+    ['id_email', ['id'], ['id_email'], { id: '1', id_email: 'a@x.com' }],
+  ]
+
+  it.each(cases)('typing %s keeps the key on its own column', (typed, primaryKey, unique, sample) => {
+    const result = renameTableColumn(base, 1, typed)
+    expect(result.definition.columns.map((item) => item.name)).toEqual(['id', typed])
+    expect(result.definition.primaryKey?.columns).toEqual(primaryKey)
+    expect(result.definition.uniques[0]?.columns).toEqual(unique)
+    expect(result.samples).toEqual([sample])
   })
 })
 

@@ -25,6 +25,14 @@ const TEST_LIMIT = 1000
 interface ColumnConfig {
   classification: ColumnTypeClassification
   enumValues: string[]
+  // What an empty cell means: the default or identity fills it, or it is SQL NULL.
+  emptyLabel: string
+}
+
+function emptyLabelFor(column: TableColumn): string {
+  if (column.generated) return 'Generated'
+  if (column.identity || column.default) return 'Default'
+  return 'Empty (NULL)'
 }
 
 function parsePastedRows(text: string, columns: TableColumn[]): {
@@ -119,7 +127,7 @@ export function TableRowsEditor({
     const values = classification.kind === 'enum'
       ? enumValues.get(classification.name) ?? []
       : []
-    return [column.name, { classification, enumValues: values } satisfies ColumnConfig]
+    return [column.name, { classification, enumValues: values, emptyLabel: emptyLabelFor(column) } satisfies ColumnConfig]
   })), [definition.columns, enumNames, enumValues])
 
   const gridColumns: RowGridColumn[] = definition.columns.map((column) => {
@@ -160,7 +168,11 @@ export function TableRowsEditor({
         cells[column.name] = {
           content: (
             <TableRowCell
-              config={config ?? { classification: { kind: 'native', type: column.type }, enumValues: [] }}
+              config={config ?? {
+                classification: { kind: 'native', type: column.type },
+                enumValues: [],
+                emptyLabel: emptyLabelFor(column),
+              }}
               label={label}
               value={row[column.name] ?? null}
               onChange={(value) => (
@@ -405,7 +417,7 @@ function TableRowCell({
           onChange={(event) => onChange(event.target.checked ? 'true' : 'false')}
         />
         <span className="database-boolean-value">
-          {value === null ? 'Empty (NULL)' : value}
+          {value === null ? config.emptyLabel : value}
         </span>
         <button
           type="button"
@@ -439,7 +451,7 @@ function TableRowCell({
         aria-label={label}
         type={number ? 'number' : date ? 'date' : timestamp ? 'datetime-local' : 'text'}
         step={number ? step : timestamp ? 1 : undefined}
-        placeholder={number || date || timestamp ? undefined : 'Empty (NULL)'}
+        placeholder={number || date || timestamp ? undefined : config.emptyLabel}
         value={timestamp
           ? (value === null ? '' : dateTimeInputValue(value))
           : value ?? ''}

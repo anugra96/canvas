@@ -48,8 +48,9 @@ export function TableCardPreview({
         {visible.length === 0 && (
           <span className="entity-hint">Double-click to add columns.</span>
         )}
-        {visible.map((column) => (
-          <div className="db-column-row" key={column.name}>
+        {visible.map((column, index) => (
+          // Name plus position: names repeat for a moment while a rename is typed.
+          <div className="db-column-row" key={`${column.name}-${index}`}>
             <Handle
               type="target"
               position={Position.Left}
