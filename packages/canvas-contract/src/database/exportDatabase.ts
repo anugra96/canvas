@@ -1,7 +1,9 @@
 import type { CanvasNode, JsonCanvas } from '../jsonCanvas'
 import { getEntityMeta } from '../ontology'
+import { canvasDatabaseTarget } from '../databaseTarget'
 import type { ForeignKeyAction, TableColumn, TableDefinition } from './model'
 import { nodeTableDefinition, schemaName, stringField } from './model'
+import { databaseTargetAdapter, type DatabaseTargetAdapter } from './targets/postgres'
 
 const RESERVED = new Set([
   'all', 'analyse', 'analyze', 'and', 'any', 'array', 'as', 'asc', 'asymmetric',
@@ -71,8 +73,9 @@ function schemas(canvas: JsonCanvas): Array<{ name: string; description: string 
     .sort((left, right) => left.name.localeCompare(right.name))
 }
 
-function columnSql(column: TableColumn): string {
-  const parts = [quoteIdentifier(column.name), column.type]
+function columnSql(column: TableColumn, adapter: DatabaseTargetAdapter | undefined): string {
+  const type = adapter ? adapter.typeFor(column.type) : column.type
+  const parts = [quoteIdentifier(column.name), type]
   if (column.generated?.trim()) {
     parts.push(`GENERATED ALWAYS AS (${column.generated}) STORED`)
   } else if (column.identity) {
@@ -92,8 +95,9 @@ function tableSql(
   schema: string,
   name: string,
   definition: TableDefinition,
+  adapter: DatabaseTargetAdapter | undefined,
 ): string {
-  const parts: string[] = definition.columns.map(columnSql)
+  const parts: string[] = definition.columns.map((column) => columnSql(column, adapter))
   if (definition.primaryKey && definition.primaryKey.columns.length > 0) {
     parts.push(
       `${namedConstraint(definition.primaryKey.name)}PRIMARY KEY (${definition.primaryKey.columns.map(quoteIdentifier).join(', ')})`,
@@ -159,6 +163,7 @@ function extensionStatements(canvas: JsonCanvas): string[] {
 
 export function exportDatabaseDdl(canvas: JsonCanvas): string {
   const database = (canvas.nodes ?? []).find((node) => nodeType(node) === 'database_definition')
+  const adapter = databaseTargetAdapter(canvasDatabaseTarget(canvas))
   const statements: string[] = []
   statements.push(...extensionStatements(canvas))
 
@@ -187,7 +192,7 @@ export function exportDatabaseDdl(canvas: JsonCanvas): string {
       throw new Error(`Table "${schemaName(node)}.${name}" has an invalid Definition.`)
     }
     definitions.set(node.id, definition)
-    statements.push(tableSql(schemaName(node), name, definition))
+    statements.push(tableSql(schemaName(node), name, definition, adapter))
   }
 
   for (const node of tables(canvas)) {

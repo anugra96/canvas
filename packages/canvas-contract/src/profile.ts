@@ -7,6 +7,7 @@ import {
   getEntityMeta,
   type Ontology,
 } from './ontology'
+import { DATABASE_TARGETS } from './databaseTarget'
 import { canvasDistrictsEnabled } from './districts'
 import { validateZoning } from './zoning'
 
@@ -40,6 +41,7 @@ export const canvasProfileMetadataSchema = z
     reviewMode: z.enum(['sketch', 'design', 'publish']).optional(),
     // false turns districts off for the canvas: no zoning rules, no district controls. Absent means on.
     districts: z.boolean().optional(),
+    target: z.enum(DATABASE_TARGETS).optional(),
   })
   .passthrough()
 
