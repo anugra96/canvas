@@ -1,6 +1,6 @@
 ---
 name: canvas-ui
-description: Drive the Canvas web app by hand, like a person, to create and edit canvases from scratch. Use when an agent must build or change a canvas through the real UI with Playwright or a browser tool, instead of importing a file or calling the API. Covers Systems (architecture cards and typed lines), API (OpenAPI resources, endpoints, schemas, security; export YAML), and Database (tables, keys, indexes, enums with a PostgreSQL target; export DDL).
+description: Drive the Canvas web app by hand, like a person, to create and edit canvases from scratch. Use when an agent must build or change a canvas through the real UI with Playwright or a browser tool, instead of importing a file or calling the API. Covers Systems (architecture cards and typed lines), API (OpenAPI resources, endpoints, schemas, security; export YAML), and Database (tables, keys, indexes, enums, sample rows with a PostgreSQL target; export DDL).
 ---
 
 # Canvas UI: build by hand
@@ -82,6 +82,17 @@ the first accessibility read after load can be empty.
 | `button "Fit View"` | Fit all cards in view. Use it before double-clicking a card that may be off-screen |
 | `button "Undo"`, `button "Redo"` | Undo the last change |
 
+## Editor actions
+
+| Control | Use |
+| --- | --- |
+| `button "Columns"`, `button "Rows"` | Edit Table tabs. Columns is the default; Rows previews sample and test data. |
+| `button "Add row"`, `button "Generate"` | Rows tab: save up to 20 sample rows with the table. Generate fills a valid row for the model. |
+| `button "Paste rows"`, `button "Import rows"` | Rows tab: paste CSV with a header of column names, or a JSON array. Test data is session-only. |
+| `getByLabel('Sample row 1 <col>')` | Rows tab cell editor. Use `button "Set Sample row 1 <col> empty (NULL)"` for SQL NULL. |
+| `button "Delete sample row 1"` | Rows tab: remove a saved sample row. |
+| `button "Clear"`, `input "Show invalid only"` | Rows tab: clear test data or hide its valid rows. |
+
 ## Recipes
 
 Read the recipe for the profile before the first action. Each has a working
@@ -101,6 +112,9 @@ reference script that builds a full example by hand and checks the export.
   edits, then downloads the canvas JSON. Cards: `nodes[].id`, `nodes[].app.entityType`,
   `nodes[].app.fields`. Lines: `edges[].fromNode` and `edges[].toNode` (card ids),
   `edges[].app.relationType`.
+- **Database Rows:** open a table, choose the Rows tab, and read `N of M rows valid`.
+  Saved sample rows survive Done; test data does not. Renaming or removing a
+  column updates or drops its sample key.
 - **API export:** `Export OpenAPI YAML`. **Database export:** `Export DDL`.
   Compare by meaning, not text (key order, cast spelling, and quoting may differ).
 

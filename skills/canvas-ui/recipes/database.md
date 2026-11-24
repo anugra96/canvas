@@ -50,12 +50,13 @@ PostgreSQL in Database settings when the model is ready to export.
 3. Click `button "Add table"` (exact). The table appears in its schema lane
    with starter rows `id` (PK) and `created_at timestamptz not null default now()`.
 4. Open it: double-click `[aria-label="Table <schema>.<name>"]` →
-   `dialog "Edit Table"`.
+   `dialog "Edit Table"`. It has two tabs: `Columns` (default) and `Rows`.
 
 ### Edit Table fields
 
 | Area | Labels (N is 1-based) |
 | --- | --- |
+| Tabs | `button "Columns"`, `button "Rows"` (role `tab`, `aria-selected`) |
 | Table | `Name`, `Schema`, `Status`, `Description` |
 | Columns | `Column N name`, `Column N type`, `Column N not null` (checkbox), `Column N default`, `Column N primary key` (checkbox), `Column N unique` (checkbox) |
 | Column more | `button "More for <col>"` (`aria-expanded`) opens `Column N identity` (select: `""`, `by_default`, `always`), `Column N generated`, `Column N comment` |
@@ -86,6 +87,44 @@ Rules:
   `(lower(email))`. A partial index uses `where`: `status <> 'done'`.
 - `generated` takes the expression only: `(estimate_minutes / 60.0)` becomes
   `GENERATED ALWAYS AS (...) STORED`.
+
+### Rows tab
+
+`button "Rows"` shows two grids: saved **Sample rows** and session-only
+**Test data**. Both use one column per table column and mark each row ✓ or ✗.
+
+| Area | Labels |
+| --- | --- |
+| Sample rows | `region "Sample rows"`, `button "Add row"` (limit 20), `button "Generate"`, `button "Delete sample row N"` |
+| Sample cells | `Sample row N <col>`, `button "Set Sample row N <col> empty (NULL)"` |
+| Test data | `region "Test data"`, `button "Paste rows"`, `textbox "Rows to paste"`, `button "Import rows"` |
+| Test controls | `checkbox "Show invalid only"`, `button "Clear"`; limit 1,000 rows |
+| Counts | `N of M rows valid`; the paste panel also shows `N of 1,000 rows` |
+| Messages | `Required`, `Not a <type>`, `Longer than N`, `More than N decimals`, `Not in <enum>`, `Duplicate key`, `No <schema>.<table> row with <col> = <value>`, `Generated: leave empty` |
+| Notes | `Checks not evaluated`, `<k> columns not checked`, `Ignored columns: x, y` |
+
+Rules:
+
+- **Sample rows** are saved in the table's `samples` field. **Test data** is
+  never saved: reopening Edit Table clears it.
+- `Generate` writes a valid row for neutral types, uses the enum's first value,
+  the next integer key, a new uuid, and a parent sample key for foreign keys.
+  Columns with a default, identity, or generated expression stay empty.
+- Cell editors follow the type: number, boolean toggle, date, datetime-local,
+  enum select; text otherwise. `…` / `Other…` switches a boolean or enum cell
+  to free text so invalid values can be tested.
+- `Empty (NULL)` is an explicit choice on every cell; empty means SQL NULL, not
+  an empty string.
+- Foreign keys are checked only when the parent table has saved sample rows.
+  Both sample and test rows of this table use the parent's saved samples.
+- Renaming a column renames its key in sample rows; removing a column drops it.
+  Both happen in the same undoable edit as the column change.
+- Paste CSV with a header row of column names, or a JSON array of objects.
+  Unknown keys are reported once as `Ignored columns: x, y`, not dropped
+  silently.
+- Column types that are not neutral (for example `jsonb`, `inet`) are listed as
+  not checked. CHECK constraints and generated columns are not evaluated.
+- Sample rows are a preview: `Export DDL` does not write INSERT statements.
 
 ## 4. Foreign keys
 

@@ -484,3 +484,69 @@ test('names cards and Add menu items for assistive technology', async ({ page })
   await expect(page.locator('[aria-label="Enum public.task_status"]')).toBeVisible()
   await expect(page.locator('[aria-label="Table app.task"]')).toBeVisible()
 })
+
+test('previews sample rows and validates pasted test rows in the table editor', async ({ page }) => {
+  await createDatabaseCanvas(page, 'Rows preview')
+
+  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Table', exact: true }).click()
+  const addDialog = page.getByRole('dialog', { name: 'Add table' })
+  await addDialog.getByLabel('Table name').fill('row_preview')
+  await addDialog.getByLabel('Id column').selectOption('bigint')
+  await addDialog.getByRole('button', { name: 'Add table', exact: true }).click()
+  await expect(page.locator('.db-table-card').filter({ hasText: 'row_preview' })).toBeVisible()
+  await dismissNotice(page)
+
+  await page.locator('.db-table-card').filter({ hasText: 'row_preview' }).dblclick()
+  const editor = page.getByRole('dialog', { name: 'Edit Table' })
+  await expect(editor.getByRole('tab', { name: 'Columns', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await editor.getByRole('button', { name: 'Add column', exact: true }).first().click()
+  await editor.getByLabel('Column 3 name', { exact: true }).fill('name')
+  await editor.getByLabel('Column 3 not null', { exact: true }).check()
+
+  await editor.getByRole('tab', { name: 'Rows', exact: true }).click()
+  await expect(editor.getByRole('tab', { name: 'Rows', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await editor.getByRole('button', { name: 'Generate', exact: true }).click()
+  await expect(editor.getByText('1 of 1 rows valid', { exact: true })).toBeVisible()
+  await expect(editor.getByLabel('Sample row 1 name', { exact: true })).toHaveValue('sample')
+
+  await editor.getByLabel('Sample row 1 name', { exact: true }).fill('')
+  await expect(editor.getByText('Required', { exact: true })).toBeVisible()
+  await expect(editor.getByText('0 of 1 rows valid', { exact: true })).toBeVisible()
+  await editor.getByLabel('Sample row 1 name', { exact: true }).fill('widget')
+  await expect(editor.getByText('1 of 1 rows valid', { exact: true })).toBeVisible()
+
+  await editor.getByRole('button', { name: 'Paste rows', exact: true }).click()
+  await editor.getByRole('textbox', { name: 'Rows to paste', exact: true }).fill([
+    'id,name,extra',
+    '1,alpha,first',
+    '1,beta,second',
+  ].join('\n'))
+  await editor.getByRole('button', { name: 'Import rows', exact: true }).click()
+  await expect(editor.getByText('Ignored columns: extra', { exact: true })).toBeVisible()
+  await expect(editor.getByText('Duplicate key', { exact: true }).first()).toBeVisible()
+  await expect(editor.getByLabel('Test row 1 id', { exact: true })).toHaveValue('1')
+  await expect(editor.getByLabel('Test row 2 id', { exact: true })).toHaveValue('1')
+
+  await editor.getByRole('button', { name: 'Done', exact: true }).click()
+  await page.locator('.db-table-card').filter({ hasText: 'row_preview' }).dblclick()
+  const reopened = page.getByRole('dialog', { name: 'Edit Table' })
+  await reopened.getByRole('tab', { name: 'Rows', exact: true }).click()
+  await expect(reopened.getByLabel('Sample row 1 name', { exact: true })).toHaveValue('widget')
+  await expect(reopened.getByText('1 of 1 rows valid', { exact: true })).toBeVisible()
+  await expect(reopened.getByLabel(/^Test row 1 /)).toHaveCount(0)
+  await expect(reopened.getByText('0 of 0 rows valid', { exact: true })).toBeVisible()
+
+  await reopened.getByRole('tab', { name: 'Columns', exact: true }).click()
+  await reopened.getByLabel('Column 3 name', { exact: true }).fill('label')
+  await reopened.getByRole('tab', { name: 'Rows', exact: true }).click()
+  await expect(reopened.getByRole('region', { name: 'Sample rows' }).getByRole('columnheader', { name: /label/ })).toBeVisible()
+  await expect(reopened.getByLabel('Sample row 1 label', { exact: true })).toHaveValue('widget')
+  await reopened.getByRole('button', { name: 'Done', exact: true }).click()
+
+  await page.locator('.db-table-card').filter({ hasText: 'row_preview' }).dblclick()
+  const afterRename = page.getByRole('dialog', { name: 'Edit Table' })
+  await afterRename.getByRole('tab', { name: 'Rows', exact: true }).click()
+  await expect(afterRename.getByLabel('Sample row 1 label', { exact: true })).toHaveValue('widget')
+  await afterRename.getByRole('button', { name: 'Done', exact: true }).click()
+})

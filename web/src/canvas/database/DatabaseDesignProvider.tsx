@@ -3,6 +3,7 @@ import { useMemo, type ReactNode } from 'react'
 import {
   getEntityMeta,
   nodeTableDefinition,
+  parseTableSamples,
   type CanvasNode,
   type DatabaseTarget,
 } from '@canvas/contract'
@@ -50,6 +51,7 @@ export function DatabaseDesignProvider({
           name: stringField(node, 'name'),
           columns: definition?.columns.map((column) => column.name) ?? [],
           primaryKey: definition?.primaryKey?.columns ?? [],
+          samples: parseTableSamples(node).rows,
         })
       }
     }

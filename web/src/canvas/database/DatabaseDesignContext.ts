@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
 
-import type { DatabaseTarget } from '@canvas/contract'
+import type { DatabaseTarget, TableRow } from '@canvas/contract'
 
 export interface DatabaseEnumOption {
   schema: string
@@ -13,6 +13,7 @@ export interface DatabaseTableOption {
   name: string
   columns: string[]
   primaryKey: string[]
+  samples?: TableRow[]
 }
 
 export interface DatabaseDesign {

@@ -4,16 +4,22 @@ import { useEffect, useRef, useState } from 'react'
 import {
   emptyTableDefinition,
   parseTableDefinition,
+  parseTableSamplesValue,
+  removeTableSampleColumn,
+  renameTableSampleColumn,
   stringifyTableDefinition,
+  stringifyTableSamples,
   tableDefinitionError,
   type ForeignKeyAction,
   type TableColumn,
   type TableDefinition,
   type TableForeignKey,
   type TableIndex,
+  type TableRow,
 } from '@canvas/contract'
 
 import { useDatabaseDesign, type DatabaseTableOption } from './DatabaseDesignContext'
+import { TableRowsEditor } from './TableRowsEditor'
 
 const NEUTRAL_TYPE_OPTIONS = [
   'text',
@@ -150,6 +156,11 @@ export function TableEditor({
   const design = useDatabaseDesign()
   const parsed = parseTableDefinition(fields.definition)
   const definition = parsed ?? emptyTableDefinition()
+  const samplesValue = fields.samples
+  const samplesPresent = samplesValue != null && String(samplesValue).trim() !== ''
+  const samples = parseTableSamplesValue(samplesValue)
+  const [tab, setTab] = useState<'columns' | 'rows'>('columns')
+  const [testRows, setTestRows] = useState<TableRow[]>([])
   const [validationError, setValidationError] = useState('')
   const [expandedColumns, setExpandedColumns] = useState<ReadonlySet<number>>(new Set())
   const [focusColumnIndex, setFocusColumnIndex] = useState<number | null>(null)
@@ -187,7 +198,7 @@ export function TableEditor({
     })
   }
 
-  function commit(next: TableDefinition): void {
+  function commit(next: TableDefinition, nextSamples?: TableRow[]): void {
     if (next.columns.length === 0) {
       setValidationError('A table needs at least one column.')
       return
@@ -199,6 +210,9 @@ export function TableEditor({
     }
     setValidationError('')
     onChange('definition', stringifyTableDefinition(next))
+    if (nextSamples !== undefined) {
+      onChange('samples', nextSamples.length > 0 ? stringifyTableSamples(nextSamples) : '')
+    }
   }
 
   const thisSchema = String(fields.schema ?? 'public').trim() || 'public'
@@ -253,7 +267,20 @@ export function TableEditor({
       )),
     }
     if (patch.name !== undefined) next = renameReferences(next, current.name, patch.name)
-    commit(next)
+    const nextSamples = patch.name !== undefined
+      && patch.name !== current.name
+      && samplesPresent
+      && !samples.error
+      ? renameTableSampleColumn(samples.rows, current.name, patch.name)
+      : undefined
+    commit(next, nextSamples)
+  }
+
+  function removeColumn(columnName: string): void {
+    const nextSamples = samplesPresent && !samples.error
+      ? removeTableSampleColumn(samples.rows, columnName)
+      : undefined
+    commit(removeColumnFromDefinition(definition, columnName), nextSamples)
   }
 
   function moveColumn(index: number, direction: -1 | 1): void {
@@ -330,6 +357,36 @@ export function TableEditor({
 
   return (
     <div className="database-table-editor">
+      <div className="api-endpoint-tabs" role="tablist" aria-label="Table editor">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'columns'}
+          className={tab === 'columns' ? 'active' : ''}
+          onClick={() => setTab('columns')}
+        >
+          Columns
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'rows'}
+          className={tab === 'rows' ? 'active' : ''}
+          onClick={() => setTab('rows')}
+        >
+          Rows
+        </button>
+      </div>
+      {tab === 'rows' ? (
+        <TableRowsEditor
+          definition={definition}
+          samplesSource={samplesValue}
+          testRows={testRows}
+          onChangeSamples={(rows) => onChange('samples', rows.length > 0 ? stringifyTableSamples(rows) : '')}
+          onChangeTestRows={setTestRows}
+        />
+      ) : (
+        <>
       <div className="database-editor-fields">
         <label className="name-dialog-field">
           Name
@@ -472,7 +529,7 @@ export function TableEditor({
                     <button type="button" className="icon-button" aria-label={`Move ${column.name} down`} onClick={() => moveColumn(index, 1)}>
                       <ArrowDown size={13} />
                     </button>
-                    <button type="button" className="icon-button" aria-label={`Remove ${column.name}`} onClick={() => commit(removeColumnFromDefinition(definition, column.name))}>
+                    <button type="button" className="icon-button" aria-label={`Remove ${column.name}`} onClick={() => removeColumn(column.name)}>
                       <Trash2 size={13} />
                     </button>
                   </span>
@@ -817,6 +874,8 @@ export function TableEditor({
           </div>
         ))}
       </section>
+        </>
+      )}
     </div>
   )
 }
