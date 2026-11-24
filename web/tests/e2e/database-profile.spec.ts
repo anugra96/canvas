@@ -529,6 +529,37 @@ test('previews sample rows and validates pasted test rows in the table editor', 
   await expect(editor.getByLabel('Test row 1 id', { exact: true })).toHaveValue('1')
   await expect(editor.getByLabel('Test row 2 id', { exact: true })).toHaveValue('1')
 
+  const testData = editor.getByRole('region', { name: 'Test data' })
+  await expect(testData.getByText('0 of 2 rows valid', { exact: true })).toBeVisible()
+  await testData.getByRole('button', { name: 'Add row', exact: true }).click()
+  await expect(testData.getByLabel('Test row 3 id', { exact: true })).toBeFocused()
+  await expect(testData.getByText('0 of 2 rows valid', { exact: true })).toBeVisible()
+  await page.keyboard.type('3')
+  await page.keyboard.press('Tab')
+  await expect(testData.getByLabel('Test row 3 created_at', { exact: true })).toBeFocused()
+  await page.keyboard.type('not-a-time')
+  await expect(testData.getByText('Not a timestamp', { exact: true })).toBeVisible()
+  await expect(testData.getByText('0 of 3 rows valid', { exact: true })).toBeVisible()
+  await page.keyboard.press('Enter')
+  await expect(testData.getByLabel('Test row 4 created_at', { exact: true })).toBeFocused()
+  await expect(testData.getByText('0 of 3 rows valid', { exact: true })).toBeVisible()
+  await testData.getByLabel('Test row 4 name', { exact: true }).focus()
+  await page.keyboard.press('Tab')
+  await expect(testData.getByLabel('Test row 5 id', { exact: true })).toBeFocused()
+  await expect(testData.getByText('0 of 3 rows valid', { exact: true })).toBeVisible()
+
+  await editor.getByRole('button', { name: 'Paste rows', exact: true }).click()
+  await editor.getByRole('textbox', { name: 'Rows to paste', exact: true }).fill([
+    '| id | name |',
+    '| --- | --- |',
+    '| 100 | gamma |',
+    '| 101 | delta |',
+  ].join('\n'))
+  await editor.getByRole('button', { name: 'Import rows', exact: true }).click()
+  await expect(testData.getByText('2 of 2 rows valid', { exact: true })).toBeVisible()
+  await expect(editor.getByLabel('Test row 1 id', { exact: true })).toHaveValue('100')
+  await expect(editor.getByLabel('Test row 2 name', { exact: true })).toHaveValue('delta')
+
   await editor.getByRole('button', { name: 'Done', exact: true }).click()
   await page.locator('.db-table-card').filter({ hasText: 'row_preview' }).dblclick()
   const reopened = page.getByRole('dialog', { name: 'Edit Table' })

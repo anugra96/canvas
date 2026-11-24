@@ -14,10 +14,15 @@ import {
   type TableRowValidationContext,
 } from '@canvas/contract'
 
-import { RowGrid, type RowGridCell, type RowGridColumn, type RowGridRow } from '../rows/RowGrid'
+import {
+  RowGrid,
+  type RowGridCell,
+  type RowGridColumn,
+  type RowGridFocusRequest,
+  type RowGridRow,
+} from '../rows/RowGrid'
 import { parseCsv } from '../rows/parseCsv'
 import { isMarkdownTable, parseMarkdownTable } from '../rows/parseMarkdownTable'
-import { dateTimeInputValue, rfc3339FromLocalDateTime } from '../schema/rowValues'
 import { useDatabaseDesign } from './DatabaseDesignContext'
 import { savedTableRows, tableRowsSummary } from './tableRowDrafts'
 
@@ -25,16 +30,44 @@ const SAMPLE_LIMIT = 20
 const TEST_LIMIT = 1000
 
 interface ColumnConfig {
-  classification: ColumnTypeClassification
   enumValues: string[]
   // What an empty cell means: the default or identity fills it, or it is SQL NULL.
   emptyLabel: string
+  hint?: string
 }
 
 function emptyLabelFor(column: TableColumn): string {
   if (column.generated) return 'Generated'
   if (column.identity || column.default) return 'Default'
   return 'Empty (NULL)'
+}
+
+function columnHint(classification: ColumnTypeClassification): string | undefined {
+  if (classification.kind !== 'neutral') return undefined
+  switch (classification.type) {
+    case 'date':
+      return 'YYYY-MM-DD'
+    case 'timestamp':
+      return 'YYYY-MM-DD HH:MM[:SS][+HH:MM]'
+    case 'boolean':
+      return 'true / false'
+    case 'uuid':
+      return 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
+    case 'decimal': {
+      const scale = classification.scale
+        ?? (classification.precision !== undefined ? 0 : undefined)
+      if (classification.precision !== undefined && scale !== undefined) {
+        return `up to ${classification.precision} digits, ${scale} decimals`
+      }
+      return scale !== undefined ? `${scale} decimals` : 'decimal'
+    }
+    case 'varchar':
+      return classification.length !== undefined
+        ? `up to ${classification.length} characters`
+        : undefined
+    default:
+      return undefined
+  }
 }
 
 function parsePastedRows(text: string, columns: TableColumn[]): {
@@ -113,6 +146,8 @@ export function TableRowsEditor({
   const [pasteText, setPasteText] = useState('')
   const [pasteError, setPasteError] = useState('')
   const [ignoredColumns, setIgnoredColumns] = useState<string[]>([])
+  const [sampleFocus, setSampleFocus] = useState<RowGridFocusRequest | null>(null)
+  const [testFocus, setTestFocus] = useState<RowGridFocusRequest | null>(null)
 
   const enumNames = useMemo(() => design.enums.map((item) => (
     item.schema === 'public' ? item.name : `${item.schema}.${item.name}`
@@ -153,7 +188,11 @@ export function TableRowsEditor({
     const values = classification.kind === 'enum'
       ? enumValues.get(classification.name) ?? []
       : []
-    return [column.name, { classification, enumValues: values, emptyLabel: emptyLabelFor(column) } satisfies ColumnConfig]
+    return [column.name, {
+      enumValues: values,
+      emptyLabel: emptyLabelFor(column),
+      hint: columnHint(classification),
+    } satisfies ColumnConfig]
   })), [definition.columns, enumNames, enumValues])
 
   const gridColumns: RowGridColumn[] = definition.columns.map((column) => {
@@ -161,10 +200,16 @@ export function TableRowsEditor({
       definition.primaryKey?.columns.includes(column.name) ? 'PK' : '',
       column.nullable ? '' : 'NOT NULL',
     ].filter(Boolean)
+    const hint = columnConfig.get(column.name)?.hint
     return {
       key: column.name,
       header: column.name,
-      detail: <>{column.type}{markers.length > 0 ? ` · ${markers.join(' · ')}` : ''}</>,
+      detail: (
+        <>
+          {column.type}{markers.length > 0 ? ` · ${markers.join(' · ')}` : ''}
+          {hint && <><br />{hint}</>}
+        </>
+      ),
     }
   })
 
@@ -207,7 +252,6 @@ export function TableRowsEditor({
           content: (
             <TableRowCell
               config={config ?? {
-                classification: { kind: 'native', type: column.type },
                 enumValues: [],
                 emptyLabel: emptyLabelFor(column),
               }}
@@ -236,9 +280,26 @@ export function TableRowsEditor({
     })
   }
 
-  function addSampleRow(): void {
-    if (samples.length >= SAMPLE_LIMIT) return
+  function addSampleRow(): boolean {
+    if (samples.length >= SAMPLE_LIMIT) return false
     commitSamples([...samples, {}])
+    return true
+  }
+
+  function addSampleRowAtEnd(): void {
+    if (!addSampleRow()) return
+    setSampleFocus({ row: samples.length, column: 0 })
+  }
+
+  function addTestRow(): boolean {
+    if (testRows.length >= TEST_LIMIT) return false
+    onChangeTestRows([...testRows, {}])
+    return true
+  }
+
+  function addTestRowAtEnd(): void {
+    if (!addTestRow()) return
+    setTestFocus({ row: visibleTestRows.length, column: 0 })
   }
 
   function generateSampleRow(): void {
@@ -281,7 +342,7 @@ export function TableRowsEditor({
             <button
               type="button"
               className="button"
-              onClick={addSampleRow}
+              onClick={addSampleRowAtEnd}
               disabled={samples.length >= SAMPLE_LIMIT}
             >
               <Plus size={13} /> Add row
@@ -313,6 +374,8 @@ export function TableRowsEditor({
           deleteLabel={(index) => `Delete sample row ${index + 1}`}
           emptyText="Add a column in Columns first."
           minWidth={Math.max(760, definition.columns.length * 160)}
+          focusRequest={sampleFocus}
+          navigation={{ addRow: addSampleRow }}
         />
       </section>
 
@@ -323,6 +386,15 @@ export function TableRowsEditor({
             <span>{testSummary.validCount} of {testSummary.countedRows} rows valid</span>
           </div>
           <div className="schema-row-actions">
+            <span className="database-row-limit">{testRows.length} of 1,000 rows</span>
+            <button
+              type="button"
+              className="button"
+              onClick={addTestRowAtEnd}
+              disabled={testRows.length >= TEST_LIMIT}
+            >
+              <Plus size={13} /> Add row
+            </button>
             <button
               type="button"
               className="button"
@@ -369,7 +441,6 @@ export function TableRowsEditor({
               >
                 Import rows
               </button>
-              <span>{testRows.length} of 1,000 rows</span>
             </div>
             {pasteError && <div className="alert" role="alert">{pasteError}</div>}
           </div>
@@ -391,8 +462,12 @@ export function TableRowsEditor({
             })),
             'test',
           )}
+          onDelete={(index) => onChangeTestRows(testRows.filter((_, at) => at !== index))}
+          deleteLabel={(index) => `Delete test row ${index + 1}`}
           emptyText="Paste rows or add columns first."
           minWidth={Math.max(760, definition.columns.length * 160)}
+          focusRequest={testFocus}
+          navigation={{ addRow: addTestRow }}
         />
       </section>
     </div>
@@ -424,106 +499,27 @@ function TableRowCell({
   value: string | null
   onChange: (value: string | null) => void
 }) {
-  const [custom, setCustom] = useState(false)
-  const { classification, enumValues } = config
-
-  if (classification.kind === 'enum' && !custom) {
-    return (
-      <select
-        aria-label={label}
-        value={value === null ? '__null__' : value}
-        onChange={(event) => {
-          if (event.target.value === '__other__') {
-            setCustom(true)
-          } else if (event.target.value === '__null__') {
-            onChange(null)
-          } else {
-            onChange(event.target.value)
-          }
-        }}
-      >
-        <option value="__null__">Empty (NULL)</option>
-        {enumValues.map((option) => <option key={option} value={option}>{option}</option>)}
-        {value !== null && !enumValues.includes(value) && (
-          <option value={value}>{value}</option>
-        )}
-        <option value="__other__">Other…</option>
-      </select>
-    )
-  }
-
-  if (classification.kind === 'neutral' && classification.type === 'boolean' && !custom) {
-    return (
-      <div className="schema-cell-input database-boolean-cell">
-        <input
-          type="checkbox"
-          role="switch"
-          aria-label={label}
-          checked={value === 'true'}
-          onChange={(event) => onChange(event.target.checked ? 'true' : 'false')}
-        />
-        <span className="database-boolean-value">
-          {value === null ? config.emptyLabel : value}
-        </span>
-        <button
-          type="button"
-          className="schema-null-toggle"
-          aria-label={`Set ${label} empty (NULL)`}
-          title="Empty (NULL)"
-          onClick={() => onChange(null)}
-        >∅</button>
-        <button
-          type="button"
-          className="schema-null-toggle"
-          aria-label={`Use custom value for ${label}`}
-          title="Custom value"
-          onClick={() => setCustom(true)}
-        >…</button>
-      </div>
-    )
-  }
-
-  const number = classification.kind === 'neutral'
-    && (classification.type === 'integer'
-      || classification.type === 'bigint'
-      || classification.type === 'decimal')
-  const date = classification.kind === 'neutral' && classification.type === 'date'
-  const timestamp = classification.kind === 'neutral' && classification.type === 'timestamp'
-  const step = classification.kind === 'neutral' && classification.type === 'decimal' ? 'any' : '1'
-
+  const listId = config.enumValues.length > 0
+    ? `database-enum-${label.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}`
+    : undefined
   return (
-    <div className="schema-cell-input">
+    <>
       <input
         aria-label={label}
-        type={number ? 'number' : date ? 'date' : timestamp ? 'datetime-local' : 'text'}
-        step={number ? step : timestamp ? 1 : undefined}
-        placeholder={number || date || timestamp ? undefined : config.emptyLabel}
-        value={timestamp
-          ? (value === null ? '' : dateTimeInputValue(value))
-          : value ?? ''}
+        type="text"
+        list={listId}
+        placeholder={config.emptyLabel}
+        value={value ?? ''}
         onChange={(event) => {
           const text = event.target.value
-          if (text === '') onChange(null)
-          else if (timestamp) onChange(rfc3339FromLocalDateTime(text))
-          else onChange(text)
+          onChange(text === '' ? null : text)
         }}
       />
-      {custom && (
-        <button
-          type="button"
-          className="schema-null-toggle"
-          aria-label={`Use list for ${label}`}
-          title="Use list"
-          onClick={() => setCustom(false)}
-        >≡</button>
+      {listId && (
+        <datalist id={listId}>
+          {config.enumValues.map((option) => <option key={option} value={option} />)}
+        </datalist>
       )}
-      <button
-        type="button"
-        className={`schema-null-toggle${value === null ? ' active' : ''}`}
-        aria-label={`Set ${label} empty (NULL)`}
-        title="Empty (NULL)"
-        onClick={() => onChange(null)}
-      >∅</button>
-    </div>
+    </>
   )
 }

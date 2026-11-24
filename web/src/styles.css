@@ -8636,6 +8636,10 @@ select {
   color: var(--ui-danger-text);
 }
 
+.schema-rows-table tr.draft .schema-row-status {
+  color: var(--ui-faint);
+}
+
 .schema-rows-table td.invalid {
   background: color-mix(in srgb, var(--ui-danger-bg) 55%, transparent);
 }

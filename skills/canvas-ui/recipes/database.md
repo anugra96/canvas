@@ -96,10 +96,10 @@ Rules:
 | Area | Labels |
 | --- | --- |
 | Sample rows | `region "Sample rows"`, `button "Add row"` (limit 20), `button "Generate"`, `button "Delete sample row N"` |
-| Sample cells | `Sample row N <col>`, `button "Set Sample row N <col> empty (NULL)"` |
-| Test data | `region "Test data"`, `button "Paste rows"`, `textbox "Rows to paste"`, `button "Import rows"` |
-| Test controls | `checkbox "Show invalid only"`, `button "Clear"`; limit 1,000 rows |
-| Counts | `N of M rows valid`; the paste panel also shows `N of 1,000 rows` |
+| Sample cells | `Sample row N <col>` (one text input) |
+| Test data | `region "Test data"`, `button "Add row"` (limit 1,000), `button "Delete test row N"`, `button "Paste rows"`, `textbox "Rows to paste"`, `button "Import rows"` |
+| Test controls | `checkbox "Show invalid only"`, `button "Clear"` |
+| Counts | `N of M rows valid`; each set also shows `N of 20 rows` or `N of 1,000 rows` |
 | Messages | `Required`, `Not a <type>`, `Longer than N`, `More than N decimals`, `Not in <enum>`, `Duplicate key`, `No <schema>.<table> row with <col> = <value>`, `Generated: leave empty` |
 | Notes | `Checks not evaluated`, `<k> columns not checked`, `Ignored columns: x, y` |
 
@@ -107,21 +107,40 @@ Rules:
 
 - **Sample rows** are saved in the table's `samples` field. **Test data** is
   never saved: reopening Edit Table clears it.
+- Every cell is one plain-text input, like a markdown table cell. The value is
+  exactly what you type; an empty cell is SQL NULL, not an empty string. The
+  placeholder says `Default`, `Generated`, or `Empty (NULL)` for that column.
+- Enum cells offer the enum's values in a datalist. The column header shows the
+  expected form: dates `YYYY-MM-DD`, timestamps
+  `YYYY-MM-DD HH:MM[:SS][+HH:MM]`, booleans `true / false`, uuids
+  `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`, `decimal(p,s)` up to p digits and s
+  decimals, `varchar(n)` up to n characters.
+- Keyboard navigation follows a table editor:
+
+  | Key | Moves |
+  | --- | --- |
+  | `Tab` | next cell, then the next row; from the last cell adds a row |
+  | `Shift+Tab` | previous cell, wrapping to the previous row's last cell |
+  | `Enter` | same column, next row; on the last row adds a row |
+  | `Shift+Enter` | same column, previous row |
+  | `ArrowUp` / `ArrowDown` | same column, previous / next row, never adding |
+
+  `Add row` also puts focus in the new first cell. Adding stops at the limit
+  (20 samples, 1,000 test rows) and the key does nothing.
+- An all-empty row is a draft: it shows no ✓ or ✗, is not counted in
+  `N of M rows valid`, and is not saved. Use it to start a row without an
+  instant `Required` error.
 - `Generate` writes a valid row for neutral types, uses the enum's first value,
   the next integer key, a new uuid, and a parent sample key for foreign keys.
   Columns with a default, identity, or generated expression stay empty.
-- Cell editors follow the type: number, boolean toggle, date, datetime-local,
-  enum select; text otherwise. `…` / `Other…` switches a boolean or enum cell
-  to free text so invalid values can be tested.
-- `Empty (NULL)` is an explicit choice on every cell; empty means SQL NULL, not
-  an empty string.
 - Foreign keys are checked only when the parent table has saved sample rows.
   Both sample and test rows of this table use the parent's saved samples.
 - Renaming a column renames its key in sample rows; removing a column drops it.
   Both happen in the same undoable edit as the column change.
-- Paste CSV with a header row of column names, or a JSON array of objects.
-  Unknown keys are reported once as `Ignored columns: x, y`, not dropped
-  silently.
+- Paste a markdown pipe table (header row and `| --- |` separator; outer pipes
+  optional, `\|` is a literal pipe, an empty cell is NULL), CSV with a header
+  row of column names, or a JSON array of objects. Unknown keys are reported
+  once as `Ignored columns: x, y`, not dropped silently.
 - Column types that are not neutral (for example `jsonb`, `inet`) are listed as
   not checked. CHECK constraints and generated columns are not evaluated.
 - Sample rows are a preview: `Export DDL` does not write INSERT statements.

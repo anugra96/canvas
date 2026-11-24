@@ -87,10 +87,11 @@ the first accessibility read after load can be empty.
 | Control | Use |
 | --- | --- |
 | `button "Columns"`, `button "Rows"` | Edit Table tabs. Columns is the default; Rows previews sample and test data. |
-| `button "Add row"`, `button "Generate"` | Rows tab: save up to 20 sample rows with the table. Generate fills a valid row for the model. |
-| `button "Paste rows"`, `button "Import rows"` | Rows tab: paste CSV with a header of column names, or a JSON array. Test data is session-only. |
-| `getByLabel('Sample row 1 <col>')` | Rows tab cell editor. Use `button "Set Sample row 1 <col> empty (NULL)"` for SQL NULL. |
-| `button "Delete sample row 1"` | Rows tab: remove a saved sample row. |
+| Rows cells | Every cell is one text input: `getByLabel('Sample row 1 <col>')` or `getByLabel('Test row 1 <col>')`. An empty cell is SQL NULL; the placeholder says what fills it. |
+| Rows keyboard | In a cell, Tab and Shift+Tab move across cells and rows; Enter and Shift+Enter move down and up; ArrowUp and ArrowDown move rows without adding one. Tab from the last cell adds a row. |
+| `button "Add row"`, `button "Generate"` | Rows tab: add a sample (limit 20) or test (limit 1,000) row; its first cell takes focus. Generate fills a valid sample row for the model. |
+| `button "Delete sample row 1"`, `button "Delete test row 1"` | Rows tab: remove a saved sample row or a session test row. |
+| `button "Paste rows"`, `button "Import rows"` | Rows tab: paste a markdown pipe table, CSV with a header row, or a JSON array. Test data is session-only. |
 | `button "Clear"`, `input "Show invalid only"` | Rows tab: clear test data or hide its valid rows. |
 
 ## Recipes
