@@ -1,6 +1,6 @@
 # Database Targets
 
-Status: Draft for review (2026-11-23), not built
+Status: Accepted (2026-11-23), not built
 Applies to: Database canvases. Extends `database-profile.md`; replaces its "PostgreSQL only" decision.
 
 ## Decision
@@ -36,7 +36,13 @@ Stored as `app.target` on the canvas root, beside `profile` and `reviewMode`.
 
 Existing canvases are PostgreSQL: a profile migration (Database `profileVersion`
 1 → 2) sets `app.target: "postgres"` on every Database canvas that has no target.
-New canvases start without a target. (Open question 1.)
+New canvases start without a target. A canvas created by Import DDL starts with
+`target: "postgres"`.
+
+The migration also rewrites a column type that is exactly `timestamp` (any case)
+to `timestamp without time zone`: that is what PostgreSQL reads it as, and the
+neutral `timestamp` means an instant (`timestamp with time zone`). Nothing else in
+the model is rewritten.
 
 ## Neutral types
 
@@ -55,12 +61,16 @@ flags them when they do not map to another chosen target.
 | `uuid` | `uuid` | `TEXT` | `S` |
 | `date` | `date` | `TEXT` (ISO 8601) | `S` (ISO 8601) |
 | `timestamp` | `timestamp with time zone` | `TEXT` (ISO 8601) | `S` (ISO 8601) or `N` (epoch) |
-| `json` | `jsonb` | `TEXT` + `CHECK (json_valid(x))` | `M` / `L` |
+| `json` | `json` | `TEXT` + `CHECK (json_valid(x))` | `M` / `L` |
 | `binary` | `bytea` | `BLOB` | `B` |
 | enum | `CREATE TYPE … AS ENUM` | `TEXT` + `CHECK (x IN (…))` | `S` (values in Review only) |
 
 Today's Postgres type strings map to neutral types on read (`timestamp with time
-zone` → `timestamp`); others (`inet`, `macaddr`) stay native Postgres.
+zone` → `timestamp`); others (`inet`, `macaddr`, `jsonb`) stay native Postgres.
+The PostgreSQL adapter writes a neutral type unchanged except `timestamp` →
+`timestamp with time zone` and `binary` → `bytea`, so existing canvases export
+byte-identical DDL. `json` stays `json` for the same reason; a later PostgreSQL
+check may suggest `jsonb`.
 
 ## Features per target
 
@@ -88,7 +98,7 @@ performs, e.g. "Get order by id", "List orders for customer, newest first".
 
 Key design per table (or per entity in a single table): partition key and sort key
 as attribute templates (`CUSTOMER#<customer_id>`, `ORDER#<created_at>`), plus GSIs.
-Table layout: one table per entity, or single-table (Open question 3).
+Table layout: one table per entity by default; single-table design is a later option.
 
 Review rules for DynamoDB: every access pattern is served by the table key or a
 GSI; no pattern needs a join; hot-partition warning when a high-frequency pattern
@@ -122,7 +132,8 @@ the target's limits (integer ranges, `varchar(n)`, DynamoDB item size).
 - Type pickers list neutral types first, then the target's native types.
 - **Export** shows the target's format; without a target it is disabled with
   "Choose a target in Database settings".
-- DynamoDB adds **Access patterns** (Open question 2) and key fields per table.
+- DynamoDB adds **Access pattern** cards (linked to tables, so Review can point at
+  them) and key fields per table.
 
 ## Phases
 
@@ -131,12 +142,12 @@ the target's limits (integer ranges, `varchar(n)`, DynamoDB item size).
 | 1 | `app.target`, migration to `postgres`, neutral type map, Postgres moved behind an adapter (no behaviour change), Target select, export gating | Existing Postgres canvases export byte-identical DDL |
 | 2 | Rows preview with neutral validation | Table-driven validation test |
 | 3 | SQLite adapter: types, rules, DDL export | Exported DDL runs in `sqlite3` |
-| 4 | DynamoDB: access patterns, key design, rules, export | Exported template passes `cfn-lint`; every example pattern served |
+| 4 | DynamoDB: access pattern cards, key design, rules, CloudFormation YAML export | Exported template passes `cfn-lint`; every example pattern served |
 | 5 | Imports: SQLite DDL, DynamoDB CloudFormation | Round trip |
 
-## Open questions
+## Decisions (accepted 2026-11-23)
 
-1. Existing canvases: migrate to `target: "postgres"` (proposed) or treat absent as Postgres forever.
-2. Access patterns as cards on the canvas (visible, linkable to tables) or a list in Database settings (proposed: cards, so Review can point at them).
-3. DynamoDB layout default: one table per entity (simpler, proposed) or single-table design.
-4. DynamoDB export format: CloudFormation YAML (proposed), CDK, or NoSQL Workbench JSON.
+1. Existing Database canvases migrate to `target: "postgres"`; new canvases start without a target.
+2. Access patterns are cards on the canvas, linked to tables, so Review can point at them.
+3. DynamoDB defaults to one table per entity.
+4. DynamoDB export is CloudFormation YAML.
