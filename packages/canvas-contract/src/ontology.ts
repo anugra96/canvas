@@ -344,7 +344,7 @@ export const DEFAULT_ONTOLOGY: Ontology = {
     {
       id: 'table',
       label: 'Table',
-      description: 'One PostgreSQL table with columns, keys, indexes, and comments.',
+      description: 'One table with columns, keys, indexes, and comments.',
       icon: 'table-2',
       color: '3',
       defaultSize: { width: 380, height: 420 },
@@ -367,6 +367,13 @@ export const DEFAULT_ONTOLOGY: Ontology = {
           required: true,
           content: true,
           defaultValue: '{\n  "columns": [],\n  "uniques": [],\n  "checks": [],\n  "foreignKeys": [],\n  "indexes": []\n}',
+        },
+        {
+          key: 'samples',
+          label: 'Sample rows',
+          type: 'textarea',
+          content: true,
+          placeholder: 'JSON array of rows',
         },
       ],
     },
