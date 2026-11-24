@@ -32,13 +32,17 @@ async function addTable(page: Page, name: string, schema?: string) {
   await dismissNotice(page)
 }
 
-async function choosePostgresTarget(page: Page) {
+async function chooseTarget(page: Page, target: 'postgres' | 'sqlite') {
   await page.getByRole('button', { name: 'More canvas actions' }).click()
   await page.getByRole('menuitem', { name: 'Database settings', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Database settings' })
-  await dialog.getByRole('combobox', { name: 'Target', exact: true }).selectOption('postgres')
+  await dialog.getByRole('combobox', { name: 'Target', exact: true }).selectOption(target)
   await dialog.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(dialog).toBeHidden()
+}
+
+async function choosePostgresTarget(page: Page) {
+  await chooseTarget(page, 'postgres')
 }
 
 async function exportDdl(page: Page): Promise<string> {
@@ -102,6 +106,20 @@ test('imports DDL, adds a column, and exports it in the DDL', async ({ page }) =
   expect(ddl).toContain('rollup_note text')
 
   expect(consoleErrors.filter((message) => /wasm|WebAssembly|compile/i.test(message))).toEqual([])
+
+  await addTable(page, 'audit_log', 'app')
+  await chooseTarget(page, 'sqlite')
+  const sqliteDdl = await exportDdl(page)
+  expect(sqliteDdl).toContain('PRAGMA foreign_keys = ON;')
+  expect(sqliteDdl).toContain('STRICT')
+
+  await expect(page.getByRole('group', { name: 'Table app.audit_log', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: /^\d+ validation issues?$/ }).click()
+  const review = page.getByRole('complementary', { name: 'Review' })
+  await expect(review).toBeVisible()
+  await expect(review.getByRole('button', { name: /SQLite/ }).first()).toBeVisible()
+  await expect(review.getByText(/app\.audit_log/)).toBeVisible()
+  await review.getByRole('button', { name: 'Close review' }).click()
 
   await page.goto('/')
   await page.getByLabel('Canvas type').selectOption('database')

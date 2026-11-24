@@ -10,6 +10,13 @@ import {
 
 import { FieldInput } from '../editor/nodes/FieldInput'
 
+const TARGET_HINTS: Record<DatabaseTarget | 'none', string> = {
+  none: 'The target sets column types, Review rules, and the export format.',
+  postgres: 'PostgreSQL keeps schemas, enums, identity, and its native types; Export writes PostgreSQL DDL.',
+  sqlite: 'SQLite flattens schemas, writes enums as TEXT with CHECKs, and exports one STRICT table script.',
+  dynamodb: 'DynamoDB export is not available yet.',
+}
+
 export function DatabaseSettingsDialog({
   entityType,
   initialFields,
@@ -86,11 +93,11 @@ export function DatabaseSettingsDialog({
             >
               <option value="">Not chosen</option>
               <option value="postgres">PostgreSQL</option>
-              <option value="sqlite" disabled>SQLite (Coming later)</option>
+              <option value="sqlite">SQLite</option>
               <option value="dynamodb" disabled>DynamoDB (Coming later)</option>
             </select>
           </label>
-          <p className="database-editor-hint">The target sets column types and the export format.</p>
+          <p className="database-editor-hint">{TARGET_HINTS[target ?? 'none']}</p>
           {entityType.fields.map((field) => (
             <FieldInput
               key={field.key}

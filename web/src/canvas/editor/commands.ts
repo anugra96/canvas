@@ -350,8 +350,8 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       surface: 'overflow',
       section: 'export',
       available: input.profileId === 'database',
-      disabled: input.databaseTarget !== 'postgres',
-      description: input.databaseTarget !== 'postgres'
+      disabled: input.databaseTarget !== 'postgres' && input.databaseTarget !== 'sqlite',
+      description: input.databaseTarget !== 'postgres' && input.databaseTarget !== 'sqlite'
         ? 'Choose a target in Database settings'
         : undefined,
       run: input.onExportDatabase,
@@ -363,8 +363,8 @@ export function useCanvasCommands(input: CanvasCommandInput): CanvasCommand[] {
       surface: 'overflow',
       section: 'export',
       available: input.profileId === 'database',
-      disabled: input.databaseTarget !== 'postgres',
-      description: input.databaseTarget !== 'postgres'
+      disabled: input.databaseTarget !== 'postgres' && input.databaseTarget !== 'sqlite',
+      description: input.databaseTarget !== 'postgres' && input.databaseTarget !== 'sqlite'
         ? 'Choose a target in Database settings'
         : undefined,
       run: input.onCopyDatabase,

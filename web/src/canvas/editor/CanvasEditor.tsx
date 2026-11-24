@@ -611,13 +611,14 @@ function CanvasEditorInner({ client, document, onBack, trail, onOpenTrail, onOpe
   const onCopyDatabase = useCallback(() => {
     try {
       const output = exportDatabase()
+      const label = databaseTarget === 'sqlite' ? 'SQLite' : 'PostgreSQL'
       void navigator.clipboard.writeText(output.text)
-        .then(() => setNotice('Copied PostgreSQL DDL.'))
+        .then(() => setNotice(`Copied ${label} DDL.`))
         .catch(() => setError('Clipboard access was denied.'))
     } catch (cause) {
       reportExportFailure(cause)
     }
-  }, [exportDatabase, reportExportFailure, setError, setNotice])
+  }, [databaseTarget, exportDatabase, reportExportFailure, setError, setNotice])
 
   const addResource = useCallback((input: AddApiResourceInput): string[] => {
     const canvas = fromFlowCanvas(nodes, edges, baseCanvas)

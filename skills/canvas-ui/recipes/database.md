@@ -1,4 +1,4 @@
-# Recipe: design a database by hand with a PostgreSQL target
+# Recipe: design a database by hand with a PostgreSQL or SQLite target
 
 Profile: Database. Order matters: enums and tables first, foreign keys after
 both tables exist.
@@ -10,7 +10,8 @@ Create canvas (Database) → Database settings (Target: PostgreSQL) → Enums
 ```
 
 New canvases have no target. Tables and enums can be designed first; choose
-PostgreSQL in Database settings when the model is ready to export.
+PostgreSQL or SQLite in Database settings when the model is ready to export.
+Review explains what does not fit the chosen target.
 
 ## 1. Database settings
 
@@ -19,9 +20,12 @@ PostgreSQL in Database settings when the model is ready to export.
    settings update the stored definition behind the scenes. `Save` creates it
    when it is missing. Use the same command to open the dialog again later.
 2. `combobox "Target"` sits above the fields: `Not chosen`, `PostgreSQL`,
-   `SQLite (Coming later)` (disabled), `DynamoDB (Coming later)` (disabled).
-   New canvases start at `Not chosen`. Choose `PostgreSQL` to export DDL; the
-   target is saved with the fields in one Save even when no Database card exists.
+   `SQLite`, `DynamoDB (Coming later)` (disabled). New canvases start at
+   `Not chosen`. The hint below the select says what the chosen target changes:
+   PostgreSQL keeps schemas, enums, identity, and native types; SQLite flattens
+   schemas, writes enums as TEXT with CHECKs, and exports STRICT tables. Choose
+   `PostgreSQL` or `SQLite` to export DDL; the target is saved with the fields in
+   one Save even when no Database card exists.
 3. Fill `Name` (required), and as needed `Server version` (e.g. `16`), `Owner`,
    `Extensions` (one per line: `pgcrypto public` = extension and schema), then
    click `button "Save"`. `Cancel` and `Escape` discard the draft, including the
@@ -169,17 +173,47 @@ Fill `Description`, `Done`.
 1. `More canvas actions` → `Tidy database layout`.
 2. `More canvas actions` → `Export DDL` (download) or `Copy DDL`. Both are
    disabled with "Choose a target in Database settings" until `Target` is
-   `PostgreSQL`.
-3. Compare by meaning, not text. Export writes foreign keys as trailing
-   `ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY`, puts `DEFAULT` before
-   `NOT NULL`, and may spell casts differently. The safe check: the DDL contains every table, `PRIMARY KEY`, `FOREIGN KEY ... ON DELETE`,
-   `UNIQUE`, `CREATE INDEX`, `CHECK`, and `COMMENT ON` you designed.
+   `PostgreSQL` or `SQLite`.
+3. Check the target's output:
+   - PostgreSQL writes foreign keys as trailing
+     `ALTER TABLE ... ADD CONSTRAINT ... FOREIGN KEY`, puts `DEFAULT` before
+     `NOT NULL`, and may spell casts differently. The safe check: the DDL
+     contains every table, `PRIMARY KEY`, `FOREIGN KEY ... ON DELETE`,
+     `UNIQUE`, `CREATE INDEX`, `CHECK`, and `COMMENT ON` you designed.
+   - SQLite writes one script starting `PRAGMA foreign_keys = ON;`, with
+     `CREATE TABLE ... STRICT`, inline `FOREIGN KEY` and its actions,
+     `INTEGER PRIMARY KEY` for a single integer identity key, and `--` comments
+     for descriptions. Schemas other than `public` become `<schema>_<table>`.
+     PostgreSQL-only items (extensions, Extra DDL, `gen_random_uuid()`, `::`
+     casts, non-btree indexes) become `-- SQLite:` comments and matching Review
+     issues, so the script still runs in `sqlite3`.
+
+## 7. SQLite target
+
+Choose `SQLite` in Database settings before exporting. Review adds SQLite issues
+for every item the export cannot keep:
+
+| Review label | Means |
+| --- | --- |
+| Schema flattened in SQLite | A table outside `public` exports as `<schema>_<table>` |
+| SQLite table name collision | Two flattened table names are equal; rename one (error) |
+| Decimal stored as text in SQLite | `decimal(p,s)` becomes `TEXT` |
+| Type not available in SQLite | A PostgreSQL native type becomes `ANY` |
+| Identity removed in SQLite | Identity is kept only on a single integer primary key |
+| Default removed in SQLite | The default is not a literal, `now()`, or `CURRENT_TIMESTAMP` |
+| Expression removed in SQLite | A CHECK, generated column, or partial index uses PostgreSQL-only syntax |
+| Index method removed in SQLite | The index is not btree |
+| PostgreSQL-only statement removed in SQLite | Extensions or Extra DDL are present |
+
+SQLite exports `varchar(n)`, `boolean`, `json`, and enums as checks, so inserting
+outside those rules fails in `sqlite3` just as the PostgreSQL constraints would.
+`Copy DDL` says `Copied SQLite DDL.` after a successful copy.
 
 ## Failure signs
 
 | Sign | Meaning |
 | --- | --- |
-| `Export DDL` is disabled | Choose `PostgreSQL` under `combobox "Target"` in Database settings |
+| `Export DDL` is disabled | Choose `PostgreSQL` or `SQLite` under `combobox "Target"` in Database settings |
 | Card shows "Double-click to add columns." after an edit | The edit did not save. Reopen and read the alert |
 | `getByLabel('Column N ...')` not found | Row N does not exist yet: click `Add column`. For `identity`, `generated`, or `comment`, first click `More for <col>` |
 | Double-click opens nothing | The card is off-screen or under a dialog. Press `Escape`, click `Fit View`, retry |
